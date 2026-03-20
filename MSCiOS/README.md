@@ -4,7 +4,7 @@
 
 MSC Remote is the iOS companion app for [Minecraft Server Controller](../MSCmacOS) (MSC) — a macOS app for running Minecraft servers. Once paired, MSC Remote lets you monitor server status, read the live console, send commands, and view online players from anywhere on your local network or VPN.
 
-> **Built by C. M. Temple / TempleTech**
+> **Built by ctemple9 / TempleTech**
 
 ---
 
