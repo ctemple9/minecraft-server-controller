@@ -1,0 +1,1015 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		9A4F742A2F6CBB92008FF39A /* OnboardingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */; };
+		9A4F742B2F6CBB92008FF39A /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */; };
+		9A4F742C2F6CBB92008FF39A /* CreateServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74272F6CBB92008FF39A /* CreateServerView.swift */; };
+		9A5632752F65AD6D00FB8246 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E12F65AD6C00FB8246 /* AboutView.swift */; };
+		9A5632762F65AD6D00FB8246 /* YAMLHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */; };
+		9A5632772F65AD6D00FB8246 /* AppViewModel+Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */; };
+		9A5632782F65AD6D00FB8246 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632442F65AD6C00FB8246 /* PreferencesView.swift */; };
+		9A5632792F65AD6D00FB8246 /* ServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632522F65AD6C00FB8246 /* ServerBackend.swift */; };
+		9A56327B2F65AD6D00FB8246 /* ServerProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632612F65AD6C00FB8246 /* ServerProcessManager.swift */; };
+		9A56327C2F65AD6D00FB8246 /* RemoteAPIServerDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324C2F65AD6C00FB8246 /* RemoteAPIServerDTOs.swift */; };
+		9A56327D2F65AD6D00FB8246 /* ServerEditorWorldTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325D2F65AD6C00FB8246 /* ServerEditorWorldTab.swift */; };
+		9A56327E2F65AD6D00FB8246 /* SplashGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632682F65AD6C00FB8246 /* SplashGateView.swift */; };
+		9A56327F2F65AD6D00FB8246 /* OverviewDuckDNSSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632342F65AD6C00FB8246 /* OverviewDuckDNSSectionView.swift */; };
+		9A5632802F65AD6D00FB8246 /* ConsoleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320B2F65AD6C00FB8246 /* ConsoleManager.swift */; };
+		9A5632812F65AD6D00FB8246 /* BroadcastConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632072F65AD6C00FB8246 /* BroadcastConfigManager.swift */; };
+		9A5632822F65AD6D00FB8246 /* TemplateItemDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */; };
+		9A5632832F65AD6D00FB8246 /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */; };
+		9A5632842F65AD6D00FB8246 /* XboxBroadcastDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */; };
+		9A5632852F65AD6D00FB8246 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320D2F65AD6C00FB8246 /* ContentView.swift */; };
+		9A5632862F65AD6D00FB8246 /* MessagePlayerSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322B2F65AD6C00FB8246 /* MessagePlayerSheetView.swift */; };
+		9A5632872F65AD6D00FB8246 /* WelcomeGuideTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */; };
+		9A5632882F65AD6D00FB8246 /* OverviewHealthHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */; };
+		9A5632892F65AD6D00FB8246 /* AppViewModel+XboxBroadcastDownload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */; };
+		9A56328A2F65AD6D00FB8246 /* ComponentVersionParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632092F65AD6C00FB8246 /* ComponentVersionParsing.swift */; };
+		9A56328B2F65AD6D00FB8246 /* DetailsPerformanceHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632192F65AD6C00FB8246 /* DetailsPerformanceHelpers.swift */; };
+		9A56328C2F65AD6D00FB8246 /* ServerEditorSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325B2F65AD6C00FB8246 /* ServerEditorSupportViews.swift */; };
+		9A56328D2F65AD6D00FB8246 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E52F65AD6C00FB8246 /* AppViewModel.swift */; };
+		9A56328E2F65AD6D00FB8246 /* PrerequisitesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */; };
+		9A56328F2F65AD6D00FB8246 /* AppViewModel+Backups.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E62F65AD6C00FB8246 /* AppViewModel+Backups.swift */; };
+		9A5632902F65AD6D00FB8246 /* AppViewModel+ServerInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F62F65AD6C00FB8246 /* AppViewModel+ServerInfo.swift */; };
+		9A5632912F65AD6D00FB8246 /* AppViewModel+ServerCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F52F65AD6C00FB8246 /* AppViewModel+ServerCreation.swift */; };
+		9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632482F65AD6C00FB8246 /* QuickCommandsView.swift */; };
+		9A5632932F65AD6D00FB8246 /* AppViewModel+BedrockConnect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */; };
+		9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632662F65AD6C00FB8246 /* SidebarView.swift */; };
+		9A5632952F65AD6D00FB8246 /* PerformanceHelpSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323F2F65AD6C00FB8246 /* PerformanceHelpSheetView.swift */; };
+		9A5632962F65AD6D00FB8246 /* NotesAutoSaveProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322D2F65AD6C00FB8246 /* NotesAutoSaveProxy.swift */; };
+		9A5632972F65AD6D00FB8246 /* AppViewModel+ServerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F72F65AD6C00FB8246 /* AppViewModel+ServerSettings.swift */; };
+		9A5632982F65AD6D00FB8246 /* QuickStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632492F65AD6C00FB8246 /* QuickStartView.swift */; };
+		9A5632992F65AD6D00FB8246 /* OverviewQuickActionsCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */; };
+		9A56329A2F65AD6D00FB8246 /* DetailsHeaderSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632142F65AD6C00FB8246 /* DetailsHeaderSectionView.swift */; };
+		9A56329B2F65AD6D00FB8246 /* HealthCardsStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632262F65AD6C00FB8246 /* HealthCardsStripView.swift */; };
+		9A56329C2F65AD6D00FB8246 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632632F65AD6C00FB8246 /* ServerSettingsView.swift */; };
+		9A56329D2F65AD6D00FB8246 /* ServerFilesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */; };
+		9A56329E2F65AD6D00FB8246 /* OverviewAlertBannersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632312F65AD6C00FB8246 /* OverviewAlertBannersView.swift */; };
+		9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */; };
+		9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */; };
+		9A5632A12F65AD6D00FB8246 /* BedrockConnectProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */; };
+		9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632222F65AD6C00FB8246 /* GeyserConfigManager.swift */; };
+		9A5632A32F65AD6D00FB8246 /* BannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632002F65AD6C00FB8246 /* BannerView.swift */; };
+		9A5632A42F65AD6D00FB8246 /* AppViewModelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */; };
+		9A5632A52F65AD6D00FB8246 /* FirstStartSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632212F65AD6C00FB8246 /* FirstStartSheetView.swift */; };
+		9A5632A62F65AD6D00FB8246 /* AppViewModel+PaperTemplateDownload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F22F65AD6C00FB8246 /* AppViewModel+PaperTemplateDownload.swift */; };
+		9A5632A82F65AD6D00FB8246 /* OverviewServerStatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */; };
+		9A5632A92F65AD6D00FB8246 /* ServerPropertiesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632622F65AD6C00FB8246 /* ServerPropertiesManager.swift */; };
+		9A5632AA2F65AD6D00FB8246 /* ConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320A2F65AD6C00FB8246 /* ConfigManager.swift */; };
+		9A5632AB2F65AD6D00FB8246 /* DetailsComponentsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632122F65AD6C00FB8246 /* DetailsComponentsActions.swift */; };
+		9A5632AC2F65AD6D00FB8246 /* BackupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */; };
+		9A5632AD2F65AD6D00FB8246 /* MinecraftCommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322C2F65AD6C00FB8246 /* MinecraftCommandRegistry.swift */; };
+		9A5632AE2F65AD6D00FB8246 /* ServerNotesSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632602F65AD6C00FB8246 /* ServerNotesSectionView.swift */; };
+		9A5632AF2F65AD6D00FB8246 /* MSCTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632472F65AD6C00FB8246 /* MSCTabBar.swift */; };
+		9A5632B02F65AD6D00FB8246 /* AppViewModel+ComponentsVersions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EB2F65AD6C00FB8246 /* AppViewModel+ComponentsVersions.swift */; };
+		9A5632B12F65AD6D00FB8246 /* ServerEditorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632592F65AD6C00FB8246 /* ServerEditorModels.swift */; };
+		9A5632B22F65AD6D00FB8246 /* AppViewModel+ServerControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F42F65AD6C00FB8246 /* AppViewModel+ServerControls.swift */; };
+		9A5632B32F65AD6D00FB8246 /* DetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321E2F65AD6C00FB8246 /* DetailsView.swift */; };
+		9A5632B42F65AD6D00FB8246 /* BedrockVersionFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */; };
+		9A5632B52F65AD6D00FB8246 /* JavaServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632272F65AD6C00FB8246 /* JavaServerBackend.swift */; };
+		9A5632B62F65AD6D00FB8246 /* WorldSlotManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */; };
+		9A5632B72F65AD6D00FB8246 /* HealthCardsGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632252F65AD6C00FB8246 /* HealthCardsGridView.swift */; };
+		9A5632B82F65AD6D00FB8246 /* PaperDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */; };
+		9A5632B92F65AD6D00FB8246 /* MinecraftServerControllerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323D2F65AD6C00FB8246 /* MinecraftServerControllerApp.swift */; };
+		9A5632BA2F65AD6D00FB8246 /* ServerEditorBackupsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632532F65AD6C00FB8246 /* ServerEditorBackupsTab.swift */; };
+		9A5632BB2F65AD6D00FB8246 /* ConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320C2F65AD6C00FB8246 /* ConsoleView.swift */; };
+		9A5632BC2F65AD6D00FB8246 /* AppViewModel+Broadcasting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */; };
+		9A5632BD2F65AD6D00FB8246 /* XboxBroadcastProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */; };
+		9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */; };
+		9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632242F65AD6C00FB8246 /* HealthCardModels.swift */; };
+		9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */; };
+		9A5632C12F65AD6D00FB8246 /* ContentViewRunnerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320E2F65AD6C00FB8246 /* ContentViewRunnerSupport.swift */; };
+		9A5632C22F65AD6D00FB8246 /* DetailsPerformanceTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321B2F65AD6C00FB8246 /* DetailsPerformanceTabView.swift */; };
+		9A5632C32F65AD6D00FB8246 /* DetailsWorldsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321F2F65AD6C00FB8246 /* DetailsWorldsTabView.swift */; };
+		9A5632C42F65AD6D00FB8246 /* AppViewModel+Metrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EF2F65AD6C00FB8246 /* AppViewModel+Metrics.swift */; };
+		9A5632C52F65AD6D00FB8246 /* OverviewHealthCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632352F65AD6C00FB8246 /* OverviewHealthCardView.swift */; };
+		9A5632C72F65AD6D00FB8246 /* QuickStartWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324A2F65AD6C00FB8246 /* QuickStartWindowController.swift */; };
+		9A5632C82F65AD6D00FB8246 /* EULAManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632202F65AD6C00FB8246 /* EULAManager.swift */; };
+		9A5632C92F65AD6D00FB8246 /* JoinCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632282F65AD6C00FB8246 /* JoinCardView.swift */; };
+		9A5632CA2F65AD6D00FB8246 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632512F65AD6C00FB8246 /* Server.swift */; };
+		9A5632CB2F65AD6D00FB8246 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E22F65AD6C00FB8246 /* AppConfig.swift */; };
+		9A5632CC2F65AD6D00FB8246 /* AppModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E32F65AD6C00FB8246 /* AppModels.swift */; };
+		9A5632CD2F65AD6D00FB8246 /* AppViewModel+SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F82F65AD6C00FB8246 /* AppViewModel+SessionLog.swift */; };
+		9A5632CF2F65AD6D00FB8246 /* GitHubReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632232F65AD6C00FB8246 /* GitHubReleaseChecker.swift */; };
+		9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632162F65AD6C00FB8246 /* DetailsPacksTabView.swift */; };
+		9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */; };
+		9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */; };
+		9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */; };
+		9A5632D42F65AD6D00FB8246 /* ServerEditorBedrockConnectTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */; };
+		9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */; };
+		9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */; };
+		9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326B2F65AD6C00FB8246 /* TemplateView.swift */; };
+		9A5632D82F65AD6D00FB8246 /* PluginDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */; };
+		9A5632D92F65AD6D00FB8246 /* PlayerAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */; };
+		9A5632DA2F65AD6D00FB8246 /* ManageServersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322A2F65AD6C00FB8246 /* ManageServersView.swift */; };
+		9A5632DB2F65AD6D00FB8246 /* AppViewModel+BedrockProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */; };
+		9A5632DC2F65AD6D00FB8246 /* OnboardingAnchorKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322E2F65AD6C00FB8246 /* OnboardingAnchorKey.swift */; };
+		9A5632DE2F65AD6D00FB8246 /* AppViewModel+WorldSlots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */; };
+		9A5632DF2F65AD6D00FB8246 /* ServerEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325C2F65AD6C00FB8246 /* ServerEditorView.swift */; };
+		9A5632E02F65AD6D00FB8246 /* AppViewModel+Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F02F65AD6C00FB8246 /* AppViewModel+Notifications.swift */; };
+		9A5632E12F65AD6D00FB8246 /* AppViewModel+WorldManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */; };
+		9A5632E22F65AD6D00FB8246 /* DetailsOverviewTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632152F65AD6C00FB8246 /* DetailsOverviewTabView.swift */; };
+		9A5632E32F65AD6D00FB8246 /* AppViewModel+BedrockPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */; };
+		9A5632E42F65AD6D00FB8246 /* AppViewModel+FinderTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */; };
+		9A5632E52F65AD6D00FB8246 /* ReplaceWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */; };
+		9A5632E62F65AD6D00FB8246 /* ResourcePackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */; };
+		9A5632E72F65AD6D00FB8246 /* SessionLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632642F65AD6C00FB8246 /* SessionLogManager.swift */; };
+		9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */; };
+		9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */; };
+		9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */; };
+		9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */; };
+		9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */; };
+		9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */; };
+		9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */; };
+		9A5632EF2F65AD6D00FB8246 /* DetailsPerformanceComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632182F65AD6C00FB8246 /* DetailsPerformanceComponents.swift */; };
+		9A5632F02F65AD6D00FB8246 /* DetailsPlayersTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321C2F65AD6C00FB8246 /* DetailsPlayersTabView.swift */; };
+		9A5632F12F65AD6D00FB8246 /* MSCStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632462F65AD6C00FB8246 /* MSCStyles.swift */; };
+		9A5632F22F65AD6D00FB8246 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632292F65AD6C00FB8246 /* KeychainManager.swift */; };
+		9A5632F32F65AD6D00FB8246 /* WelcomeGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */; };
+		9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */; };
+		9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */; };
+		9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */; };
+		9A5632F72F65AD6D00FB8246 /* BedrockConnectDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */; };
+		9A5632F82F65AD6D00FB8246 /* PaperVersionSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323E2F65AD6C00FB8246 /* PaperVersionSidecar.swift */; };
+		9A5632F92F65AD6D00FB8246 /* ServerEditorJarsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632582F65AD6C00FB8246 /* ServerEditorJarsTab.swift */; };
+		9A5632FA2F65AD6D00FB8246 /* OverviewConnectionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632322F65AD6C00FB8246 /* OverviewConnectionCardView.swift */; };
+		9A5632FB2F65AD6D00FB8246 /* OverviewPlayerRowHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */; };
+		9A5632FC2F65AD6D00FB8246 /* AppUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E42F65AD6C00FB8246 /* AppUtilities.swift */; };
+		9A5632FE2F65AD6D00FB8246 /* AppViewModel+ResourcePacks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F32F65AD6C00FB8246 /* AppViewModel+ResourcePacks.swift */; };
+		9A5632FF2F65AD6D00FB8246 /* ServerEditorDockerTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632562F65AD6C00FB8246 /* ServerEditorDockerTab.swift */; };
+		9A5633002F65AD6D00FB8246 /* AppViewModel+ConfigHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EC2F65AD6C00FB8246 /* AppViewModel+ConfigHelpers.swift */; };
+		9A5633012F65AD6D00FB8246 /* PlayerSessionTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */; };
+		9A5633022F65AD6D00FB8246 /* DetailsPerformanceTabContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321A2F65AD6C00FB8246 /* DetailsPerformanceTabContent.swift */; };
+		9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320F2F65AD6C00FB8246 /* ContextualHelpFoundation.swift */; };
+		9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */; };
+		9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */; };
+		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
+		9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */; };
+		9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */; };
+		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
+		9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */; };
+		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
+		9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */; };
+		9A8A015C2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A015A2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift */; };
+		9A8A015D2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A015B2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift */; };
+		9AAF27632F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27612F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift */; };
+		9AAF27642F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27622F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift */; };
+		9AAF27682F6A272300F752CA /* RouterPortForwardGuidePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27652F6A272300F752CA /* RouterPortForwardGuidePicker.swift */; };
+		9AAF276A2F6A2B0100F752CA /* RouterPortForwardGuideReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */; };
+		9AAF276E2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */; };
+		9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */; };
+		9AC4CEAF2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */; };
+		9AC4CEB12F69F331002B5564 /* RouterPortForwardGuideComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */; };
+		9AC4CEB52F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB42F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift */; };
+		9AC4CEB72F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB62F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift */; };
+		9AC4CEB92F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB82F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift */; };
+		9AC4CEBC2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */; };
+		9ADA84802F6CC8B50079CA9B /* CreateWorldSlotSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		9A4F74272F6CBB92008FF39A /* CreateServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateServerView.swift; sourceTree = "<group>"; };
+		9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
+		9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingOverlayView.swift; sourceTree = "<group>"; };
+		9A5631E12F65AD6C00FB8246 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		9A5631E22F65AD6C00FB8246 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		9A5631E32F65AD6C00FB8246 /* AppModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModels.swift; sourceTree = "<group>"; };
+		9A5631E42F65AD6C00FB8246 /* AppUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUtilities.swift; sourceTree = "<group>"; };
+		9A5631E52F65AD6C00FB8246 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		9A5631E62F65AD6C00FB8246 /* AppViewModel+Backups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Backups.swift"; sourceTree = "<group>"; };
+		9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockConnect.swift"; sourceTree = "<group>"; };
+		9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockPerformance.swift"; sourceTree = "<group>"; };
+		9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockProperties.swift"; sourceTree = "<group>"; };
+		9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Broadcasting.swift"; sourceTree = "<group>"; };
+		9A5631EB2F65AD6C00FB8246 /* AppViewModel+ComponentsVersions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ComponentsVersions.swift"; sourceTree = "<group>"; };
+		9A5631EC2F65AD6C00FB8246 /* AppViewModel+ConfigHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ConfigHelpers.swift"; sourceTree = "<group>"; };
+		9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+FinderTools.swift"; sourceTree = "<group>"; };
+		9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+HealthCards.swift"; sourceTree = "<group>"; };
+		9A5631EF2F65AD6C00FB8246 /* AppViewModel+Metrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Metrics.swift"; sourceTree = "<group>"; };
+		9A5631F02F65AD6C00FB8246 /* AppViewModel+Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Notifications.swift"; sourceTree = "<group>"; };
+		9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+OutputHandling.swift"; sourceTree = "<group>"; };
+		9A5631F22F65AD6C00FB8246 /* AppViewModel+PaperTemplateDownload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PaperTemplateDownload.swift"; sourceTree = "<group>"; };
+		9A5631F32F65AD6C00FB8246 /* AppViewModel+ResourcePacks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ResourcePacks.swift"; sourceTree = "<group>"; };
+		9A5631F42F65AD6C00FB8246 /* AppViewModel+ServerControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerControls.swift"; sourceTree = "<group>"; };
+		9A5631F52F65AD6C00FB8246 /* AppViewModel+ServerCreation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerCreation.swift"; sourceTree = "<group>"; };
+		9A5631F62F65AD6C00FB8246 /* AppViewModel+ServerInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerInfo.swift"; sourceTree = "<group>"; };
+		9A5631F72F65AD6C00FB8246 /* AppViewModel+ServerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerSettings.swift"; sourceTree = "<group>"; };
+		9A5631F82F65AD6C00FB8246 /* AppViewModel+SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+SessionLog.swift"; sourceTree = "<group>"; };
+		9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Templates.swift"; sourceTree = "<group>"; };
+		9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldManagement.swift"; sourceTree = "<group>"; };
+		9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldSlots.swift"; sourceTree = "<group>"; };
+		9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+XboxBroadcastDownload.swift"; sourceTree = "<group>"; };
+		9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModelModels.swift; sourceTree = "<group>"; };
+		9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupsView.swift; sourceTree = "<group>"; };
+		9A5632002F65AD6C00FB8246 /* BannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerView.swift; sourceTree = "<group>"; };
+		9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockConnectDownloader.swift; sourceTree = "<group>"; };
+		9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockConnectProcessManager.swift; sourceTree = "<group>"; };
+		9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPropertiesManager.swift; sourceTree = "<group>"; };
+		9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockServerBackend.swift; sourceTree = "<group>"; };
+		9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockVersionFetcher.swift; sourceTree = "<group>"; };
+		9A5632072F65AD6C00FB8246 /* BroadcastConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BroadcastConfigManager.swift; sourceTree = "<group>"; };
+		9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
+		9A5632092F65AD6C00FB8246 /* ComponentVersionParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentVersionParsing.swift; sourceTree = "<group>"; };
+		9A56320A2F65AD6C00FB8246 /* ConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigManager.swift; sourceTree = "<group>"; };
+		9A56320B2F65AD6C00FB8246 /* ConsoleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleManager.swift; sourceTree = "<group>"; };
+		9A56320C2F65AD6C00FB8246 /* ConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleView.swift; sourceTree = "<group>"; };
+		9A56320D2F65AD6C00FB8246 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9A56320E2F65AD6C00FB8246 /* ContentViewRunnerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewRunnerSupport.swift; sourceTree = "<group>"; };
+		9A56320F2F65AD6C00FB8246 /* ContextualHelpFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextualHelpFoundation.swift; sourceTree = "<group>"; };
+		9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsClipboardAndHUDHelpers.swift; sourceTree = "<group>"; };
+		9A5632122F65AD6C00FB8246 /* DetailsComponentsActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsComponentsActions.swift; sourceTree = "<group>"; };
+		9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsComponentsTabView.swift; sourceTree = "<group>"; };
+		9A5632142F65AD6C00FB8246 /* DetailsHeaderSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsHeaderSectionView.swift; sourceTree = "<group>"; };
+		9A5632152F65AD6C00FB8246 /* DetailsOverviewTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsOverviewTabView.swift; sourceTree = "<group>"; };
+		9A5632162F65AD6C00FB8246 /* DetailsPacksTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPacksTabView.swift; sourceTree = "<group>"; };
+		9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPerformanceCharts.swift; sourceTree = "<group>"; };
+		9A5632182F65AD6C00FB8246 /* DetailsPerformanceComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPerformanceComponents.swift; sourceTree = "<group>"; };
+		9A5632192F65AD6C00FB8246 /* DetailsPerformanceHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPerformanceHelpers.swift; sourceTree = "<group>"; };
+		9A56321A2F65AD6C00FB8246 /* DetailsPerformanceTabContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPerformanceTabContent.swift; sourceTree = "<group>"; };
+		9A56321B2F65AD6C00FB8246 /* DetailsPerformanceTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPerformanceTabView.swift; sourceTree = "<group>"; };
+		9A56321C2F65AD6C00FB8246 /* DetailsPlayersTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsPlayersTabView.swift; sourceTree = "<group>"; };
+		9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsSettingsTabView.swift; sourceTree = "<group>"; };
+		9A56321E2F65AD6C00FB8246 /* DetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsView.swift; sourceTree = "<group>"; };
+		9A56321F2F65AD6C00FB8246 /* DetailsWorldsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsWorldsTabView.swift; sourceTree = "<group>"; };
+		9A5632202F65AD6C00FB8246 /* EULAManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EULAManager.swift; sourceTree = "<group>"; };
+		9A5632212F65AD6C00FB8246 /* FirstStartSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstStartSheetView.swift; sourceTree = "<group>"; };
+		9A5632222F65AD6C00FB8246 /* GeyserConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeyserConfigManager.swift; sourceTree = "<group>"; };
+		9A5632232F65AD6C00FB8246 /* GitHubReleaseChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubReleaseChecker.swift; sourceTree = "<group>"; };
+		9A5632242F65AD6C00FB8246 /* HealthCardModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthCardModels.swift; sourceTree = "<group>"; };
+		9A5632252F65AD6C00FB8246 /* HealthCardsGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthCardsGridView.swift; sourceTree = "<group>"; };
+		9A5632262F65AD6C00FB8246 /* HealthCardsStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthCardsStripView.swift; sourceTree = "<group>"; };
+		9A5632272F65AD6C00FB8246 /* JavaServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerBackend.swift; sourceTree = "<group>"; };
+		9A5632282F65AD6C00FB8246 /* JoinCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinCardView.swift; sourceTree = "<group>"; };
+		9A5632292F65AD6C00FB8246 /* KeychainManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainManager.swift; sourceTree = "<group>"; };
+		9A56322A2F65AD6C00FB8246 /* ManageServersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManageServersView.swift; sourceTree = "<group>"; };
+		9A56322B2F65AD6C00FB8246 /* MessagePlayerSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagePlayerSheetView.swift; sourceTree = "<group>"; };
+		9A56322C2F65AD6C00FB8246 /* MinecraftCommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinecraftCommandRegistry.swift; sourceTree = "<group>"; };
+		9A56322D2F65AD6C00FB8246 /* NotesAutoSaveProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesAutoSaveProxy.swift; sourceTree = "<group>"; };
+		9A56322E2F65AD6C00FB8246 /* OnboardingAnchorKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingAnchorKey.swift; sourceTree = "<group>"; };
+		9A5632312F65AD6C00FB8246 /* OverviewAlertBannersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewAlertBannersView.swift; sourceTree = "<group>"; };
+		9A5632322F65AD6C00FB8246 /* OverviewConnectionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewConnectionCardView.swift; sourceTree = "<group>"; };
+		9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewConnectionHelpers.swift; sourceTree = "<group>"; };
+		9A5632342F65AD6C00FB8246 /* OverviewDuckDNSSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewDuckDNSSectionView.swift; sourceTree = "<group>"; };
+		9A5632352F65AD6C00FB8246 /* OverviewHealthCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHealthCardView.swift; sourceTree = "<group>"; };
+		9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHealthHelpers.swift; sourceTree = "<group>"; };
+		9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayerRowHelpers.swift; sourceTree = "<group>"; };
+		9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersCardView.swift; sourceTree = "<group>"; };
+		9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewQuickActionsCardView.swift; sourceTree = "<group>"; };
+		9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewServerStatusBarView.swift; sourceTree = "<group>"; };
+		9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperDownloader.swift; sourceTree = "<group>"; };
+		9A56323D2F65AD6C00FB8246 /* MinecraftServerControllerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MinecraftServerControllerApp.swift; sourceTree = "<group>"; };
+		9A56323E2F65AD6C00FB8246 /* PaperVersionSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperVersionSidecar.swift; sourceTree = "<group>"; };
+		9A56323F2F65AD6C00FB8246 /* PerformanceHelpSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceHelpSheetView.swift; sourceTree = "<group>"; };
+		9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
+		9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSessionTimelineView.swift; sourceTree = "<group>"; };
+		9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDownloader.swift; sourceTree = "<group>"; };
+		9A5632442F65AD6C00FB8246 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrerequisitesView.swift; sourceTree = "<group>"; };
+		9A5632462F65AD6C00FB8246 /* MSCStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCStyles.swift; sourceTree = "<group>"; };
+		9A5632472F65AD6C00FB8246 /* MSCTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCTabBar.swift; sourceTree = "<group>"; };
+		9A5632482F65AD6C00FB8246 /* QuickCommandsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCommandsView.swift; sourceTree = "<group>"; };
+		9A5632492F65AD6C00FB8246 /* QuickStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickStartView.swift; sourceTree = "<group>"; };
+		9A56324A2F65AD6C00FB8246 /* QuickStartWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickStartWindowController.swift; sourceTree = "<group>"; };
+		9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServer.swift; sourceTree = "<group>"; };
+		9A56324C2F65AD6C00FB8246 /* RemoteAPIServerDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerDTOs.swift; sourceTree = "<group>"; };
+		9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenameWorldView.swift; sourceTree = "<group>"; };
+		9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceWorldView.swift; sourceTree = "<group>"; };
+		9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackManager.swift; sourceTree = "<group>"; };
+		9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePacksView.swift; sourceTree = "<group>"; };
+		9A5632512F65AD6C00FB8246 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
+		9A5632522F65AD6C00FB8246 /* ServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerBackend.swift; sourceTree = "<group>"; };
+		9A5632532F65AD6C00FB8246 /* ServerEditorBackupsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBackupsTab.swift; sourceTree = "<group>"; };
+		9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBedrockConnectTab.swift; sourceTree = "<group>"; };
+		9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBroadcastTab.swift; sourceTree = "<group>"; };
+		9A5632562F65AD6C00FB8246 /* ServerEditorDockerTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorDockerTab.swift; sourceTree = "<group>"; };
+		9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorGeneralTab.swift; sourceTree = "<group>"; };
+		9A5632582F65AD6C00FB8246 /* ServerEditorJarsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorJarsTab.swift; sourceTree = "<group>"; };
+		9A5632592F65AD6C00FB8246 /* ServerEditorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorModels.swift; sourceTree = "<group>"; };
+		9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorSettingsTab.swift; sourceTree = "<group>"; };
+		9A56325B2F65AD6C00FB8246 /* ServerEditorSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorSupportViews.swift; sourceTree = "<group>"; };
+		9A56325C2F65AD6C00FB8246 /* ServerEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorView.swift; sourceTree = "<group>"; };
+		9A56325D2F65AD6C00FB8246 /* ServerEditorWorldTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorWorldTab.swift; sourceTree = "<group>"; };
+		9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerFilesTabView.swift; sourceTree = "<group>"; };
+		9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerLifecycleManager.swift; sourceTree = "<group>"; };
+		9A5632602F65AD6C00FB8246 /* ServerNotesSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerNotesSectionView.swift; sourceTree = "<group>"; };
+		9A5632612F65AD6C00FB8246 /* ServerProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerProcessManager.swift; sourceTree = "<group>"; };
+		9A5632622F65AD6C00FB8246 /* ServerPropertiesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPropertiesManager.swift; sourceTree = "<group>"; };
+		9A5632632F65AD6C00FB8246 /* ServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsView.swift; sourceTree = "<group>"; };
+		9A5632642F65AD6C00FB8246 /* SessionLogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLogManager.swift; sourceTree = "<group>"; };
+		9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWizardView.swift; sourceTree = "<group>"; };
+		9A5632662F65AD6C00FB8246 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = splash_intro.mp4; sourceTree = "<group>"; };
+		9A5632682F65AD6C00FB8246 /* SplashGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashGateView.swift; sourceTree = "<group>"; };
+		9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateItemDisplay.swift; sourceTree = "<group>"; };
+		9A56326B2F65AD6C00FB8246 /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
+		9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideComponents.swift; sourceTree = "<group>"; };
+		9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideTopics.swift; sourceTree = "<group>"; };
+		9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideView.swift; sourceTree = "<group>"; };
+		9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotManager.swift; sourceTree = "<group>"; };
+		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
+		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
+		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
+		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
+		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
+		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
+		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
+		9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSections.swift; sourceTree = "<group>"; };
+		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
+		9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuidesFoundation.swift; sourceTree = "<group>"; };
+		9A8A015A2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideCatalogLoader.swift; sourceTree = "<group>"; };
+		9A8A015B2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideRepository.swift; sourceTree = "<group>"; };
+		9AAF27612F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideSheet.swift; sourceTree = "<group>"; };
+		9AAF27622F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideSheetViewModel.swift; sourceTree = "<group>"; };
+		9AAF27652F6A272300F752CA /* RouterPortForwardGuidePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuidePicker.swift; sourceTree = "<group>"; };
+		9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideReader.swift; sourceTree = "<group>"; };
+		9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideTroubleshootingScreen.swift; sourceTree = "<group>"; };
+		9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+JavaProcessCleanup.swift"; sourceTree = "<group>"; };
+		9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Minecraft Server Controller.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideMatcher.swift; sourceTree = "<group>"; };
+		9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideComposer.swift; sourceTree = "<group>"; };
+		9AC4CEB42F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideRuntimeResolver.swift; sourceTree = "<group>"; };
+		9AC4CEB62F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardFallbackDecisionTree.swift; sourceTree = "<group>"; };
+		9AC4CEB82F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardTroubleshootingEngine.swift; sourceTree = "<group>"; };
+		9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideMaintenance.swift; sourceTree = "<group>"; };
+		9AC4CEBE2F69FAAB002B5564 /* RouterPortForwardGuideMaintenance.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RouterPortForwardGuideMaintenance.md; sourceTree = "<group>"; };
+		9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateWorldSlotSheet.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9AC210692EDE501200E7D326 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */ = {
+			isa = PBXGroup;
+			children = (
+				9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */,
+				9A5631E12F65AD6C00FB8246 /* AboutView.swift */,
+				9A5631E22F65AD6C00FB8246 /* AppConfig.swift */,
+				9A5631E32F65AD6C00FB8246 /* AppModels.swift */,
+				9A5631E42F65AD6C00FB8246 /* AppUtilities.swift */,
+				9A5631E52F65AD6C00FB8246 /* AppViewModel.swift */,
+				9A5631E62F65AD6C00FB8246 /* AppViewModel+Backups.swift */,
+				9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */,
+				9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */,
+				9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */,
+				9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */,
+				9A5631EB2F65AD6C00FB8246 /* AppViewModel+ComponentsVersions.swift */,
+				9A5631EC2F65AD6C00FB8246 /* AppViewModel+ConfigHelpers.swift */,
+				9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */,
+				9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */,
+				9A5631EF2F65AD6C00FB8246 /* AppViewModel+Metrics.swift */,
+				9A5631F02F65AD6C00FB8246 /* AppViewModel+Notifications.swift */,
+				9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */,
+				9A5631F22F65AD6C00FB8246 /* AppViewModel+PaperTemplateDownload.swift */,
+				9A5631F32F65AD6C00FB8246 /* AppViewModel+ResourcePacks.swift */,
+				9A5631F42F65AD6C00FB8246 /* AppViewModel+ServerControls.swift */,
+				9A5631F52F65AD6C00FB8246 /* AppViewModel+ServerCreation.swift */,
+				9A5631F62F65AD6C00FB8246 /* AppViewModel+ServerInfo.swift */,
+				9A5631F72F65AD6C00FB8246 /* AppViewModel+ServerSettings.swift */,
+				9A5631F82F65AD6C00FB8246 /* AppViewModel+SessionLog.swift */,
+				9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */,
+				9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */,
+				9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */,
+				9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */,
+				9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */,
+				9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */,
+				9A4F74272F6CBB92008FF39A /* CreateServerView.swift */,
+				9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */,
+				9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */,
+				9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */,
+				9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */,
+				9A5632002F65AD6C00FB8246 /* BannerView.swift */,
+				9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */,
+				9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */,
+				9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */,
+				9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */,
+				9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */,
+				9A5632072F65AD6C00FB8246 /* BroadcastConfigManager.swift */,
+				9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */,
+				9A5632092F65AD6C00FB8246 /* ComponentVersionParsing.swift */,
+				9A56320A2F65AD6C00FB8246 /* ConfigManager.swift */,
+				9A56320B2F65AD6C00FB8246 /* ConsoleManager.swift */,
+				9A56320C2F65AD6C00FB8246 /* ConsoleView.swift */,
+				9A56320D2F65AD6C00FB8246 /* ContentView.swift */,
+				9A56320E2F65AD6C00FB8246 /* ContentViewRunnerSupport.swift */,
+				9A56320F2F65AD6C00FB8246 /* ContextualHelpFoundation.swift */,
+				9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */,
+				9A5632122F65AD6C00FB8246 /* DetailsComponentsActions.swift */,
+				9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */,
+				9A5632142F65AD6C00FB8246 /* DetailsHeaderSectionView.swift */,
+				9A5632152F65AD6C00FB8246 /* DetailsOverviewTabView.swift */,
+				9A5632162F65AD6C00FB8246 /* DetailsPacksTabView.swift */,
+				9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */,
+				9A5632182F65AD6C00FB8246 /* DetailsPerformanceComponents.swift */,
+				9A5632192F65AD6C00FB8246 /* DetailsPerformanceHelpers.swift */,
+				9A56321A2F65AD6C00FB8246 /* DetailsPerformanceTabContent.swift */,
+				9A56321B2F65AD6C00FB8246 /* DetailsPerformanceTabView.swift */,
+				9A56321C2F65AD6C00FB8246 /* DetailsPlayersTabView.swift */,
+				9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */,
+				9A56321E2F65AD6C00FB8246 /* DetailsView.swift */,
+				9A56321F2F65AD6C00FB8246 /* DetailsWorldsTabView.swift */,
+				9A5632202F65AD6C00FB8246 /* EULAManager.swift */,
+				9A5632212F65AD6C00FB8246 /* FirstStartSheetView.swift */,
+				9A5632222F65AD6C00FB8246 /* GeyserConfigManager.swift */,
+				9A5632232F65AD6C00FB8246 /* GitHubReleaseChecker.swift */,
+				9A5632242F65AD6C00FB8246 /* HealthCardModels.swift */,
+				9A5632252F65AD6C00FB8246 /* HealthCardsGridView.swift */,
+				9A5632262F65AD6C00FB8246 /* HealthCardsStripView.swift */,
+				9A5632272F65AD6C00FB8246 /* JavaServerBackend.swift */,
+				9A5632282F65AD6C00FB8246 /* JoinCardView.swift */,
+				9A5632292F65AD6C00FB8246 /* KeychainManager.swift */,
+				9A56322A2F65AD6C00FB8246 /* ManageServersView.swift */,
+				9A56322B2F65AD6C00FB8246 /* MessagePlayerSheetView.swift */,
+				9A56322C2F65AD6C00FB8246 /* MinecraftCommandRegistry.swift */,
+				9A56323D2F65AD6C00FB8246 /* MinecraftServerControllerApp.swift */,
+				9A5632462F65AD6C00FB8246 /* MSCStyles.swift */,
+				9A5632472F65AD6C00FB8246 /* MSCTabBar.swift */,
+				9A56322D2F65AD6C00FB8246 /* NotesAutoSaveProxy.swift */,
+				9A56322E2F65AD6C00FB8246 /* OnboardingAnchorKey.swift */,
+				9A5632312F65AD6C00FB8246 /* OverviewAlertBannersView.swift */,
+				9A5632322F65AD6C00FB8246 /* OverviewConnectionCardView.swift */,
+				9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */,
+				9A5632342F65AD6C00FB8246 /* OverviewDuckDNSSectionView.swift */,
+				9A5632352F65AD6C00FB8246 /* OverviewHealthCardView.swift */,
+				9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */,
+				9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */,
+				9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */,
+				9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */,
+				9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */,
+				9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */,
+				9A56323E2F65AD6C00FB8246 /* PaperVersionSidecar.swift */,
+				9A56323F2F65AD6C00FB8246 /* PerformanceHelpSheetView.swift */,
+				9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */,
+				9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */,
+				9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */,
+				9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */,
+				9A5632442F65AD6C00FB8246 /* PreferencesView.swift */,
+				9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */,
+				9A5632482F65AD6C00FB8246 /* QuickCommandsView.swift */,
+				9A5632492F65AD6C00FB8246 /* QuickStartView.swift */,
+				9A56324A2F65AD6C00FB8246 /* QuickStartWindowController.swift */,
+				9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */,
+				9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */,
+				9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */,
+				9A56324C2F65AD6C00FB8246 /* RemoteAPIServerDTOs.swift */,
+				9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */,
+				9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */,
+				9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */,
+				9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */,
+				9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */,
+				9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */,
+				9AC4CEB62F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift */,
+				9A8A015A2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift */,
+				9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */,
+				9AC4CEBE2F69FAAB002B5564 /* RouterPortForwardGuideMaintenance.md */,
+				9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */,
+				9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */,
+				9AAF27652F6A272300F752CA /* RouterPortForwardGuidePicker.swift */,
+				9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */,
+				9A8A015B2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift */,
+				9AC4CEB42F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift */,
+				9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */,
+				9AAF27612F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift */,
+				9AAF27622F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift */,
+				9AC4CEB82F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift */,
+				9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */,
+				9A5632512F65AD6C00FB8246 /* Server.swift */,
+				9A5632522F65AD6C00FB8246 /* ServerBackend.swift */,
+				9A5632532F65AD6C00FB8246 /* ServerEditorBackupsTab.swift */,
+				9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */,
+				9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */,
+				9A5632562F65AD6C00FB8246 /* ServerEditorDockerTab.swift */,
+				9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */,
+				9A5632582F65AD6C00FB8246 /* ServerEditorJarsTab.swift */,
+				9A5632592F65AD6C00FB8246 /* ServerEditorModels.swift */,
+				9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */,
+				9A56325B2F65AD6C00FB8246 /* ServerEditorSupportViews.swift */,
+				9A56325C2F65AD6C00FB8246 /* ServerEditorView.swift */,
+				9A56325D2F65AD6C00FB8246 /* ServerEditorWorldTab.swift */,
+				9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */,
+				9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */,
+				9A5632602F65AD6C00FB8246 /* ServerNotesSectionView.swift */,
+				9A5632612F65AD6C00FB8246 /* ServerProcessManager.swift */,
+				9A5632622F65AD6C00FB8246 /* ServerPropertiesManager.swift */,
+				9A5632632F65AD6C00FB8246 /* ServerSettingsView.swift */,
+				9A5632642F65AD6C00FB8246 /* SessionLogManager.swift */,
+				9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */,
+				9A5632662F65AD6C00FB8246 /* SidebarView.swift */,
+				9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */,
+				9A5632682F65AD6C00FB8246 /* SplashGateView.swift */,
+				9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */,
+				9A56326B2F65AD6C00FB8246 /* TemplateView.swift */,
+				9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */,
+				9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */,
+				9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */,
+				9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */,
+				9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */,
+				9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */,
+				9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */,
+				9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */,
+			);
+			path = "MSCmacOS Swift";
+			sourceTree = "<group>";
+		};
+		9AAF274E2F6A003200F752CA /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		9AC210632EDE501200E7D326 = {
+			isa = PBXGroup;
+			children = (
+				9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */,
+				9AC2106D2EDE501200E7D326 /* Products */,
+				9AAF274E2F6A003200F752CA /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+		9AC2106D2EDE501200E7D326 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9AC2106B2EDE501200E7D326 /* Minecraft_Server_Controller */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9AC210772EDE501500E7D326 /* Build configuration list for PBXNativeTarget "Minecraft_Server_Controller" */;
+			buildPhases = (
+				9AC210682EDE501200E7D326 /* Sources */,
+				9AC210692EDE501200E7D326 /* Frameworks */,
+				9AC2106A2EDE501200E7D326 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Minecraft_Server_Controller;
+			packageProductDependencies = (
+			);
+			productName = "Minecraft Server Controller";
+			productReference = 9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9AC210642EDE501200E7D326 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2610;
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					9AC2106B2EDE501200E7D326 = {
+						CreatedOnToolsVersion = 26.1.1;
+						LastSwiftMigration = 2620;
+					};
+				};
+			};
+			buildConfigurationList = 9AC210672EDE501200E7D326 /* Build configuration list for PBXProject "Minecraft_Server_Controller" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 9AC210632EDE501200E7D326;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9AC2106D2EDE501200E7D326 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9AC2106B2EDE501200E7D326 /* Minecraft_Server_Controller */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9AC2106A2EDE501200E7D326 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */,
+				9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9AC210682EDE501200E7D326 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9A5632752F65AD6D00FB8246 /* AboutView.swift in Sources */,
+				9A5632762F65AD6D00FB8246 /* YAMLHelper.swift in Sources */,
+				9A5632772F65AD6D00FB8246 /* AppViewModel+Templates.swift in Sources */,
+				9A5632782F65AD6D00FB8246 /* PreferencesView.swift in Sources */,
+				9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */,
+				9AAF27632F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift in Sources */,
+				9AAF27642F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift in Sources */,
+				9A5632792F65AD6D00FB8246 /* ServerBackend.swift in Sources */,
+				9AC4CEBC2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift in Sources */,
+				9A56327B2F65AD6D00FB8246 /* ServerProcessManager.swift in Sources */,
+				9A56327C2F65AD6D00FB8246 /* RemoteAPIServerDTOs.swift in Sources */,
+				9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */,
+				9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */,
+				9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */,
+				9A56327D2F65AD6D00FB8246 /* ServerEditorWorldTab.swift in Sources */,
+				9A56327E2F65AD6D00FB8246 /* SplashGateView.swift in Sources */,
+				9A56327F2F65AD6D00FB8246 /* OverviewDuckDNSSectionView.swift in Sources */,
+				9A5632802F65AD6D00FB8246 /* ConsoleManager.swift in Sources */,
+				9A5632812F65AD6D00FB8246 /* BroadcastConfigManager.swift in Sources */,
+				9A5632822F65AD6D00FB8246 /* TemplateItemDisplay.swift in Sources */,
+				9A5632832F65AD6D00FB8246 /* SetupWizardView.swift in Sources */,
+				9A5632842F65AD6D00FB8246 /* XboxBroadcastDownloader.swift in Sources */,
+				9A5632852F65AD6D00FB8246 /* ContentView.swift in Sources */,
+				9A5632862F65AD6D00FB8246 /* MessagePlayerSheetView.swift in Sources */,
+				9A5632872F65AD6D00FB8246 /* WelcomeGuideTopics.swift in Sources */,
+				9A5632882F65AD6D00FB8246 /* OverviewHealthHelpers.swift in Sources */,
+				9A5632892F65AD6D00FB8246 /* AppViewModel+XboxBroadcastDownload.swift in Sources */,
+				9A56328A2F65AD6D00FB8246 /* ComponentVersionParsing.swift in Sources */,
+				9A8A015C2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift in Sources */,
+				9A8A015D2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift in Sources */,
+				9A56328B2F65AD6D00FB8246 /* DetailsPerformanceHelpers.swift in Sources */,
+				9A56328C2F65AD6D00FB8246 /* ServerEditorSupportViews.swift in Sources */,
+				9A56328D2F65AD6D00FB8246 /* AppViewModel.swift in Sources */,
+				9A56328E2F65AD6D00FB8246 /* PrerequisitesView.swift in Sources */,
+				9A56328F2F65AD6D00FB8246 /* AppViewModel+Backups.swift in Sources */,
+				9A5632902F65AD6D00FB8246 /* AppViewModel+ServerInfo.swift in Sources */,
+				9A5632912F65AD6D00FB8246 /* AppViewModel+ServerCreation.swift in Sources */,
+				9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */,
+				9A5632932F65AD6D00FB8246 /* AppViewModel+BedrockConnect.swift in Sources */,
+				9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */,
+				9AC4CEB72F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift in Sources */,
+				9A5632952F65AD6D00FB8246 /* PerformanceHelpSheetView.swift in Sources */,
+				9A5632962F65AD6D00FB8246 /* NotesAutoSaveProxy.swift in Sources */,
+				9A5632972F65AD6D00FB8246 /* AppViewModel+ServerSettings.swift in Sources */,
+				9A5632982F65AD6D00FB8246 /* QuickStartView.swift in Sources */,
+				9A5632992F65AD6D00FB8246 /* OverviewQuickActionsCardView.swift in Sources */,
+				9A56329A2F65AD6D00FB8246 /* DetailsHeaderSectionView.swift in Sources */,
+				9A56329B2F65AD6D00FB8246 /* HealthCardsStripView.swift in Sources */,
+				9A56329C2F65AD6D00FB8246 /* ServerSettingsView.swift in Sources */,
+				9A56329D2F65AD6D00FB8246 /* ServerFilesTabView.swift in Sources */,
+				9A56329E2F65AD6D00FB8246 /* OverviewAlertBannersView.swift in Sources */,
+				9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */,
+				9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */,
+				9A5632A12F65AD6D00FB8246 /* BedrockConnectProcessManager.swift in Sources */,
+				9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */,
+				9A5632A32F65AD6D00FB8246 /* BannerView.swift in Sources */,
+				9A5632A42F65AD6D00FB8246 /* AppViewModelModels.swift in Sources */,
+				9A5632A52F65AD6D00FB8246 /* FirstStartSheetView.swift in Sources */,
+				9A5632A62F65AD6D00FB8246 /* AppViewModel+PaperTemplateDownload.swift in Sources */,
+				9A5632A82F65AD6D00FB8246 /* OverviewServerStatusBarView.swift in Sources */,
+				9AAF276E2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift in Sources */,
+				9A5632A92F65AD6D00FB8246 /* ServerPropertiesManager.swift in Sources */,
+				9A5632AA2F65AD6D00FB8246 /* ConfigManager.swift in Sources */,
+				9A5632AB2F65AD6D00FB8246 /* DetailsComponentsActions.swift in Sources */,
+				9A5632AC2F65AD6D00FB8246 /* BackupsView.swift in Sources */,
+				9A5632AD2F65AD6D00FB8246 /* MinecraftCommandRegistry.swift in Sources */,
+				9A5632AE2F65AD6D00FB8246 /* ServerNotesSectionView.swift in Sources */,
+				9A4F742A2F6CBB92008FF39A /* OnboardingOverlayView.swift in Sources */,
+				9A4F742B2F6CBB92008FF39A /* OnboardingManager.swift in Sources */,
+				9A4F742C2F6CBB92008FF39A /* CreateServerView.swift in Sources */,
+				9A5632AF2F65AD6D00FB8246 /* MSCTabBar.swift in Sources */,
+				9A5632B02F65AD6D00FB8246 /* AppViewModel+ComponentsVersions.swift in Sources */,
+				9A5632B12F65AD6D00FB8246 /* ServerEditorModels.swift in Sources */,
+				9A5632B22F65AD6D00FB8246 /* AppViewModel+ServerControls.swift in Sources */,
+				9A5632B32F65AD6D00FB8246 /* DetailsView.swift in Sources */,
+				9A5632B42F65AD6D00FB8246 /* BedrockVersionFetcher.swift in Sources */,
+				9A5632B52F65AD6D00FB8246 /* JavaServerBackend.swift in Sources */,
+				9A5632B62F65AD6D00FB8246 /* WorldSlotManager.swift in Sources */,
+				9A5632B72F65AD6D00FB8246 /* HealthCardsGridView.swift in Sources */,
+				9A5632B82F65AD6D00FB8246 /* PaperDownloader.swift in Sources */,
+				9A5632B92F65AD6D00FB8246 /* MinecraftServerControllerApp.swift in Sources */,
+				9A5632BA2F65AD6D00FB8246 /* ServerEditorBackupsTab.swift in Sources */,
+				9A5632BB2F65AD6D00FB8246 /* ConsoleView.swift in Sources */,
+				9AAF276A2F6A2B0100F752CA /* RouterPortForwardGuideReader.swift in Sources */,
+				9A5632BC2F65AD6D00FB8246 /* AppViewModel+Broadcasting.swift in Sources */,
+				9AC4CEB52F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift in Sources */,
+				9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */,
+				9A5632BD2F65AD6D00FB8246 /* XboxBroadcastProcessManager.swift in Sources */,
+				9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */,
+				9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */,
+				9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */,
+				9A5632C12F65AD6D00FB8246 /* ContentViewRunnerSupport.swift in Sources */,
+				9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */,
+				9A5632C22F65AD6D00FB8246 /* DetailsPerformanceTabView.swift in Sources */,
+				9A5632C32F65AD6D00FB8246 /* DetailsWorldsTabView.swift in Sources */,
+				9AAF27682F6A272300F752CA /* RouterPortForwardGuidePicker.swift in Sources */,
+				9A5632C42F65AD6D00FB8246 /* AppViewModel+Metrics.swift in Sources */,
+				9A5632C52F65AD6D00FB8246 /* OverviewHealthCardView.swift in Sources */,
+				9A5632C72F65AD6D00FB8246 /* QuickStartWindowController.swift in Sources */,
+				9A5632C82F65AD6D00FB8246 /* EULAManager.swift in Sources */,
+				9A5632C92F65AD6D00FB8246 /* JoinCardView.swift in Sources */,
+				9A5632CA2F65AD6D00FB8246 /* Server.swift in Sources */,
+				9AC4CEB12F69F331002B5564 /* RouterPortForwardGuideComposer.swift in Sources */,
+				9A5632CB2F65AD6D00FB8246 /* AppConfig.swift in Sources */,
+				9A5632CC2F65AD6D00FB8246 /* AppModels.swift in Sources */,
+				9A5632CD2F65AD6D00FB8246 /* AppViewModel+SessionLog.swift in Sources */,
+				9A5632CF2F65AD6D00FB8246 /* GitHubReleaseChecker.swift in Sources */,
+				9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */,
+				9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */,
+				9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */,
+				9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */,
+				9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */,
+				9A5632D42F65AD6D00FB8246 /* ServerEditorBedrockConnectTab.swift in Sources */,
+				9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */,
+				9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */,
+				9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */,
+				9A5632D82F65AD6D00FB8246 /* PluginDownloader.swift in Sources */,
+				9A5632D92F65AD6D00FB8246 /* PlayerAvatarView.swift in Sources */,
+				9A5632DA2F65AD6D00FB8246 /* ManageServersView.swift in Sources */,
+				9A5632DB2F65AD6D00FB8246 /* AppViewModel+BedrockProperties.swift in Sources */,
+				9A5632DC2F65AD6D00FB8246 /* OnboardingAnchorKey.swift in Sources */,
+				9A5632DE2F65AD6D00FB8246 /* AppViewModel+WorldSlots.swift in Sources */,
+				9A5632DF2F65AD6D00FB8246 /* ServerEditorView.swift in Sources */,
+				9A5632E02F65AD6D00FB8246 /* AppViewModel+Notifications.swift in Sources */,
+				9A5632E12F65AD6D00FB8246 /* AppViewModel+WorldManagement.swift in Sources */,
+				9A5632E22F65AD6D00FB8246 /* DetailsOverviewTabView.swift in Sources */,
+				9A5632E32F65AD6D00FB8246 /* AppViewModel+BedrockPerformance.swift in Sources */,
+				9AC4CEAF2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift in Sources */,
+				9A5632E42F65AD6D00FB8246 /* AppViewModel+FinderTools.swift in Sources */,
+				9A5632E52F65AD6D00FB8246 /* ReplaceWorldView.swift in Sources */,
+				9A5632E62F65AD6D00FB8246 /* ResourcePackManager.swift in Sources */,
+				9A5632E72F65AD6D00FB8246 /* SessionLogManager.swift in Sources */,
+				9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */,
+				9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */,
+				9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */,
+				9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */,
+				9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */,
+				9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */,
+				9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */,
+				9A5632EF2F65AD6D00FB8246 /* DetailsPerformanceComponents.swift in Sources */,
+				9A5632F02F65AD6D00FB8246 /* DetailsPlayersTabView.swift in Sources */,
+				9A5632F12F65AD6D00FB8246 /* MSCStyles.swift in Sources */,
+				9A5632F22F65AD6D00FB8246 /* KeychainManager.swift in Sources */,
+				9AC4CEB92F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift in Sources */,
+				9A5632F32F65AD6D00FB8246 /* WelcomeGuideView.swift in Sources */,
+				9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */,
+				9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */,
+				9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */,
+				9A5632F72F65AD6D00FB8246 /* BedrockConnectDownloader.swift in Sources */,
+				9A5632F82F65AD6D00FB8246 /* PaperVersionSidecar.swift in Sources */,
+				9A5632F92F65AD6D00FB8246 /* ServerEditorJarsTab.swift in Sources */,
+				9A5632FA2F65AD6D00FB8246 /* OverviewConnectionCardView.swift in Sources */,
+				9A5632FB2F65AD6D00FB8246 /* OverviewPlayerRowHelpers.swift in Sources */,
+				9A5632FC2F65AD6D00FB8246 /* AppUtilities.swift in Sources */,
+				9A5632FE2F65AD6D00FB8246 /* AppViewModel+ResourcePacks.swift in Sources */,
+				9A5632FF2F65AD6D00FB8246 /* ServerEditorDockerTab.swift in Sources */,
+				9A5633002F65AD6D00FB8246 /* AppViewModel+ConfigHelpers.swift in Sources */,
+				9A5633012F65AD6D00FB8246 /* PlayerSessionTimelineView.swift in Sources */,
+				9ADA84802F6CC8B50079CA9B /* CreateWorldSlotSheet.swift in Sources */,
+				9A5633022F65AD6D00FB8246 /* DetailsPerformanceTabContent.swift in Sources */,
+				9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */,
+				9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9AC210752EDE501500E7D326 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		9AC210762EDE501500E7D326 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		9AC210782EDE501500E7D326 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Minecraft Server Controller";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
+				PRODUCT_NAME = "Minecraft Server Controller";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9AC210792EDE501500E7D326 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Minecraft Server Controller";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
+				PRODUCT_NAME = "Minecraft Server Controller";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9AC210672EDE501200E7D326 /* Build configuration list for PBXProject "Minecraft_Server_Controller" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC210752EDE501500E7D326 /* Debug */,
+				9AC210762EDE501500E7D326 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9AC210772EDE501500E7D326 /* Build configuration list for PBXNativeTarget "Minecraft_Server_Controller" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9AC210782EDE501500E7D326 /* Debug */,
+				9AC210792EDE501500E7D326 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9AC210642EDE501200E7D326 /* Project object */;
+}
