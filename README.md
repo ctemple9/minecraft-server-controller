@@ -8,6 +8,11 @@ A macOS utility for running and managing Minecraft servers — both Java (Paper)
 
 ---
 
+> [!WARNING]
+> **This project is a work in progress.** It is functional and usable, but you will encounter bugs. If something breaks, please open an issue — it helps a lot.
+
+---
+
 ## Apps
 
 ### [MSC — Minecraft Server Controller (macOS)](MSCmacOS/)
@@ -44,6 +49,24 @@ Control your server from your iPhone over LAN or Tailscale VPN.
 | MSC Remote (iOS) | iOS 16 or later |
 | Java servers | [Adoptium Temurin](https://adoptium.net) |
 | Bedrock servers | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+
+---
+
+## Built on Open Source
+
+MSC would not exist without these projects. Huge thanks to everyone who built and maintains them:
+
+| Project | Role |
+|---------|------|
+| [PaperMC](https://papermc.io) | Java server runtime |
+| [GeyserMC / Geyser](https://github.com/GeyserMC/Geyser) | Protocol bridge — lets Bedrock clients join Java servers |
+| [GeyserMC / Floodgate](https://github.com/GeyserMC/Floodgate) | Allows Bedrock players to join without a Java account |
+| [itzg / minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server) | Docker image for Bedrock Dedicated Server |
+| [BedrockConnect](https://github.com/Pugmatt/BedrockConnect) | Cross-platform server browser for Bedrock and console players |
+| [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) | Xbox and console LAN discovery broadcasting |
+| [Adoptium Temurin](https://adoptium.net) | Recommended Java runtime for Paper servers |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Container runtime for Bedrock server management |
+| [Tailscale](https://tailscale.com) | Recommended VPN for remote access via MSC Remote |
 
 ---
 
