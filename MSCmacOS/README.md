@@ -4,7 +4,7 @@
 
 Minecraft Server Controller is a macOS utility for running and managing Minecraft servers — both Java (Paper) and Bedrock (via Docker) — from a single, purpose-built interface. No terminal required.
 
-> **Built by CTemple9 / TempleTech**
+> **Built by ctemple9 / TempleTech**
 
 ---
 
