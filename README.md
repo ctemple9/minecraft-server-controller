@@ -1,6 +1,6 @@
 # Minecraft Server Controller
 
-> **Built by ctemple9 / TempleTech**
+> **Built by ctemple9 **
 
 ---
 
