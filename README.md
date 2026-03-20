@@ -4,7 +4,7 @@
 
 A macOS utility for running and managing Minecraft servers — both Java (Paper) and Bedrock (via Docker) — from a single, purpose-built interface. Paired with an iOS companion app for remote monitoring and control from your iPhone.
 
-> **Built by C. M. Temple / TempleTech**
+> **Built by ctemple9 / TempleTech**
 
 ---
 
