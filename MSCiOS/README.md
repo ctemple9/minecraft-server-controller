@@ -8,11 +8,16 @@ MSC Remote is the iOS companion app for [Minecraft Server Controller](../MSCmacO
 
 ---
 
-## Screenshots
-
+## Dashboard 
 ![Dashboard](docs/screenshots/dashboard.png)
+
+## Commands 
 ![Commands](docs/screenshots/commands.png)
+
+## Console
 ![Console](docs/screenshots/console.png)
+
+## Quick Guide
 ![Quick Guide](docs/screenshots/guide.png)
 
 ---
