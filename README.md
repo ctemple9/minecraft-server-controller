@@ -13,6 +13,26 @@ So I built MSC. It handles both Java and Bedrock servers, walks you through port
 
 ---
 
+## Quick Start
+
+### Before you begin
+- **macOS 13+**
+- **Java** is required for **Paper / Java Edition** servers
+- **Docker Desktop** is required for **Bedrock** servers
+- **Port forwarding is required** if players outside your home network will join
+- You must be able to log into your router and change its port forwarding settings
+
+### Start a server
+1. Download and open **Minecraft Server Controller**
+2. Create a new server
+3. Choose **Paper** or **Bedrock**
+4. Complete setup and start the server
+5. Open **Port Forwarding Help**
+6. Log into your router and forward the server port
+7. Share your public IP or DuckDNS hostname with friends
+
+---
+
 ### MSC macOS - Overview
 ![Overview](MSCmacOS/docs/screenshots/overview-java.png)
 
