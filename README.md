@@ -13,6 +13,18 @@ So I built MSC. It handles both Java and Bedrock servers, walks you through port
 
 ---
 
+### MSC macOS - Overview
+![Overview](MSCmacOS/docs/screenshots/overview-java.png)
+
+### MSC macOS - Performance 
+![Performance](MSCmacOS/docs/screenshots/performance.png)
+
+### MSC Remote — iOS Dashboard
+![Dashboard](MSCiOS/docs/screenshots/dashboard.png)
+
+
+---
+
 ## Apps
 
 ### [MSC — Minecraft Server Controller (macOS)](MSCmacOS/)
@@ -40,6 +52,8 @@ Control your server from your iPhone over LAN or Tailscale VPN.
 → [View iOS README](MSCiOS/README.md)
 
 ---
+
+
 
 ## Requirements
 
