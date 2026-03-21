@@ -8,16 +8,22 @@ Minecraft Server Controller is a macOS utility for running and managing Minecraf
 
 ---
 
-## Screenshots
-
+## Overview-Java Server
 ![Overview](docs/screenshots/overview-java.png)
-![World Management](docs/screenshots/create-new-world-pt2.png)
-![World Management](docs/screenshots/create-new-world.png)
-![Performance](docs/screenshots/performance.png)
+
+## Overview-Bedrock Server
 ![Bedrock Server](docs/screenshots/overview-bedrock.png)
+
+## Create New World
+![World Management](docs/screenshots/create-new-world.png)
+![World Management](docs/screenshots/create-new-world-pt2.png)
+
+
+## Performance 
+![Performance](docs/screenshots/performance.png)
+
+## Files
 ![Files](docs/screenshots/files.png)
-
-
 
 ---
 
