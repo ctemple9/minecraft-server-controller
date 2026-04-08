@@ -98,9 +98,7 @@ MSC would not exist without these projects. Thanks to everyone who built and mai
 | [itzg / minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server) | Docker image for Bedrock Dedicated Server |
 | [BedrockConnect](https://github.com/Pugmatt/BedrockConnect) | Cross-platform server browser for Bedrock and console players |
 | [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) | Xbox and console LAN discovery broadcasting |
-| [Adoptium Temurin](https://adoptium.net) | Recommended Java runtime for Paper servers |
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Container runtime for Bedrock server management |
-| [Tailscale](https://tailscale.com) | Recommended VPN for remote access via MSC Remote |
+
 
 ---
 
