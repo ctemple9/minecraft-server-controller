@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */; };
+		9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */; };
+		9A0B6F002F6F94C800CCA17C /* CrossPlatformGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */; };
 		9A4F742A2F6CBB92008FF39A /* OnboardingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */; };
 		9A4F742B2F6CBB92008FF39A /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */; };
 		9A4F742C2F6CBB92008FF39A /* CreateServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74272F6CBB92008FF39A /* CreateServerView.swift */; };
@@ -174,6 +177,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerWizardView.swift; sourceTree = "<group>"; };
+		9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerImport.swift"; sourceTree = "<group>"; };
+		9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPlatformGuideSheet.swift; sourceTree = "<group>"; };
 		9A4F74272F6CBB92008FF39A /* CreateServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateServerView.swift; sourceTree = "<group>"; };
 		9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
 		9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingOverlayView.swift; sourceTree = "<group>"; };
@@ -356,6 +362,9 @@
 		9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */ = {
 			isa = PBXGroup;
 			children = (
+				9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */,
+				9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */,
+				9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */,
 				9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */,
 				9A5631E12F65AD6C00FB8246 /* AboutView.swift */,
 				9A5631E22F65AD6C00FB8246 /* AppConfig.swift */,
@@ -660,6 +669,8 @@
 				9A56328F2F65AD6D00FB8246 /* AppViewModel+Backups.swift in Sources */,
 				9A5632902F65AD6D00FB8246 /* AppViewModel+ServerInfo.swift in Sources */,
 				9A5632912F65AD6D00FB8246 /* AppViewModel+ServerCreation.swift in Sources */,
+				9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */,
+				9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */,
 				9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */,
 				9A5632932F65AD6D00FB8246 /* AppViewModel+BedrockConnect.swift in Sources */,
 				9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */,
@@ -705,6 +716,7 @@
 				9A5632B82F65AD6D00FB8246 /* PaperDownloader.swift in Sources */,
 				9A5632B92F65AD6D00FB8246 /* MinecraftServerControllerApp.swift in Sources */,
 				9A5632BA2F65AD6D00FB8246 /* ServerEditorBackupsTab.swift in Sources */,
+				9A0B6F002F6F94C800CCA17C /* CrossPlatformGuideSheet.swift in Sources */,
 				9A5632BB2F65AD6D00FB8246 /* ConsoleView.swift in Sources */,
 				9AAF276A2F6A2B0100F752CA /* RouterPortForwardGuideReader.swift in Sources */,
 				9A5632BC2F65AD6D00FB8246 /* AppViewModel+Broadcasting.swift in Sources */,

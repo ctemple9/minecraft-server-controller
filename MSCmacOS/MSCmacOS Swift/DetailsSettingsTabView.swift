@@ -73,6 +73,7 @@ struct DetailsSettingsTabView: View {
                         initialBedrockPortText: currentJavaDraft.bedrockPortText,
                         initialBedrockPortV6Text: currentBedrockDraft.bedrockPortV6Text,
                         isInline: true,
+                        sectionFill: MSC.Colors.tierContent,
                         onJavaDraftChange: { updatedDraft in
                             javaDraft = updatedDraft
                             markDraftEdited()

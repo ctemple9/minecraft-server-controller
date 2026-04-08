@@ -5,6 +5,18 @@ extension ServerEditorView {
 
 var bedrockConnectTab: some View {
     VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+
+        HStack {
+            Spacer()
+            Button {
+                isShowingCrossPlatformGuide = true
+            } label: {
+                Label("Setup Guide", systemImage: "wand.and.stars")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
+        }
+
         if mode == .new || editingConfigServer == nil {
             SEUnavailableCard(
                 icon: "gamecontroller.fill",
@@ -88,6 +100,29 @@ var bedrockConnectTab: some View {
                 }
             }
 
+            SESection(icon: "wifi.router", title: "Port Forwarding", color: .cyan) {
+                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                    Text("For players outside your local network, your Bedrock port must be forwarded on your router — same as for regular Bedrock/Geyser access.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    SEInlineField(label: "Port to forward", hint: "Forward this UDP port on your router to this Mac") {
+                        Text(portDisplay)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        isShowingPortForwardGuideFromEditor = true
+                    } label: {
+                        Label("Open Port Forwarding Guide", systemImage: "wifi.router")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+                }
+            }
+
             SESection(icon: "list.bullet.rectangle", title: "This Server in servers.json", color: .blue) {
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                     Text("Bedrock Connect auto-generates a servers.json from all your servers that have a Bedrock port configured.")
@@ -117,7 +152,7 @@ var bedrockConnectTab: some View {
     }
 }
 
-// MARK: - CONSOLE ACCESS TAB (Bedrock only — renamed to Bedrock Connect per P1)
+// MARK: - CONSOLE ACCESS TAB (Bedrock only)
 
 var consoleAccessTab: some View {
     VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
@@ -134,9 +169,11 @@ var consoleAccessTab: some View {
                     Circle()
                         .fill(viewModel.isBedrockConnectJarInstalled ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
-                    Button("Open Bedrock Connect Folder…") { viewModel.openBedrockConnectFolder() }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .controlSize(.small)
+                    Text(viewModel.isBedrockConnectJarInstalled
+                         ? "Bedrock Connect JAR installed."
+                         : "Bedrock Connect JAR not installed yet.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Button("Download…") { viewModel.downloadOrUpdateBedrockConnectJar() }
                         .buttonStyle(MSCSecondaryButtonStyle())
@@ -162,18 +199,19 @@ var consoleAccessTab: some View {
                         .foregroundStyle(.secondary)
                 }
 
-                SEInlineField(label: "Bedrock Connect DNS Port", hint: "The port Bedrock Connect listens on. Must not match your server's Bedrock game port (default 19132).") {                                            HStack(spacing: MSC.Spacing.xs) {
-                                            TextField("19132", value: Binding(
-                                                get: { viewModel.configManager.config.bedrockConnectDNSPort ?? 19132 },
-                                                set: { viewModel.configManager.setBedrockConnectDNSPort($0 == 19132 ? nil : $0) }
-                                            ), formatter: NumberFormatter())
-                                            .textFieldStyle(.roundedBorder)
-                                            .frame(width: 80)
-                                            Text("(default 19132)")
-                                                .font(.system(size: 10))
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
+                SEInlineField(label: "Bedrock Connect DNS Port", hint: "The port Bedrock Connect listens on. Must not match your server's Bedrock game port (default 19132).") {
+                    HStack(spacing: MSC.Spacing.xs) {
+                        TextField("19132", value: Binding(
+                            get: { viewModel.configManager.config.bedrockConnectDNSPort ?? 19132 },
+                            set: { viewModel.configManager.setBedrockConnectDNSPort($0 == 19132 ? nil : $0) }
+                        ), formatter: NumberFormatter())
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        Text("(default 19132)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 if let cfg = editingConfigServer,
                    let serverPort = cfg.bedrockPort {
@@ -192,10 +230,41 @@ var consoleAccessTab: some View {
             }
         }
 
+        SESection(icon: "wifi.router", title: "Port Forwarding", color: .cyan) {
+            VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                Text("For players outside your local network, your Bedrock server port must be forwarded on your router. This tells your router to send incoming Bedrock traffic to this Mac.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let cfg = editingConfigServer {
+                    let portDisplay = cfg.bedrockPort.map(String.init) ?? "—"
+                    SEInlineField(label: "Port to forward", hint: "Forward this UDP port on your router to this Mac") {
+                        Text(portDisplay)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text("Need help? Use the Port Forwarding Guide for step-by-step instructions for your router.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    isShowingPortForwardGuideFromEditor = true
+                } label: {
+                    Label("Open Port Forwarding Guide", systemImage: "wifi.router")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.small)
+            }
+        }
+
         if mode != .new, let cfg = editingConfigServer {
             SESection(icon: "list.bullet.rectangle", title: "This Server in servers.json", color: .blue) {
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Controls whether this server appears in the list BedrockConnect shows console players.")
+                    Text("Controls whether this server appears in the list Bedrock Connect shows console players.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -23,7 +23,7 @@ struct ManageServersView: View {
     @State private var serverToDelete: ConfigServer?
     @State private var isShowingDeleteAlert = false
 
-    @State private var isShowingCreateServer = false
+    @State private var isShowingAddWizard = false
 
     // MARK: - Body
 
@@ -67,28 +67,18 @@ struct ManageServersView: View {
             VStack(spacing: 0) {
                 Divider()
                 HStack(spacing: MSC.Spacing.sm) {
-                    Button {
-                        editorMode = .new
-                        editorData = ServerEditorData.empty()
-                        isShowingEditor = true
-                    } label: {
-                        Label("Add Server", systemImage: "plus")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .help("Point to an existing server folder you already have on disk.")
-
                     Spacer()
 
                     Button {
-                        isShowingCreateServer = true
+                        isShowingAddWizard = true
                         if OnboardingManager.shared.currentStep == .createServer {
-                            // Tour advances to serverName once CreateServerView opens
+                            // Tour anchor preserved — wizard opens the same creation flow
                         }
                     } label: {
-                        Label("Create New Server\u{2026}", systemImage: "hammer")
+                        Label("Add Server\u{2026}", systemImage: "plus")
                     }
                     .buttonStyle(MSCPrimaryButtonStyle())
-                    .help("Run the guided wizard to set up a new Paper server from scratch.")
+                    .help("Import an existing server folder or create a brand new server.")
                     .onboardingAnchor(.createServerButton)
                 }
                 .padding(.horizontal, MSC.Spacing.xl)
@@ -127,8 +117,8 @@ struct ManageServersView: View {
             .environmentObject(viewModel)
         }
 
-        .sheet(isPresented: $isShowingCreateServer) {
-            CreateServerView(isPresented: $isShowingCreateServer)
+        .sheet(isPresented: $isShowingAddWizard) {
+            AddServerWizardView(isPresented: $isShowingAddWizard)
                 .environmentObject(viewModel)
         }
 
