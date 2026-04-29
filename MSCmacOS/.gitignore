@@ -27,6 +27,8 @@ xcuserdata/
 *.moved-aside
 *.xcuserstate
 *.xcscmblueprint
+*.zip
+.DS_Store
 
 # ----- Swift Package Manager -----
 .build/
