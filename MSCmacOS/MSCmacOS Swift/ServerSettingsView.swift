@@ -1,3 +1,4 @@
+
 //
 //  ServerSettingsView.swift
 //  MinecraftServerController
@@ -43,6 +44,7 @@ struct ServerSettingsView: View {
     @State private var bedrockPortV6Text: String
 
     let isInline: Bool
+    let sectionFill: Color
     let onJavaDraftChange: ((JavaServerSettingsDraft) -> Void)?
     let onBedrockDraftChange: ((BedrockServerSettingsDraft) -> Void)?
 
@@ -54,6 +56,7 @@ struct ServerSettingsView: View {
         initialBedrockPortText: String? = nil,
         initialBedrockPortV6Text: String? = nil,
         isInline: Bool = false,
+        sectionFill: Color = MSC.Colors.cardBackground,
         onJavaDraftChange: ((JavaServerSettingsDraft) -> Void)? = nil,
         onBedrockDraftChange: ((BedrockServerSettingsDraft) -> Void)? = nil
     ) {
@@ -64,6 +67,7 @@ struct ServerSettingsView: View {
         self._bedrockPortText         = State(initialValue: initialBedrockPortText ?? initialModel.bedrockPort.map(String.init) ?? "")
         self._bedrockPortV6Text       = State(initialValue: initialBedrockPortV6Text ?? String(initialBedrockModel.serverPortV6))
         self.isInline                 = isInline
+        self.sectionFill              = sectionFill
         self.onJavaDraftChange        = onJavaDraftChange
         self.onBedrockDraftChange     = onBedrockDraftChange
     }
@@ -147,7 +151,7 @@ struct ServerSettingsView: View {
     private var javaSettingsForm: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-            SettingsSection(title: "General", icon: "text.alignleft") {
+            SettingsSection(title: "General", icon: "text.alignleft", fill: sectionFill) {
                 SettingsRow(label: "MOTD") {
                     TextField("Server MOTD", text: $model.motd)
                         .textFieldStyle(.roundedBorder)
@@ -166,7 +170,7 @@ struct ServerSettingsView: View {
             }
             .contextualHelpAnchor("serverEditor.settings.java.general")
 
-            SettingsSection(title: "Gameplay", icon: "gamecontroller") {
+            SettingsSection(title: "Gameplay", icon: "gamecontroller", fill: sectionFill) {
                 SettingsRow(label: "Difficulty") {
                     Picker("", selection: $model.difficulty) {
                         ForEach(ServerDifficulty.allCases) { d in Text(d.displayName).tag(d) }
@@ -191,7 +195,7 @@ struct ServerSettingsView: View {
             }
             .contextualHelpAnchor("serverEditor.settings.java.gameplay")
 
-            SettingsSection(title: "Network", icon: "network") {
+            SettingsSection(title: "Network", icon: "network", fill: sectionFill) {
                 SettingsRow(label: "Server Port (TCP)") {
                     TextField("25565", value: $model.serverPort, formatter: integerFormatter)
                         .textFieldStyle(.roundedBorder)
@@ -219,7 +223,7 @@ struct ServerSettingsView: View {
     private var bedrockSettingsForm: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-            SettingsSection(title: "Runtime", icon: "shippingbox") {
+            SettingsSection(title: "Runtime", icon: "shippingbox", fill: sectionFill) {
                 SettingsRow(label: "Docker Image") {
                     Text(configServer.bedrockDockerImage ?? "itzg/minecraft-bedrock-server")
                         .font(.system(size: 12, design: .monospaced))
@@ -261,11 +265,11 @@ struct ServerSettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, MSC.Spacing.md)
                                     .padding(.top, 2)
-                                    .padding(.bottom, MSC.Spacing.sm) 
+                                    .padding(.bottom, MSC.Spacing.sm)
             }
             .contextualHelpAnchor("serverEditor.settings.bedrock.runtime")
 
-            SettingsSection(title: "General", icon: "text.alignleft") {
+            SettingsSection(title: "General", icon: "text.alignleft", fill: sectionFill) {
                 SettingsRow(label: "Level Name") {
                     TextField("Bedrock level", text: $bedrockModel.levelName)
                         .textFieldStyle(.roundedBorder)
@@ -289,7 +293,7 @@ struct ServerSettingsView: View {
             }
             .contextualHelpAnchor("serverEditor.settings.bedrock.general")
 
-            SettingsSection(title: "Gameplay", icon: "gamecontroller") {
+            SettingsSection(title: "Gameplay", icon: "gamecontroller", fill: sectionFill) {
                 SettingsRow(label: "Difficulty") {
                     Picker("", selection: $bedrockModel.difficulty) {
                         ForEach(ServerDifficulty.allCases) { d in Text(d.displayName).tag(d) }
@@ -309,7 +313,7 @@ struct ServerSettingsView: View {
             }
             .contextualHelpAnchor("serverEditor.settings.bedrock.gameplay")
 
-            SettingsSection(title: "Network", icon: "network") {
+            SettingsSection(title: "Network", icon: "network", fill: sectionFill) {
                 SettingsRow(label: "Server Port (UDP)") {
                     TextField("19132", value: $bedrockModel.serverPort, formatter: integerFormatter)
                         .textFieldStyle(.roundedBorder)
@@ -448,6 +452,7 @@ struct ServerSettingsView: View {
 private struct SettingsSection<Content: View>: View {
     let title: String
     let icon: String
+    var fill: Color = MSC.Colors.cardBackground
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -466,20 +471,20 @@ private struct SettingsSection<Content: View>: View {
             .padding(.horizontal, MSC.Spacing.md)
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(MSC.Colors.cardBackground.opacity(0.5))
+            .background(fill.opacity(0.5))
 
                         // Rows container
                         VStack(alignment: .leading, spacing: 0) {
                             content()
                         }
-                        .background(MSC.Colors.cardBackground.opacity(0.75))
+                        .background(fill.opacity(0.75))
                     }
                     .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
                             .stroke(MSC.Colors.cardBorder, lineWidth: 1)
                     )
-    }
+}
 }
 
 // MARK: - SettingsRow

@@ -173,6 +173,13 @@ struct ContentView: View {
         )
     }
 
+    private var crossPlatformGuideBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isShowingCrossPlatformGuide },
+            set: { viewModel.isShowingCrossPlatformGuide = $0 }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
 
@@ -488,6 +495,12 @@ struct ContentView: View {
                 runtimeContext: viewModel.routerPortForwardGuideRuntimeContextForSelectedServer()
             )
             .environmentObject(viewModel)
+        }
+
+        // Cross-Platform Setup Guide (Xbox Broadcast + Bedrock Connect)
+        .sheet(isPresented: crossPlatformGuideBinding) {
+            CrossPlatformGuideSheet()
+                .environmentObject(viewModel)
         }
 
         // Xbox Broadcast auth sheet

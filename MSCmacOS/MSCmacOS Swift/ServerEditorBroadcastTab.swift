@@ -6,6 +6,18 @@ extension ServerEditorView {
 
 var broadcastTab: some View {
     VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+
+        HStack {
+            Spacer()
+            Button {
+                isShowingCrossPlatformGuide = true
+            } label: {
+                Label("Setup Guide", systemImage: "wand.and.stars")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
+        }
+
         if mode == .new || editingConfigServer == nil {
             SEUnavailableCard(
                 icon: "dot.radiowaves.left.and.right",

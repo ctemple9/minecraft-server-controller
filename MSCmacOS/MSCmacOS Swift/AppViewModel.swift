@@ -42,6 +42,9 @@ final class AppViewModel: ObservableObject {
         @Published var isDownloadingAndApplyingPaper: Bool = false
         @Published var isDownloadingAndApplyingGeyser: Bool = false
         @Published var isDownloadingAndApplyingFloodgate: Bool = false
+    @Published var includeExperimentalPaperBuilds: Bool = false
+    @Published var availablePaperVersions: [PaperVersionOption] = []
+    @Published var selectedPaperVersionOption: PaperVersionOption? = nil
     @Published var bedrockAvailableVersions: [BedrockVersionEntry] = []
     @Published var isFetchingBedrockVersions: Bool = false
     @Published var bedrockVersionFetchError: String? = nil
@@ -197,6 +200,7 @@ final class AppViewModel: ObservableObject {
     @Published var isShowingAbout: Bool = false
     @Published var isShowingPrerequisites: Bool = false
     @Published var isShowingRouterPortForwardGuide: Bool = false
+    @Published var isShowingCrossPlatformGuide: Bool = false
     @Published var triggerExplainWorkspace: Bool = false
 
     // MARK: - Computed helpers

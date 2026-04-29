@@ -92,6 +92,8 @@ struct ServerEditorView: View {
 
     // HUD
     @State var showSaveHUD: Bool = false
+    @State var isShowingCrossPlatformGuide: Bool = false
+      @State var isShowingPortForwardGuideFromEditor: Bool = false
 
     // Danger zone
     @State var showDeleteServerConfirm = false
@@ -765,6 +767,17 @@ struct ServerEditorView: View {
                 .sheet(isPresented: $showDuplicateSheet) { duplicateSheet }
                 // Slot duplicate sheet
                 .sheet(isPresented: $showDuplicateSlotSheet) { duplicateSlotSheetView }
+        // Cross-Platform Setup Guide
+                        .sheet(isPresented: $isShowingCrossPlatformGuide) {
+                            CrossPlatformGuideSheet().environmentObject(viewModel)
+                        }
+                        // Router Port Forwarding Guide (opened from Bedrock Connect tab)
+                        .sheet(isPresented: $isShowingPortForwardGuideFromEditor) {
+                            RouterPortForwardGuideSheet(
+                                runtimeContext: viewModel.routerPortForwardGuideRuntimeContextForSelectedServer()
+                            )
+                            .environmentObject(viewModel)
+                        }
                 // Delete server confirmation
                 .confirmationDialog("Delete Server from Disk?",
                                     isPresented: $showDeleteServerConfirm,

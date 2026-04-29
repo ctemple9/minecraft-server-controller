@@ -312,6 +312,9 @@ struct SidebarView: View {
                                     ) {
                                         isCrossPlatformExpanded = true
                                     }
+                                },
+                                setupGuideAction: {
+                                    viewModel.isShowingCrossPlatformGuide = true
                                 }
                             ) {
                                 if serverTypeForCrossPlay == .bedrock {
@@ -426,6 +429,7 @@ private struct SidebarDisclosureSection<Content: View>: View {
     let headerAnchorID: String
     @Binding var isExpanded: Bool
     let helpAction: () -> Void
+    var setupGuideAction: (() -> Void)? = nil
     @ViewBuilder let content: () -> Content
 
     var body: some View {
@@ -460,6 +464,18 @@ private struct SidebarDisclosureSection<Content: View>: View {
                     }
                     .buttonStyle(.plain)
                     .help("Explain \(title)")
+
+                    if let setupGuideAction = setupGuideAction {
+                        Button {
+                            setupGuideAction()
+                        } label: {
+                            Image(systemName: "wand.and.stars")
+                                .font(.system(size: 10))
+                                .foregroundStyle(MSC.Colors.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Setup guide")
+                    }
                 }
                 .fixedSize()
                 .contextualHelpAnchor(headerAnchorID)
