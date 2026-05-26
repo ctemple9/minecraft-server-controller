@@ -166,10 +166,8 @@ extension AppViewModel {
     }
 
     func saveServerPropertiesModel(_ model: ServerPropertiesModel, for configServer: ConfigServer) throws {
-        var normalizedModel = model
-        normalizedModel.onlineMode = true
         let existing = ServerPropertiesManager.readProperties(serverDir: configServer.serverDir)
-        let merged = normalizedModel.mergedInto(existing)
+        let merged = model.mergedInto(existing)
         do {
             try ServerPropertiesManager.writeProperties(merged, to: configServer.serverDir)
             logAppMessage("[App] Updated server.properties for \(configServer.displayName).")
