@@ -94,6 +94,7 @@ final class AppViewModel: ObservableObject {
             syncTourAccentColor()
             loadResourcePacksForSelectedServer()
             loadSessionLogForSelectedServer()
+            loadPlayerProfilesForSelectedServer()
 
             refreshEULAState()
             loadGeyserConfig()
@@ -148,6 +149,11 @@ final class AppViewModel: ObservableObject {
     // MARK: - Session log
 
     @Published var sessionEvents: [SessionEvent] = []
+
+    // MARK: - Player Profiles (Java Edition)
+
+    @Published var playerProfiles: [PlayerProfile] = []
+    @Published var isLoadingProfiles: Bool = false
 
     // MARK: - Templates
 

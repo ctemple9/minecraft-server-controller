@@ -38,6 +38,11 @@ struct DetailsPlayersTabView: View {
 
                 // Session log
                 sessionLogCard
+
+                // Player profiles (Java only — Bedrock uses a different storage format)
+                if !isBedrock {
+                    PlayerProfilesCard()
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, MSC.Spacing.md)
