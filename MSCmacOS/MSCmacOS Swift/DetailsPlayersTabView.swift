@@ -18,6 +18,9 @@ struct DetailsPlayersTabView: View {
     @State private var newAllowlistEntry: String = ""
     @State private var messageTarget: OnlinePlayer?
     @State private var messageText: String = ""
+    @State private var showAllSessionEvents: Bool = false
+
+    private static let recentEventLimit = 25
 
     private var isBedrock: Bool {
         guard let s = viewModel.selectedServer else { return false }
@@ -291,14 +294,14 @@ struct DetailsPlayersTabView: View {
                 .frame(maxWidth: .infinity)
                 .padding(MSC.Spacing.lg)
             } else {
-                let filteredDays = filteredSessionDays
-                if filteredDays.isEmpty {
+                let days = visibleSessionDays
+                if days.isEmpty {
                     Text("No events match \"\(filterText)\".")
                         .font(MSC.Typography.caption)
                         .foregroundStyle(MSC.Colors.caption)
                         .padding(MSC.Spacing.md)
                 } else {
-                    ForEach(filteredDays, id: \.day) { section in
+                    ForEach(days, id: \.day) { section in
                         VStack(alignment: .leading, spacing: 0) {
                             // Day header
                             HStack {
@@ -319,6 +322,31 @@ struct DetailsPlayersTabView: View {
                             }
                         }
                     }
+
+                    // Show more / show less toggle
+                    let total = totalFilteredEventCount
+                    if total > Self.recentEventLimit {
+                        Divider()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showAllSessionEvents.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: MSC.Spacing.xs) {
+                                Image(systemName: showAllSessionEvents
+                                      ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text(showAllSessionEvents
+                                     ? "Show recent only"
+                                     : "Show all \(total) events")
+                                    .font(MSC.Typography.caption)
+                            }
+                            .foregroundStyle(MSC.Colors.caption)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, MSC.Spacing.sm)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -329,15 +357,37 @@ struct DetailsPlayersTabView: View {
         )
     }
 
+    /// All events, optionally filtered by player name.
     private var filteredSessionDays: [(day: Date, events: [SessionEvent])] {
         let trim = filterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !trim.isEmpty else { return viewModel.sessionEventsByDay }
         return viewModel.sessionEventsByDay.compactMap { section in
-            let filtered = section.events.filter {
-                $0.playerName.lowercased().contains(trim)
-            }
+            let filtered = section.events.filter { $0.playerName.lowercased().contains(trim) }
             return filtered.isEmpty ? nil : (day: section.day, events: filtered)
         }
+    }
+
+    /// The most recent `recentEventLimit` events, still grouped by day.
+    private var recentSessionDays: [(day: Date, events: [SessionEvent])] {
+        var remaining = Self.recentEventLimit
+        var result: [(day: Date, events: [SessionEvent])] = []
+        for section in filteredSessionDays {
+            guard remaining > 0 else { break }
+            let slice = Array(section.events.suffix(remaining))
+            result.append((day: section.day, events: slice))
+            remaining -= slice.count
+        }
+        return result
+    }
+
+    /// Total event count across all filtered days.
+    private var totalFilteredEventCount: Int {
+        filteredSessionDays.reduce(0) { $0 + $1.events.count }
+    }
+
+    /// The days actually rendered, depending on the toggle.
+    private var visibleSessionDays: [(day: Date, events: [SessionEvent])] {
+        showAllSessionEvents ? filteredSessionDays : recentSessionDays
     }
 }
 
