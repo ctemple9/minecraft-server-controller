@@ -24,14 +24,18 @@ extension AppViewModel {
 
     // MARK: - Load / refresh
 
-    /// Called on server switch. Clears profiles for Bedrock; loads for Java.
+    /// Called on server switch and the Players tab refresh button.
     func loadPlayerProfilesForSelectedServer() {
-        guard let cfg = selectedConfigServerForProfiles(), cfg.isJava else {
+        guard let cfg = selectedConfigServerForProfiles() else {
             playerProfiles = []
             isLoadingProfiles = false
             return
         }
-        loadPlayerProfiles(for: cfg)
+        if cfg.isJava {
+            loadPlayerProfiles(for: cfg)
+        } else {
+            loadBedrockPlayerProfiles(for: cfg)
+        }
     }
 
     /// Full scan + async UUID resolution for a given Java server.
@@ -77,6 +81,83 @@ extension AppViewModel {
             }
         }
     }
+
+    // MARK: - Bedrock profile loading
+
+    /// Scans the Bedrock LevelDB, applies online/op state, then resolves XUIDs → gamertags.
+    func loadBedrockPlayerProfiles(for cfg: ConfigServer) {
+        isLoadingProfiles = true
+        let serverDir = cfg.serverDir
+        let levelName = currentLevelName(for: cfg)
+        let onlineXUIDs = Set(onlinePlayers.compactMap { $0.xuid })
+
+        Task.detached(priority: .userInitiated) {
+            // 1. Scan LevelDB (NBT is parsed here — stats + inventory pre-populated)
+            var profiles = BedrockPlayerDataManager.scanProfiles(serverDir: serverDir, levelName: levelName)
+
+            guard !profiles.isEmpty else {
+                await MainActor.run {
+                    self.playerProfiles = []
+                    self.isLoadingProfiles = false
+                }
+                return
+            }
+
+            // 2. Mark online players
+            for i in profiles.indices {
+                if let xuid = profiles[i].xuid {
+                    profiles[i].isOnline = onlineXUIDs.contains(xuid)
+                }
+            }
+
+            await MainActor.run {
+                self.playerProfiles = profiles
+                self.isLoadingProfiles = false
+            }
+
+            // 3. Batch-resolve XUIDs → gamertags (and Floodgate UUIDs) via GeyserMC
+            let unresolved = profiles.filter { $0.username == nil && $0.xuid != "local" }
+            if !unresolved.isEmpty {
+                await self.resolveBedrockXUIDs(unresolved)
+            }
+        }
+    }
+
+    private func resolveBedrockXUIDs(_ profiles: [PlayerProfile]) async {
+        let batchSize = 5
+        for batchStart in stride(from: 0, to: profiles.count, by: batchSize) {
+            let batch = Array(profiles[batchStart..<min(batchStart + batchSize, profiles.count)])
+
+            await withTaskGroup(of: (String, String?, UUID?).self) { group in
+                for profile in batch {
+                    guard let xuid = profile.xuid else { continue }
+                    group.addTask {
+                        let gamertag = await BedrockPlayerDataManager.xuidToGamertag(xuid: xuid)
+                        var floodgateUUID: UUID? = nil
+                        if let tag = gamertag {
+                            floodgateUUID = await BedrockPlayerDataManager.resolveFloodgateUUID(gamertag: tag)
+                        }
+                        return (xuid, gamertag, floodgateUUID)
+                    }
+                }
+
+                for await (xuid, gamertag, floodgateUUID) in group {
+                    await MainActor.run {
+                        if let i = self.playerProfiles.firstIndex(where: { $0.xuid == xuid }) {
+                            if let tag = gamertag { self.playerProfiles[i].username = tag }
+                            if let uuid = floodgateUUID { self.playerProfiles[i].floodgateUUID = uuid }
+                        }
+                    }
+                }
+            }
+
+            if batchStart + batchSize < profiles.count {
+                try? await Task.sleep(nanoseconds: 250_000_000) // 250ms between batches
+            }
+        }
+    }
+
+    // MARK: - NBT loading (Java only; Bedrock stats are pre-populated during scan)
 
     /// Loads NBT stats + inventory for a single profile into the published array.
     func loadProfileNBT(uuid: UUID) {

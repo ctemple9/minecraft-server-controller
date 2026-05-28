@@ -9,10 +9,11 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Player Head Image (async, UUID-based)
+// MARK: - Player Head Image (async, identifier-based)
 
 struct PlayerHeadView: View {
-    let uuid: UUID
+    /// UUID string without dashes, lowercase. For Java: Mojang UUID. For Bedrock: Floodgate UUID.
+    let identifier: String
     let size: CGFloat
 
     @State private var image: NSImage? = nil
@@ -37,31 +38,28 @@ struct PlayerHeadView: View {
                     }
             }
         }
-        .onAppear { loadHead() }
-        .onChange(of: uuid) { _ in loadHead() }
+        .task(id: identifier) { await loadHead() }
     }
 
-    private func loadHead() {
+    private func loadHead() async {
         image = nil
-        Task {
-            let uuidNoDashes = uuid.uuidString.replacingOccurrences(of: "-", with: "").lowercased()
-            let px = Int(size * 2)   // 2× for retina
-            guard let url = URL(string: "https://mc-heads.net/avatar/\(uuidNoDashes)/\(px)") else { return }
-            var req = URLRequest(url: url)
-            req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-            req.timeoutInterval = 10
-            guard let (data, resp) = try? await URLSession.shared.data(for: req),
-                  (resp as? HTTPURLResponse)?.statusCode == 200,
-                  let img = NSImage(data: data) else { return }
-            await MainActor.run { image = img }
-        }
+        let px = Int(size * 2)   // 2× for retina
+        guard let url = URL(string: "https://mc-heads.net/avatar/\(identifier)/\(px)") else { return }
+        var req = URLRequest(url: url)
+        req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
+        req.timeoutInterval = 10
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let img = NSImage(data: data) else { return }
+        await MainActor.run { image = img }
     }
 }
 
-// MARK: - Player Full Body Image (async, UUID-based)
+// MARK: - Player Full Body Image (async, identifier-based)
 
 struct PlayerBodyView: View {
-    let uuid: UUID
+    /// UUID string without dashes, lowercase. For Java: Mojang UUID. For Bedrock: Floodgate UUID.
+    let identifier: String
     let height: CGFloat
 
     @State private var image: NSImage? = nil
@@ -92,23 +90,19 @@ struct PlayerBodyView: View {
                 .frame(height: height)
             }
         }
-        .onAppear { loadBody() }
-        .onChange(of: uuid) { _ in loadBody() }
+        .task(id: identifier) { await loadBody() }
     }
 
-    private func loadBody() {
+    private func loadBody() async {
         image = nil
-        Task {
-            let uuidNoDashes = uuid.uuidString.replacingOccurrences(of: "-", with: "").lowercased()
-            guard let url = URL(string: "https://mc-heads.net/body/\(uuidNoDashes)/160") else { return }
-            var req = URLRequest(url: url)
-            req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-            req.timeoutInterval = 15
-            guard let (data, resp) = try? await URLSession.shared.data(for: req),
-                  (resp as? HTTPURLResponse)?.statusCode == 200,
-                  let img = NSImage(data: data) else { return }
-            await MainActor.run { image = img }
-        }
+        guard let url = URL(string: "https://mc-heads.net/body/\(identifier)/160") else { return }
+        var req = URLRequest(url: url)
+        req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
+        req.timeoutInterval = 15
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let img = NSImage(data: data) else { return }
+        await MainActor.run { image = img }
     }
 }
 
@@ -130,7 +124,7 @@ struct PlayerProfileCardView: View {
 
                 // Head + online indicator
                 ZStack(alignment: .topTrailing) {
-                    PlayerHeadView(uuid: profile.uuid, size: 48)
+                    PlayerHeadView(identifier: profile.imageIdentifier, size: 48)
 
                     if profile.isOnline {
                         Circle()
@@ -175,6 +169,6 @@ struct PlayerProfileCardView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(profile.uuid.uuidString)
+        .help(profile.xuid.map { "XUID: \($0)" } ?? profile.uuid.uuidString)
     }
 }

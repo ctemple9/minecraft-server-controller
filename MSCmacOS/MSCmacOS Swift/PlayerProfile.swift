@@ -9,29 +9,53 @@ import Foundation
 
 // MARK: - PlayerProfile
 
-/// A player who has ever joined this Java server, identified by their UUID.
+/// A player who has ever joined this server, identified by UUID (Java) or XUID (Bedrock).
 struct PlayerProfile: Identifiable, Equatable {
-    let uuid: UUID
-    /// Display name resolved from usercache.json or Mojang API. Nil while loading or unresolvable.
+    /// Java: the player's Mojang UUID. Bedrock: a random placeholder UUID (used only as
+    /// a fallback for mc-heads.net) — update `floodgateUUID` after resolution instead.
+    var uuid: UUID
+    /// Display name resolved from usercache / Mojang API (Java) or GeyserMC (Bedrock).
     var username: String?
-    /// Absolute path to the player's .dat file.
+    /// Absolute path to the player's .dat file. Empty string for Bedrock (data is in LevelDB).
     let datFilePath: String
-    /// File modification date of the .dat file — proxy for last-seen time.
+    /// File modification date — proxy for last-seen time.
     let lastModified: Date
-    /// True when this UUID matches a currently-online player.
+    /// True when this player is currently online.
     var isOnline: Bool = false
-    /// True when this UUID appears in ops.json.
+    /// True when this player appears in ops.json (Java) or has operator permission (Bedrock).
     var isOp: Bool = false
-    /// NBT-parsed stats. Nil until loaded.
+    /// NBT-parsed stats. Nil until loaded (or pre-populated for Bedrock during scan).
     var stats: PlayerStats?
-    /// NBT-parsed inventory. Empty until loaded.
+    /// NBT-parsed inventory. Empty until loaded (or pre-populated for Bedrock during scan).
     var inventory: [InventoryItem] = []
 
-    var id: String { uuid.uuidString }
+    // ── Bedrock-specific ──────────────────────────────────────────────────
+    /// Non-nil for Bedrock players. XUID string (e.g. "2535416361514257")
+    /// or "local" for the ~local_player entry.
+    var xuid: String? = nil
+    /// Floodgate UUID resolved via GeyserMC. Used for mc-heads.net image URLs.
+    /// Only set after async resolution completes; nil until then.
+    var floodgateUUID: UUID? = nil
 
-    /// Username if resolved; otherwise the first 8 hex chars of the UUID followed by "…".
+    // ── Identity ──────────────────────────────────────────────────────────
+
+    /// Stable identifier: XUID-based for Bedrock, UUID string for Java.
+    var id: String { xuid.map { "xuid_\($0)" } ?? uuid.uuidString }
+
+    var isBedrockPlayer: Bool { xuid != nil }
+
+    /// The identifier string (no dashes, lowercase) passed to mc-heads.net avatar/body URLs.
+    /// Uses the Floodgate UUID once resolved; falls back to the profile UUID.
+    var imageIdentifier: String {
+        (floodgateUUID ?? uuid).uuidString
+            .replacingOccurrences(of: "-", with: "")
+            .lowercased()
+    }
+
+    /// Username if resolved; otherwise the first 8 chars of the UUID (or XUID) followed by "…".
     var displayName: String {
         if let u = username, !u.isEmpty { return u }
+        if let x = xuid { return String(x.prefix(8)) + "…" }
         return String(uuid.uuidString.prefix(8)) + "…"
     }
 }

@@ -95,17 +95,17 @@ struct PlayerProfileDetailSheet: View {
         .frame(width: 580, height: 740)
         .background(MSC.Colors.tierContent)
         .onAppear {
-            // Sync with latest from the published array
-            if let updated = viewModel.playerProfiles.first(where: { $0.uuid == profile.uuid }) {
+            // Sync with latest from the published array (use stable id, not UUID)
+            if let updated = viewModel.playerProfiles.first(where: { $0.id == profile.id }) {
                 localProfile = updated
             }
-            // Load NBT if not already loaded
-            if localProfile.stats == nil {
+            // Load NBT lazily for Java (Bedrock profiles already have stats pre-populated)
+            if localProfile.stats == nil && !localProfile.isBedrockPlayer {
                 viewModel.loadProfileNBT(uuid: profile.uuid)
             }
         }
         .onChange(of: viewModel.playerProfiles) { profiles in
-            if let updated = profiles.first(where: { $0.uuid == profile.uuid }) {
+            if let updated = profiles.first(where: { $0.id == profile.id }) {
                 localProfile = updated
             }
         }
@@ -140,7 +140,7 @@ struct PlayerProfileDetailSheet: View {
         HStack(alignment: .top, spacing: MSC.Spacing.xl) {
 
             // Full-body skin with idle sway
-            PlayerBodyView(uuid: localProfile.uuid, height: 160)
+            PlayerBodyView(identifier: localProfile.imageIdentifier, height: 160)
                 .frame(width: 70)
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
@@ -150,11 +150,18 @@ struct PlayerProfileDetailSheet: View {
                     .font(.system(size: 18, weight: .bold))
                     .lineLimit(1)
 
-                // UUID (monospaced, copyable)
-                Text(localProfile.uuid.uuidString.lowercased())
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(MSC.Colors.tertiary)
-                    .textSelection(.enabled)
+                // UUID or XUID (monospaced, copyable)
+                if let xuid = localProfile.xuid {
+                    Text("XUID: \(xuid)")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .textSelection(.enabled)
+                } else {
+                    Text(localProfile.uuid.uuidString.lowercased())
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .textSelection(.enabled)
+                }
 
                 // Status badges
                 HStack(spacing: MSC.Spacing.sm) {
@@ -166,14 +173,12 @@ struct PlayerProfileDetailSheet: View {
                     if localProfile.isOp {
                         statusBadge("Operator", color: Color.yellow.opacity(0.8), icon: "star.fill")
                     }
-                    // Show offline UUID if it differs from current
-                    if let offUUID = viewModel.offlineUUID(for: localProfile),
-                       offUUID != localProfile.uuid {
-                        statusBadge(
-                            offUUID == localProfile.uuid ? "Offline UUID" : "Online UUID",
-                            color: MSC.Colors.info,
-                            icon: "network"
-                        )
+                    if localProfile.isBedrockPlayer {
+                        statusBadge("Bedrock", color: MSC.Colors.info, icon: "cube.fill")
+                    } else if let offUUID = viewModel.offlineUUID(for: localProfile),
+                              offUUID != localProfile.uuid {
+                        // Show mode badge only for Java
+                        statusBadge("Online UUID", color: MSC.Colors.info, icon: "network")
                     }
                 }
 
@@ -353,55 +358,85 @@ struct PlayerProfileDetailSheet: View {
         VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
             sectionHeader("Data Management", icon: "gearshape.fill")
 
-            VStack(spacing: MSC.Spacing.sm) {
+            if localProfile.isBedrockPlayer {
+                bedrockActionsNote
+            } else {
+                javaActionsButtons
+            }
+        }
+    }
 
-                // Primary action: migrate to offline UUID
-                if let offUUID = viewModel.offlineUUID(for: localProfile) {
-                    actionButton(
-                        label: "Migrate to Offline UUID",
-                        subtitle: "Copy data to \(offUUID.uuidString.prefix(8))…",
-                        icon: "arrow.triangle.swap",
-                        color: MSC.Colors.info
-                    ) {
-                        performMigrateToOffline()
-                    }
-                } else {
-                    actionButton(
-                        label: "Migrate to Custom UUID",
-                        subtitle: "Enter a target UUID to copy data to",
-                        icon: "arrow.triangle.swap",
-                        color: MSC.Colors.info
-                    ) {
-                        showMigrateManualInput = true
-                    }
-                }
+    private var bedrockActionsNote: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            HStack(spacing: MSC.Spacing.sm) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(MSC.Colors.info)
+                Text("Bedrock player data is stored in a LevelDB database and cannot be edited directly from this app. Stop the server and use a LevelDB editor to modify or remove player data.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(MSC.Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm)
+                    .fill(MSC.Colors.info.opacity(0.07))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm)
+                    .stroke(MSC.Colors.info.opacity(0.2), lineWidth: 1)
+            )
+        }
+    }
 
+    private var javaActionsButtons: some View {
+        VStack(spacing: MSC.Spacing.sm) {
+
+            // Primary action: migrate to offline UUID
+            if let offUUID = viewModel.offlineUUID(for: localProfile) {
                 actionButton(
-                    label: "Copy Data To…",
-                    subtitle: "Copy this player's data onto another profile",
-                    icon: "doc.on.doc",
-                    color: .secondary
+                    label: "Migrate to Offline UUID",
+                    subtitle: "Copy data to \(offUUID.uuidString.prefix(8))…",
+                    icon: "arrow.triangle.swap",
+                    color: MSC.Colors.info
                 ) {
-                    showCopyPicker = true
+                    performMigrateToOffline()
                 }
-
+            } else {
                 actionButton(
-                    label: "Duplicate",
-                    subtitle: "Create a copy under a new random UUID",
-                    icon: "plus.square.on.square",
-                    color: .secondary
+                    label: "Migrate to Custom UUID",
+                    subtitle: "Enter a target UUID to copy data to",
+                    icon: "arrow.triangle.swap",
+                    color: MSC.Colors.info
                 ) {
-                    performDuplicate()
+                    showMigrateManualInput = true
                 }
+            }
 
-                actionButton(
-                    label: "Delete Player Data",
-                    subtitle: "Permanently remove this player's .dat file",
-                    icon: "trash",
-                    color: MSC.Colors.error
-                ) {
-                    showDeleteConfirm = true
-                }
+            actionButton(
+                label: "Copy Data To…",
+                subtitle: "Copy this player's data onto another profile",
+                icon: "doc.on.doc",
+                color: .secondary
+            ) {
+                showCopyPicker = true
+            }
+
+            actionButton(
+                label: "Duplicate",
+                subtitle: "Create a copy under a new random UUID",
+                icon: "plus.square.on.square",
+                color: .secondary
+            ) {
+                performDuplicate()
+            }
+
+            actionButton(
+                label: "Delete Player Data",
+                subtitle: "Permanently remove this player's .dat file",
+                icon: "trash",
+                color: MSC.Colors.error
+            ) {
+                showDeleteConfirm = true
             }
         }
     }
@@ -611,10 +646,10 @@ private struct CopyDataPickerSheet: View {
                                 selectedDest = dest
                             } label: {
                                 HStack(spacing: MSC.Spacing.md) {
-                                    PlayerHeadView(uuid: dest.uuid, size: 32)
+                                    PlayerHeadView(identifier: dest.imageIdentifier, size: 32)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(dest.displayName).font(MSC.Typography.captionBold)
-                                        Text(dest.uuid.uuidString.prefix(16) + "…")
+                                        Text(dest.id.prefix(16) + "…")
                                             .font(.system(size: 9, design: .monospaced))
                                             .foregroundStyle(MSC.Colors.tertiary)
                                     }

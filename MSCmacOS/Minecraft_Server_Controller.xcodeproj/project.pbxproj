@@ -42,7 +42,6 @@
 		9A5632902F65AD6D00FB8246 /* AppViewModel+ServerInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F62F65AD6C00FB8246 /* AppViewModel+ServerInfo.swift */; };
 		9A5632912F65AD6D00FB8246 /* AppViewModel+ServerCreation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F52F65AD6C00FB8246 /* AppViewModel+ServerCreation.swift */; };
 		9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632482F65AD6C00FB8246 /* QuickCommandsView.swift */; };
-		9A5632932F65AD6D00FB8246 /* AppViewModel+BedrockConnect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */; };
 		9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632662F65AD6C00FB8246 /* SidebarView.swift */; };
 		9A5632952F65AD6D00FB8246 /* PerformanceHelpSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323F2F65AD6C00FB8246 /* PerformanceHelpSheetView.swift */; };
 		9A5632962F65AD6D00FB8246 /* NotesAutoSaveProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322D2F65AD6C00FB8246 /* NotesAutoSaveProxy.swift */; };
@@ -54,9 +53,9 @@
 		9A56329C2F65AD6D00FB8246 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632632F65AD6C00FB8246 /* ServerSettingsView.swift */; };
 		9A56329D2F65AD6D00FB8246 /* ServerFilesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */; };
 		9A56329E2F65AD6D00FB8246 /* OverviewAlertBannersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632312F65AD6C00FB8246 /* OverviewAlertBannersView.swift */; };
+		9AF0000B2F65AD6D00FB8246 /* BedrockBroadcastManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */; };
 		9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */; };
 		9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */; };
-		9A5632A12F65AD6D00FB8246 /* BedrockConnectProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */; };
 		9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632222F65AD6C00FB8246 /* GeyserConfigManager.swift */; };
 		9A5632A32F65AD6D00FB8246 /* BannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632002F65AD6C00FB8246 /* BannerView.swift */; };
 		9A5632A42F65AD6D00FB8246 /* AppViewModelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */; };
@@ -104,7 +103,6 @@
 		9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */; };
 		9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */; };
 		9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */; };
-		9A5632D42F65AD6D00FB8246 /* ServerEditorBedrockConnectTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */; };
 		9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */; };
 		9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */; };
 		9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326B2F65AD6C00FB8246 /* TemplateView.swift */; };
@@ -138,7 +136,6 @@
 		9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */; };
 		9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */; };
 		9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */; };
-		9A5632F72F65AD6D00FB8246 /* BedrockConnectDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */; };
 		9A5632F82F65AD6D00FB8246 /* PaperVersionSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56323E2F65AD6C00FB8246 /* PaperVersionSidecar.swift */; };
 		9A5632F92F65AD6D00FB8246 /* ServerEditorJarsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632582F65AD6C00FB8246 /* ServerEditorJarsTab.swift */; };
 		9A5632FA2F65AD6D00FB8246 /* OverviewConnectionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632322F65AD6C00FB8246 /* OverviewConnectionCardView.swift */; };
@@ -182,6 +179,9 @@
 		BB020006AA0000000000006B /* PlayerInventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010006AA0000000000006A /* PlayerInventoryView.swift */; };
 		BB020007AA0000000000007B /* PlayerProfileDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010007AA0000000000007A /* PlayerProfileDetailSheet.swift */; };
 		BB020008AA0000000000008B /* PlayerProfilesCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010008AA0000000000008A /* PlayerProfilesCard.swift */; };
+		BB020009AA0000000000009B /* BedrockLevelDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010009AA0000000000009A /* BedrockLevelDB.swift */; };
+		BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000AAA000000000000AA /* BedrockNBTReader.swift */; };
+		BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -197,7 +197,6 @@
 		9A5631E42F65AD6C00FB8246 /* AppUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUtilities.swift; sourceTree = "<group>"; };
 		9A5631E52F65AD6C00FB8246 /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
 		9A5631E62F65AD6C00FB8246 /* AppViewModel+Backups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Backups.swift"; sourceTree = "<group>"; };
-		9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockConnect.swift"; sourceTree = "<group>"; };
 		9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockPerformance.swift"; sourceTree = "<group>"; };
 		9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+BedrockProperties.swift"; sourceTree = "<group>"; };
 		9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Broadcasting.swift"; sourceTree = "<group>"; };
@@ -223,8 +222,7 @@
 		9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupsView.swift; sourceTree = "<group>"; };
 		9A5632002F65AD6C00FB8246 /* BannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerView.swift; sourceTree = "<group>"; };
-		9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockConnectDownloader.swift; sourceTree = "<group>"; };
-		9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockConnectProcessManager.swift; sourceTree = "<group>"; };
+		9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBroadcastManager.swift; sourceTree = "<group>"; };
 		9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPropertiesManager.swift; sourceTree = "<group>"; };
 		9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockServerBackend.swift; sourceTree = "<group>"; };
 		9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockVersionFetcher.swift; sourceTree = "<group>"; };
@@ -300,7 +298,6 @@
 		9A5632512F65AD6C00FB8246 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
 		9A5632522F65AD6C00FB8246 /* ServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerBackend.swift; sourceTree = "<group>"; };
 		9A5632532F65AD6C00FB8246 /* ServerEditorBackupsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBackupsTab.swift; sourceTree = "<group>"; };
-		9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBedrockConnectTab.swift; sourceTree = "<group>"; };
 		9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorBroadcastTab.swift; sourceTree = "<group>"; };
 		9A5632562F65AD6C00FB8246 /* ServerEditorDockerTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorDockerTab.swift; sourceTree = "<group>"; };
 		9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorGeneralTab.swift; sourceTree = "<group>"; };
@@ -362,6 +359,9 @@
 		BB010006AA0000000000006A /* PlayerInventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerInventoryView.swift; sourceTree = "<group>"; };
 		BB010007AA0000000000007A /* PlayerProfileDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfileDetailSheet.swift; sourceTree = "<group>"; };
 		BB010008AA0000000000008A /* PlayerProfilesCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfilesCard.swift; sourceTree = "<group>"; };
+		BB010009AA0000000000009A /* BedrockLevelDB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockLevelDB.swift; sourceTree = "<group>"; };
+		BB01000AAA000000000000AA /* BedrockNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNBTReader.swift; sourceTree = "<group>"; };
+		BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPlayerDataManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -388,7 +388,6 @@
 				9A5631E42F65AD6C00FB8246 /* AppUtilities.swift */,
 				9A5631E52F65AD6C00FB8246 /* AppViewModel.swift */,
 				9A5631E62F65AD6C00FB8246 /* AppViewModel+Backups.swift */,
-				9A5631E72F65AD6C00FB8246 /* AppViewModel+BedrockConnect.swift */,
 				9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */,
 				9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */,
 				9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */,
@@ -424,10 +423,12 @@
 				BB010006AA0000000000006A /* PlayerInventoryView.swift */,
 				BB010007AA0000000000007A /* PlayerProfileDetailSheet.swift */,
 				BB010008AA0000000000008A /* PlayerProfilesCard.swift */,
+				BB010009AA0000000000009A /* BedrockLevelDB.swift */,
+				BB01000AAA000000000000AA /* BedrockNBTReader.swift */,
+				BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */,
 				9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */,
 				9A5632002F65AD6C00FB8246 /* BannerView.swift */,
-				9A5632012F65AD6C00FB8246 /* BedrockConnectDownloader.swift */,
-				9A5632022F65AD6C00FB8246 /* BedrockConnectProcessManager.swift */,
+				9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */,
 				9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */,
 				9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */,
 				9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */,
@@ -523,7 +524,6 @@
 				9A5632512F65AD6C00FB8246 /* Server.swift */,
 				9A5632522F65AD6C00FB8246 /* ServerBackend.swift */,
 				9A5632532F65AD6C00FB8246 /* ServerEditorBackupsTab.swift */,
-				9A5632542F65AD6C00FB8246 /* ServerEditorBedrockConnectTab.swift */,
 				9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */,
 				9A5632562F65AD6C00FB8246 /* ServerEditorDockerTab.swift */,
 				9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */,
@@ -696,7 +696,6 @@
 				9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */,
 				9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */,
 				9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */,
-				9A5632932F65AD6D00FB8246 /* AppViewModel+BedrockConnect.swift in Sources */,
 				9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */,
 				9AC4CEB72F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift in Sources */,
 				9A5632952F65AD6D00FB8246 /* PerformanceHelpSheetView.swift in Sources */,
@@ -709,9 +708,9 @@
 				9A56329C2F65AD6D00FB8246 /* ServerSettingsView.swift in Sources */,
 				9A56329D2F65AD6D00FB8246 /* ServerFilesTabView.swift in Sources */,
 				9A56329E2F65AD6D00FB8246 /* OverviewAlertBannersView.swift in Sources */,
+				9AF0000B2F65AD6D00FB8246 /* BedrockBroadcastManager.swift in Sources */,
 				9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */,
 				9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */,
-				9A5632A12F65AD6D00FB8246 /* BedrockConnectProcessManager.swift in Sources */,
 				9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */,
 				9A5632A32F65AD6D00FB8246 /* BannerView.swift in Sources */,
 				9A5632A42F65AD6D00FB8246 /* AppViewModelModels.swift in Sources */,
@@ -771,7 +770,6 @@
 				9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */,
 				9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */,
 				9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */,
-				9A5632D42F65AD6D00FB8246 /* ServerEditorBedrockConnectTab.swift in Sources */,
 				9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */,
 				9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */,
 				9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */,
@@ -807,7 +805,6 @@
 				9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */,
 				9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */,
 				9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */,
-				9A5632F72F65AD6D00FB8246 /* BedrockConnectDownloader.swift in Sources */,
 				9A5632F82F65AD6D00FB8246 /* PaperVersionSidecar.swift in Sources */,
 				9A5632F92F65AD6D00FB8246 /* ServerEditorJarsTab.swift in Sources */,
 				9A5632FA2F65AD6D00FB8246 /* OverviewConnectionCardView.swift in Sources */,
@@ -826,6 +823,9 @@
 				BB020006AA0000000000006B /* PlayerInventoryView.swift in Sources */,
 				BB020007AA0000000000007B /* PlayerProfileDetailSheet.swift in Sources */,
 				BB020008AA0000000000008B /* PlayerProfilesCard.swift in Sources */,
+				BB020009AA0000000000009B /* BedrockLevelDB.swift in Sources */,
+				BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */,
+				BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */,
 				9A5633022F65AD6D00FB8246 /* DetailsPerformanceTabContent.swift in Sources */,
 				9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */,
 				9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */,
