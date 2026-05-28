@@ -497,7 +497,7 @@ struct ContentView: View {
             .environmentObject(viewModel)
         }
 
-        // Cross-Platform Setup Guide (Xbox Broadcast + Bedrock Connect)
+        // Cross-Platform Setup Guide (Xbox Broadcast)
         .sheet(isPresented: crossPlatformGuideBinding) {
             CrossPlatformGuideSheet()
                 .environmentObject(viewModel)

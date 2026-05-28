@@ -287,18 +287,33 @@ extension AppViewModel {
         let initialSlotName = initialWorldSlotName(forServerName: safeName, requestedWorldName: initialWorldName)
         let normalizedWorldSeed = normalizedInitialWorldSeed(worldSeed, worldSource: worldSource)
         let importedMetadata: WorldSlotManager.ImportedWorldMetadata
+        let resolvedWorldFolder: URL?
         switch worldSource {
         case .fresh:
             importedMetadata = WorldSlotManager.ImportedWorldMetadata()
+            resolvedWorldFolder = nil
         case .backupZip(let url):
             importedMetadata = WorldSlotManager.importedWorldMetadata(fromZIP: url, serverType: .bedrock)
+            resolvedWorldFolder = nil
         case .existingFolder(let folderURL):
-            importedMetadata = WorldSlotManager.importedWorldMetadata(fromFolder: folderURL, serverType: .bedrock)
+            // Find the actual world folder (the one containing level.dat) within the
+            // user-selected URL. This handles both "user picked the world folder itself"
+            // and "user picked a parent/wrapper directory".
+            let resolved = Self.resolvedBedrockWorldFolder(from: folderURL)
+            importedMetadata = WorldSlotManager.importedWorldMetadata(fromFolder: resolved, serverType: .bedrock)
+            resolvedWorldFolder = resolved
         }
         let effectiveDifficulty = importedMetadata.difficulty ?? difficulty
         let effectiveGamemode = importedMetadata.gamemode ?? gamemode
         let effectiveWorldSeed = normalizedWorldSeed ?? importedMetadata.seed
-        let initialLevelName = WorldSlotManager.sanitizedWorldLevelName(initialSlotName, fallback: "Bedrock level")
+        // For an imported folder, use the world folder's own name as level-name so BDS
+        // finds it at worlds/{name}/. For fresh/zip sources, derive from the slot name.
+        let initialLevelName: String
+        if let worldFolder = resolvedWorldFolder {
+            initialLevelName = WorldSlotManager.sanitizedWorldLevelName(worldFolder.lastPathComponent, fallback: initialSlotName)
+        } else {
+            initialLevelName = WorldSlotManager.sanitizedWorldLevelName(initialSlotName, fallback: "Bedrock level")
+        }
 
         let folderName = safeName.replacingOccurrences(of: " ", with: "_").lowercased()
         let root = configManager.serversRootURL
@@ -340,9 +355,14 @@ extension AppViewModel {
             case .backupZip(let url):
                 let ok = await unzipWorldBackup(url, into: newDir, logPrefix: "[CreateBedrockServer]")
                 if !ok { return false }
-            case .existingFolder(let srcFolderURL):
-                let ok = await copyExistingWorldFolder(from: srcFolderURL, toServerDir: newDir,
-                                                        levelName: "worlds", logPrefix: "[CreateBedrockServer]")
+            case .existingFolder:
+                guard let worldFolder = resolvedWorldFolder else { return false }
+                // BDS expects worlds at serverDir/worlds/{level-name}/
+                // Create the worlds/ container first, then copy the folder into it.
+                let worldsDir = newDir.appendingPathComponent("worlds", isDirectory: true)
+                try? fm.createDirectory(at: worldsDir, withIntermediateDirectories: true)
+                let ok = await copyExistingWorldFolder(from: worldFolder, toServerDir: worldsDir,
+                                                        levelName: initialLevelName, logPrefix: "[CreateBedrockServer]")
                 if !ok { return false }
             }
 
@@ -417,5 +437,40 @@ extension AppViewModel {
         } catch {
             logAppMessage("[CreateServer] Failed to copy Geyser/Floodgate templates: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Bedrock world folder detection
+
+    /// Returns the URL of the actual Bedrock world folder (the directory containing level.dat)
+    /// within the user-selected URL.
+    ///
+    /// Handles two common upload shapes:
+    /// - User picks the world folder directly ("The Boys/" with level.dat at its root) → returns that folder.
+    /// - User picks a parent/wrapper folder ("worlds/" containing "The Boys/") → returns "The Boys/".
+    ///
+    /// Falls back to the original URL if neither pattern matches.
+    private static func resolvedBedrockWorldFolder(from folder: URL) -> URL {
+        let fm = FileManager.default
+        // Case 1: level.dat is directly inside the selected folder — it IS the world folder.
+        if fm.fileExists(atPath: folder.appendingPathComponent("level.dat").path) {
+            return folder
+        }
+        // Case 2: look one level deep for a single subdirectory containing level.dat.
+        // Catches users who accidentally pick a parent directory or whose export
+        // added an extra top-level wrapper.
+        let contents = (try? fm.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        let worldSubdirs = contents.filter { url in
+            let isDir = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            return isDir && fm.fileExists(atPath: url.appendingPathComponent("level.dat").path)
+        }
+        if worldSubdirs.count == 1 {
+            return worldSubdirs[0]
+        }
+        // Fallback: return the original folder.
+        return folder
     }
 }

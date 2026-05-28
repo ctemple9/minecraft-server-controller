@@ -247,26 +247,10 @@ final class ConfigManager {
         save()
     }
 
-    // Bedrock Connect JAR path
-        func setBedrockConnectJarPath(_ path: String?) {
-            config.bedrockConnectJarPath = path
-            save()
-        }
-
-        func setBedrockConnectDNSPort(_ port: Int?) {
-            config.bedrockConnectDNSPort = port
-            save()
-        }
-
     func setXboxBroadcastAutoStartEnabled(_ enabled: Bool) {
-            config.xboxBroadcastAutoStartEnabled = enabled
-            save()
-        }
-
-        func setBedrockConnectAutoStartEnabled(_ enabled: Bool) {
-            config.bedrockConnectAutoStartEnabled = enabled
-            save()
-        }
+        config.xboxBroadcastAutoStartEnabled = enabled
+        save()
+    }
 
     /// Default XboxBroadcast configuration directory for the given server.
     ///

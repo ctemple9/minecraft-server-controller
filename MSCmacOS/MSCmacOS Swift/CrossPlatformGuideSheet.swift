@@ -2,9 +2,7 @@
 //  CrossPlatformGuideSheet.swift
 //  MinecraftServerController
 //
-//  Step-by-step setup and troubleshooting guide for:
-//    • Xbox Broadcast (MCXboxBroadcastStandalone by GeyserMC)
-//    • Bedrock Connect (BedrockConnect by Pugmatt)
+//  Step-by-step setup and troubleshooting guide for Xbox Broadcast (MCXboxBroadcastStandalone by GeyserMC).
 //
 
 import SwiftUI
@@ -20,10 +18,6 @@ private enum CGScreen: Hashable {
     case xbSettings
     case xbActivation
     case xbTroubleshooting
-    case bcIntro
-    case bcInstall
-    case bcDNS
-    case bcTroubleshooting
 }
 
 // MARK: - Guide ViewModel
@@ -97,10 +91,6 @@ struct CrossPlatformGuideSheet: View {
                 case .xbSettings:      CGXBSettingsScreen(guide: guide)
                 case .xbActivation:    CGXBActivationScreen(guide: guide)
                 case .xbTroubleshooting: CGXBTroubleshootingScreen(guide: guide)
-                case .bcIntro:         CGBCIntroScreen(guide: guide)
-                case .bcInstall:       CGBCInstallScreen(guide: guide)
-                case .bcDNS:           CGBCDNSScreen(guide: guide)
-                case .bcTroubleshooting: CGBCTroubleshootingScreen(guide: guide)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -119,10 +109,6 @@ struct CrossPlatformGuideSheet: View {
         case .xbSettings:           return "Xbox Broadcast — 4 of 5"
         case .xbActivation:         return "Xbox Broadcast — 5 of 5"
         case .xbTroubleshooting:    return "Xbox Broadcast — Troubleshooting"
-        case .bcIntro:              return "Bedrock Connect — 1 of 3"
-        case .bcInstall:            return "Bedrock Connect — 2 of 3"
-        case .bcDNS:                return "Bedrock Connect — 3 of 3"
-        case .bcTroubleshooting:    return "Bedrock Connect — Troubleshooting"
         }
     }
 }
@@ -138,41 +124,26 @@ private struct CGLandingScreen: View {
 
                 CGScreenHeader(
                     title: "Cross-platform connections",
-                    subtitle: "MSC includes two tools that let non-Java players join your server. Choose a topic to get started, or jump straight to troubleshooting if you're already set up."
+                    subtitle: "Xbox Broadcast lets Bedrock players on any platform — Xbox, PlayStation, Switch, mobile, and Windows — see your server in the Xbox friends list and join without typing an address."
                 )
 
-                VStack(spacing: MSC.Spacing.md) {
-                    CGLandingCard(
-                        label: "XBOX BROADCAST",
-                        labelColor: .green,
-                        title: "Xbox, mobile & Windows players",
-                        description: "Lets Bedrock players on Xbox, mobile, and Windows see your server in the friends list and join without typing an address.",
-                        action: { guide.navigate(to: .xbIntro) }
-                    )
-                    CGLandingCard(
-                        label: "BEDROCK CONNECT",
-                        labelColor: .purple,
-                        title: "PlayStation & Switch players",
-                        description: "Redirects the console server browser so PlayStation and Switch players can add your server to their list via a DNS change.",
-                        action: { guide.navigate(to: .bcIntro) }
-                    )
-                }
+                CGLandingCard(
+                    label: "XBOX BROADCAST",
+                    labelColor: .green,
+                    title: "All Bedrock platforms",
+                    description: "Broadcasts your server over Xbox Live. Players add your alt account as a friend and see the server in their Friends tab.",
+                    action: { guide.navigate(to: .xbIntro) }
+                )
 
                 Divider()
 
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                     Text("Already set up and something isn't working?")
                         .font(MSC.Typography.cardTitle)
-                    HStack(spacing: MSC.Spacing.sm) {
-                        Button("Xbox Broadcast troubleshooting") {
-                            guide.navigate(to: .xbTroubleshooting)
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        Button("Bedrock Connect troubleshooting") {
-                            guide.navigate(to: .bcTroubleshooting)
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
+                    Button("Xbox Broadcast troubleshooting") {
+                        guide.navigate(to: .xbTroubleshooting)
                     }
+                    .buttonStyle(MSCSecondaryButtonStyle())
                 }
             }
             .padding(MSC.Spacing.xl)
@@ -614,234 +585,6 @@ private struct CGXBTroubleshootingScreen: View {
                         symptom: "Was working, now players can't see it",
                         fix: "Alt account session expired. Delete the 'accounts' folder and restart to re-authenticate.",
                         detail: "Microsoft sessions eventually expire or get invalidated. Delete the 'accounts' folder in the broadcast config directory (Edit Server → Broadcast → Open Config Folder) and restart the server."
-                    )
-                }
-                .padding(MSC.Spacing.xl)
-            }
-            CGNavFooter(guide: guide, showDoneOnly: true)
-        }
-    }
-}
-
-// MARK: - Bedrock Connect: Screen 1 — Introduction
-
-private struct CGBCIntroScreen: View {
-    @ObservedObject var guide: CrossPlatformGuideViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: MSC.Spacing.xl) {
-
-                    CGScreenHeader(
-                        title: "What is Bedrock Connect?",
-                        subtitle: "Lets PlayStation and Switch players join your server — platforms that can't add servers manually."
-                    )
-
-                    CGCreditCallout(
-                        color: .purple,
-                        text: "Built by Pugmatt. MSC manages it for you.",
-                        githubURL: "https://github.com/Pugmatt/BedrockConnect",
-                        githubLabel: "Pugmatt/BedrockConnect"
-                    )
-
-                    VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-                        CGFactRow(icon: "network", text: "Runs a small DNS server on your Mac")
-                        CGFactRow(icon: "gamecontroller", text: "Consoles point their DNS at your Mac's local IP")
-                        CGFactRow(icon: "list.bullet", text: "Your servers replace the Mojang Featured Servers list")
-                        CGFactRow(icon: "house", text: "LAN/home network only — not a public internet solution")
-                        CGFactRow(icon: "globe", text: "One instance covers all your servers simultaneously")
-                    }
-                }
-                .padding(MSC.Spacing.xl)
-            }
-            CGNavFooter(
-                guide: guide,
-                nextLabel: "Next: Install",
-                nextScreen: .bcInstall
-            )
-        }
-    }
-}
-
-// MARK: - Bedrock Connect: Screen 2 — Install
-
-private struct CGBCInstallScreen: View {
-    @EnvironmentObject var viewModel: AppViewModel
-    @ObservedObject var guide: CrossPlatformGuideViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-
-                    CGScreenHeader(
-                        title: "Install Bedrock Connect",
-                        subtitle: "MSC downloads and manages the Bedrock Connect JAR. No manual file handling needed."
-                    )
-
-                    CGGuideCard(icon: "shippingbox", title: "JAR status") {
-                        VStack(spacing: 0) {
-                            CGFieldRow(label: "Installation") {
-                                if viewModel.isBedrockConnectJarInstalled {
-                                    HStack(spacing: 6) {
-                                        Circle().fill(MSC.Colors.success).frame(width: 7, height: 7)
-                                        Text("Installed").font(.system(size: 12)).foregroundStyle(MSC.Colors.success)
-                                    }
-                                } else {
-                                    HStack(spacing: 6) {
-                                        Circle().fill(.red).frame(width: 7, height: 7)
-                                        Text("Not installed").font(.system(size: 12)).foregroundStyle(.red)
-                                        Button("Download") { viewModel.downloadOrUpdateBedrockConnectJar() }
-                                            .buttonStyle(MSCSecondaryButtonStyle())
-                                            .controlSize(.small)
-                                    }
-                                }
-                            }
-                            CGFieldRow(label: "Auto-start") {
-                                Toggle("", isOn: Binding(
-                                    get: { viewModel.bedrockConnectAutoStartEnabled },
-                                    set: { viewModel.bedrockConnectAutoStartEnabled = $0 }
-                                ))
-                                .labelsHidden()
-                                .toggleStyle(.switch)
-                                .controlSize(.small)
-                            }
-                        }
-                    }
-
-                    CGGuideCard(icon: "info.circle", title: "Java is required") {
-                        Text("Bedrock Connect is a Java application. MSC requires Java to be installed — check the Prerequisites section in Preferences if you're unsure. The Components tab will show if Geyser and associated components are healthy, which is a good indicator that your Java environment is working correctly.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(MSC.Spacing.xl)
-            }
-            CGNavFooter(
-                guide: guide,
-                nextLabel: "Next: DNS setup",
-                nextScreen: .bcDNS
-            )
-        }
-    }
-}
-
-// MARK: - Bedrock Connect: Screen 3 — DNS Setup
-
-private struct CGBCDNSScreen: View {
-    @EnvironmentObject var viewModel: AppViewModel
-    @ObservedObject var guide: CrossPlatformGuideViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-
-                    CGScreenHeader(
-                        title: "DNS setup for consoles",
-                        subtitle: "This is the step that makes everything work. Your console players change one setting — their DNS — to point at your Mac."
-                    )
-
-                    CGGuideCard(icon: "display", title: "Your Mac's address") {
-                        VStack(spacing: 0) {
-                            CGFieldRow(label: "Local IP (DNS target)") {
-                                Text(viewModel.javaAddressForDisplay)
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                                    .textSelection(.enabled)
-                            }
-                            CGFieldRow(label: "Bedrock Connect DNS port") {
-                                Text(String(viewModel.configManager.config.bedrockConnectDNSPort ?? 19132))
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-
-                    CGGuideCard(icon: "exclamationmark.triangle", title: "Port conflict warning") {
-                        Text("The Bedrock Connect DNS port must not be the same as your Geyser Bedrock port. If they match, change the Bedrock Connect DNS port in Edit Server → Bedrock Connect tab. A conflict will silently break Bedrock Connect.")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    CGGuideCard(icon: "playstation.logo", title: "What PlayStation players do") {
-                        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                            CGStepRow(number: 1, text: "Go to Settings → Network → Set Up Internet Connection → Custom.")
-                            CGStepRow(number: 2, text: "When asked for DNS, choose Manual.")
-                            CGStepRow(number: 3, text: "Set the Primary DNS to your Mac's local IP shown above.")
-                            CGStepRow(number: 4, text: "Leave Secondary DNS empty or as-is. Save and reconnect.")
-                            CGStepRow(number: 5, text: "Open Minecraft → Play → Servers. Your servers will appear in the Featured list.")
-                        }
-                    }
-
-                    CGGuideCard(icon: "n.circle.fill", title: "What Switch players do") {
-                        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                            CGStepRow(number: 1, text: "Go to System Settings → Internet → Internet Settings.")
-                            CGStepRow(number: 2, text: "Select your Wi-Fi network → Change Settings.")
-                            CGStepRow(number: 3, text: "Set DNS to Manual. Enter your Mac's local IP as the Primary DNS.")
-                            CGStepRow(number: 4, text: "Save and reconnect, then open Minecraft → Play → Servers.")
-                        }
-                    }
-
-                    CGCallout(
-                        icon: "checkmark.circle.fill",
-                        color: .green,
-                        text: "After the DNS change, your servers replace the Mojang Featured Servers list. Players select yours and connect like any other server."
-                    )
-                }
-                .padding(MSC.Spacing.xl)
-            }
-            CGNavFooter(
-                guide: guide,
-                nextLabel: "Troubleshooting →",
-                nextScreen: .bcTroubleshooting,
-                nextIsSecondary: true,
-                doneLabel: "Done"
-            )
-        }
-    }
-}
-
-// MARK: - Bedrock Connect: Troubleshooting
-
-private struct CGBCTroubleshootingScreen: View {
-    @ObservedObject var guide: CrossPlatformGuideViewModel
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-
-                    CGScreenHeader(
-                        title: "Bedrock Connect troubleshooting",
-                        subtitle: "Match your symptom to a fix."
-                    )
-
-                    CGTroubleshootItem(
-                        symptom: "Console still shows Mojang's servers, not mine",
-                        fix: "DNS change didn't apply. Have the player recheck their DNS setting and reconnect before opening Minecraft.",
-                        detail: "On PlayStation: Settings → Network → Set Up Internet Connection → Custom → DNS → Manual. On Switch: System Settings → Internet → Change Settings → DNS → Manual. Set Primary DNS to your Mac's local IP. After saving they must reconnect."
-                    )
-
-                    CGTroubleshootItem(
-                        symptom: "Console shows my servers but can't connect",
-                        fix: "DNS is working but Bedrock Connect DNS port conflicts with your Geyser port. Check Edit Server → Bedrock Connect tab.",
-                        detail: "The Bedrock Connect DNS port and your Geyser Bedrock port must be different. If they match, change the Bedrock Connect DNS port and restart. Also confirm Bedrock Connect is actually running in the sidebar."
-                    )
-
-                    CGTroubleshootItem(
-                        symptom: "Bedrock Connect won't start",
-                        fix: "Java may not be installed, or the JAR is missing. Check Prerequisites in Preferences and try re-downloading.",
-                        detail: "Bedrock Connect is a Java application. Verify Java is installed via Preferences → Prerequisites. Try re-downloading the JAR from Edit Server → Bedrock Connect → Download. A healthy Geyser in the Components tab indicates your Java environment is working."
-                    )
-
-                    CGTroubleshootItem(
-                        symptom: "Only works for some consoles, not others",
-                        fix: "Affected console is on a different network. All consoles must be on the same local network as your Mac.",
-                        detail: "Bedrock Connect intercepts DNS requests on your local network only. A console on a different subnet, guest network, or mobile data won't be intercepted. Confirm all consoles are on the same router/Wi-Fi as your Mac."
                     )
                 }
                 .padding(MSC.Spacing.xl)

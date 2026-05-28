@@ -71,8 +71,9 @@ struct ManageServersView: View {
 
                     Button {
                         isShowingAddWizard = true
-                        if OnboardingManager.shared.currentStep == .createServer {
-                            // Tour anchor preserved — wizard opens the same creation flow
+                        if OnboardingManager.shared.isActive,
+                           OnboardingManager.shared.currentStep == .createServer {
+                            OnboardingManager.shared.advance()
                         }
                     } label: {
                         Label("Add Server\u{2026}", systemImage: "plus")

@@ -208,7 +208,7 @@ extension AppViewModel {
         isShowingCreateServer = false
         isServerRunning = false
         isXboxBroadcastRunning = false
-        isBedrockConnectRunning = false
+        isBedrockBroadcastRunning = false
         pendingBroadcastAuthPrompt = nil
         firstStartNotice = nil
         onlinePlayers = []

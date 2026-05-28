@@ -53,7 +53,7 @@ struct OverviewQuickActionsCardView: View {
                                                             .disabled(viewModel.selectedServer == nil)
 
                             Button {
-                                viewModel.sendQuickCommand("save-all")
+                                viewModel.runSaveAll()
                             } label: {
                                 Label("Save World", systemImage: "arrow.down.doc")
                             }

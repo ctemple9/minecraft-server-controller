@@ -97,7 +97,7 @@ struct DetailsView: View {
                             ContextualHelpStep(
                                 id: "details.workspace.components",
                                 title: "Components",
-                                body: "Manage plugins, Bedrock Connect, and other server components. Versions and update checks live here.",
+                                body: "Manage plugins, Xbox Broadcast, and other server components. Versions and update checks live here.",
                                 anchorID: "details.tab.components",
                                 secondaryAnchorID: "details.tab.content",
                                 nextLabel: "Next"

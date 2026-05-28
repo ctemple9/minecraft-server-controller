@@ -112,8 +112,8 @@ final class AppViewModel: ObservableObject {
     @Published var isServerRunning: Bool = false
     @Published var isShowingInitialSetup: Bool = false
     @Published var isOnboardingActive: Bool = false
-    @Published var isBedrockConnectRunning: Bool = false
     @Published var isXboxBroadcastRunning: Bool = false
+    @Published var isBedrockBroadcastRunning: Bool = false
 
     // MARK: - Bedrock / Docker state
 
@@ -163,7 +163,6 @@ final class AppViewModel: ObservableObject {
     // MARK: - JAR libraries
 
     @Published var xboxBroadcastJarItems: [JarLibraryItem] = []
-    @Published var bedrockConnectJarItems: [JarLibraryItem] = []
 
     // MARK: - Players / TPS
 
@@ -231,7 +230,6 @@ final class AppViewModel: ObservableObject {
 
     var serverProcessID: pid_t? { javaBackend.processID }
     var broadcastProcessID: pid_t? { broadcastManager.processID }
-    var bedrockConnectProcessID: pid_t? { bedrockConnectManager.processID }
 
     // MARK: - Internal stored properties
 
@@ -242,7 +240,7 @@ final class AppViewModel: ObservableObject {
     var activeBackend: ServerBackend?
 
     let broadcastManager = XboxBroadcastProcessManager()
-    let bedrockConnectManager = BedrockConnectProcessManager()
+    let bedrockBroadcastManager = BedrockBroadcastManager()
 
     static var sharedRemoteAPIServer: RemoteAPIServer?
     var remoteAPIServer: RemoteAPIServer?
@@ -553,7 +551,6 @@ final class AppViewModel: ObservableObject {
                 self.isMetricsPaused = false
                 self.lifecycle.resetAfterTermination()
                 self.stopBroadcastIfRunning()
-                self.stopBedrockConnectIfRunning()
                 self.stopAutoBackupTimer()
                 self.refreshWorldSize()
                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
@@ -592,6 +589,7 @@ final class AppViewModel: ObservableObject {
             guard let self else { return }
             Task { @MainActor in
                 let reachedReadyState = self.lifecycle.serverReadyForAutoMetrics
+                let wasStopRequested = self.lifecycle.isStopRequested
                 self.isServerRunning = false
                 self.serverStartTime = nil
                 self.serverUptimeDisplay = nil
@@ -603,7 +601,6 @@ final class AppViewModel: ObservableObject {
                 self.bedrockRunningVersion = nil
                 self.lifecycle.resetAfterTermination()
                 self.stopBroadcastIfRunning()
-                self.stopBedrockConnectIfRunning()
                 self.stopAutoBackupTimer()
                 self.refreshWorldSize()
                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
@@ -615,7 +612,7 @@ final class AppViewModel: ObservableObject {
                     }
                 }
                 self.refreshHealthCardsForSelectedServer()
-                                if !self.lifecycle.isStopRequested {
+                                if !wasStopRequested {
                                     let recentErrors = self.console.entries
                                         .filter { $0.source == .server && $0.level == .error }
                                         .suffix(5)
@@ -646,19 +643,19 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-        // Bedrock Connect output handlers
-        bedrockConnectManager.onOutputLine = { [weak self] line in
+        bedrockBroadcastManager.onOutputLine = { [weak self] line in
             guard let self else { return }
-            Task { @MainActor in self.handleBedrockConnectOutputLine(line) }
+            Task { @MainActor in self.handleBroadcastOutputLine(line) }
         }
 
-        bedrockConnectManager.onDidTerminate = { [weak self] in
+        bedrockBroadcastManager.onDidTerminate = { [weak self] in
             guard let self else { return }
             Task { @MainActor in
-                self.isBedrockConnectRunning = false
-                self.logAppMessage("[BedrockConnect] Bedrock Connect process ended.")
+                self.isBedrockBroadcastRunning = false
+                self.logAppMessage("[BroadcastBDS] Broadcast container ended.")
             }
         }
+
     }
 
     // MARK: - Controller refresh

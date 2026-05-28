@@ -147,6 +147,13 @@ extension AppViewModel {
 
     func effectiveBedrockPort(for server: ConfigServer) -> Int? {
         if let p = server.bedrockPort { return p }
+        if server.isBedrock {
+            // For BDS servers ConfigServer.bedrockPort may not be populated yet
+            // (it is only written when the user explicitly saves Settings). Fall
+            // back to the actual value in bedrock_server.properties — the same
+            // source BedrockServerBackend uses when it starts the container.
+            return BedrockPropertiesManager.readModel(serverDir: server.serverDir).serverPort
+        }
         if let geyser = GeyserConfigManager.readConfig(serverDir: server.serverDir),
            let p = geyser.port { return p }
         return nil

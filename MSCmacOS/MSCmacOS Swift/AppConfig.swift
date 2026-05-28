@@ -148,12 +148,6 @@ struct ConfigServer: Codable, Identifiable {
         var bedrockDockerImage: String? = nil
     var bedrockVersion: String? = nil   // Pinned BEDROCK_SERVER_VERSION; nil = "LATEST"
 
-            // MARK: - Bedrock Connect Standalone (Bedrock servers only)
-            // bedrockConnectStandaloneEnabled: whether this server is included in BC's servers.json.
-            // The global DNS port lives on AppConfig, not here — BC is one process for all servers.
-            var bedrockConnectStandaloneEnabled: Bool = false
-            var bedrockConnectStandalonePath: String? = nil  // optional override for JAR path
-
             // MARK: - Notification Preferences
         var notificationPrefs: ServerNotificationPrefs = ServerNotificationPrefs()
 
@@ -204,10 +198,6 @@ struct ConfigServer: Codable, Identifiable {
         case serverType          = "server_type"
                         case bedrockDockerImage  = "bedrock_docker_image"
                         case bedrockVersion      = "bedrock_version"
-
-                        // Bedrock Connect standalone (Bedrock servers)
-                        case bedrockConnectStandaloneEnabled = "bedrock_connect_standalone_enabled"
-                        case bedrockConnectStandalonePath    = "bedrock_connect_standalone_path"
 
                         case notificationPrefs   = "notification_prefs"
             }
@@ -261,9 +251,6 @@ extension ConfigServer {
                         bedrockDockerImage = try c.decodeIfPresent(String.self,     forKey: .bedrockDockerImage)
                         bedrockVersion     = try c.decodeIfPresent(String.self, forKey: .bedrockVersion)
 
-                        // Bedrock Connect standalone fields — safe defaults preserve existing configs
-                        bedrockConnectStandaloneEnabled = try c.decodeIfPresent(Bool.self,   forKey: .bedrockConnectStandaloneEnabled) ?? false
-                        bedrockConnectStandalonePath    = try c.decodeIfPresent(String.self, forKey: .bedrockConnectStandalonePath)
                         notificationPrefs  = try c.decodeIfPresent(ServerNotificationPrefs.self, forKey: .notificationPrefs) ?? ServerNotificationPrefs()
             }
 
@@ -301,10 +288,6 @@ extension ConfigServer {
 
         try c.encode(serverType,                       forKey: .serverType)
                         try c.encodeIfPresent(bedrockDockerImage,      forKey: .bedrockDockerImage)
-
-                        // Bedrock Connect standalone
-                        try c.encode(bedrockConnectStandaloneEnabled,  forKey: .bedrockConnectStandaloneEnabled)
-                        try c.encodeIfPresent(bedrockConnectStandalonePath, forKey: .bedrockConnectStandalonePath)
 
                 try c.encode(notificationPrefs, forKey: .notificationPrefs)
             }
@@ -374,21 +357,9 @@ struct AppConfig: Codable {
     /// Path to MCXboxBroadcastStandalone.jar
     var xboxBroadcastJarPath: String?
 
-    // Bedrock Connect (global)
-    /// Path to BedrockConnect.jar
-    var bedrockConnectJarPath: String?
-
-    /// Port that BedrockConnect's DNS listener runs on.
-    /// Consoles must have their DNS set to this Mac's IP for the redirect to work.
-    /// Default nil = BedrockConnect uses its own default (19132).
-    /// Must NOT collide with any server's Bedrock game port.
-    var bedrockConnectDNSPort: Int?
-
-    // Services — per-service auto-start behaviour (both default to true)
+    // Services — auto-start behaviour (default true)
     /// When true, XboxBroadcast starts automatically 30 seconds after the server starts.
     var xboxBroadcastAutoStartEnabled: Bool
-    /// When true, Bedrock Connect starts automatically 30 seconds after the server starts.
-    var bedrockConnectAutoStartEnabled: Bool
 
     /// Minecraft Java Edition username used to fetch the player's skin avatar.
     var minecraftUsername: String?
@@ -428,10 +399,7 @@ struct AppConfig: Codable {
         case hasShownWelcomeGuide = "has_shown_welcome_guide"
 
         case xboxBroadcastJarPath = "xbox_broadcast_jar_path"
-        case bedrockConnectJarPath = "bedrock_connect_jar_path"
-        case bedrockConnectDNSPort = "bedrock_connect_dns_port"
         case xboxBroadcastAutoStartEnabled = "xbox_broadcast_auto_start_enabled"
-        case bedrockConnectAutoStartEnabled = "bedrock_connect_auto_start_enabled"
         case minecraftUsername = "minecraft_username"
         case minecraftBedrockGamertag = "minecraft_bedrock_gamertag"
         case minecraftAvatarEditionRawValue = "minecraft_avatar_edition"
@@ -466,12 +434,6 @@ struct AppConfig: Codable {
 
     /// Default config for new installs
     static func defaultConfig() -> AppConfig {
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
-        let serversRootURL = home.appendingPathComponent("MinecraftServers", isDirectory: true)
-
-        let serversRootPath = serversRootURL.path
-
         return AppConfig(
             configVersion: latestConfigVersion,
             javaPath: "java",
@@ -492,10 +454,7 @@ struct AppConfig: Codable {
             duckdnsHostname: nil,
             hasShownWelcomeGuide: false,
             xboxBroadcastJarPath: nil,
-            bedrockConnectJarPath: nil,
-            bedrockConnectDNSPort: nil,
             xboxBroadcastAutoStartEnabled: true,
-            bedrockConnectAutoStartEnabled: true,
             minecraftUsername: nil,
             minecraftBedrockGamertag: nil,
             minecraftAvatarEditionRawValue: nil,
@@ -595,21 +554,9 @@ extension AppConfig {
             try container.decodeIfPresent(String.self, forKey: .xboxBroadcastJarPath)
                 ?? defaults.xboxBroadcastJarPath
 
-        // Bedrock Connect JAR path
-        self.bedrockConnectJarPath =
-            try container.decodeIfPresent(String.self, forKey: .bedrockConnectJarPath)
-                ?? defaults.bedrockConnectJarPath
-        self.bedrockConnectDNSPort =
-            try container.decodeIfPresent(Int.self, forKey: .bedrockConnectDNSPort)
-                ?? defaults.bedrockConnectDNSPort
-
-        // Per-service auto-start toggles (default to true for backwards compatibility)
         self.xboxBroadcastAutoStartEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .xboxBroadcastAutoStartEnabled)
                 ?? defaults.xboxBroadcastAutoStartEnabled
-        self.bedrockConnectAutoStartEnabled =
-            try container.decodeIfPresent(Bool.self, forKey: .bedrockConnectAutoStartEnabled)
-                ?? defaults.bedrockConnectAutoStartEnabled
         self.minecraftUsername =
             try container.decodeIfPresent(String.self, forKey: .minecraftUsername)
                 ?? defaults.minecraftUsername
@@ -650,10 +597,7 @@ extension AppConfig {
 
         try container.encode(hasShownWelcomeGuide, forKey: .hasShownWelcomeGuide)
         try container.encodeIfPresent(xboxBroadcastJarPath, forKey: .xboxBroadcastJarPath)
-        try container.encodeIfPresent(bedrockConnectJarPath, forKey: .bedrockConnectJarPath)
-        try container.encodeIfPresent(bedrockConnectDNSPort, forKey: .bedrockConnectDNSPort)
         try container.encode(xboxBroadcastAutoStartEnabled, forKey: .xboxBroadcastAutoStartEnabled)
-        try container.encode(bedrockConnectAutoStartEnabled, forKey: .bedrockConnectAutoStartEnabled)
         try container.encodeIfPresent(minecraftUsername, forKey: .minecraftUsername)
         try container.encodeIfPresent(minecraftBedrockGamertag, forKey: .minecraftBedrockGamertag)
         try container.encodeIfPresent(defaultBannerColorHex, forKey: .defaultBannerColorHex)

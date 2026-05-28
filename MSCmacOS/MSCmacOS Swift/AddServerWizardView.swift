@@ -116,6 +116,17 @@ struct AddServerWizardView: View {
             footerBar
         }
         .frame(minWidth: 640, minHeight: 520)
+        .overlay {
+            OnboardingOverlayView(
+                ownedSteps: [.wizardChoosePath, .serverName, .serverType,
+                             .serverSettings, .firstWorld, .createButton]
+            )
+        }
+        .onAppear {
+            if OnboardingManager.shared.isActive {
+                wizardPath = .fresh
+            }
+        }
     }
 
     // MARK: - Step indicator
@@ -230,7 +241,9 @@ struct AddServerWizardView: View {
                     systemImage: "sparkles",
                     isSelected: wizardPath == .fresh
                 ) { wizardPath = .fresh }
+                .onboardingAnchor(.wizardStartFreshCard)
             }
+            .onboardingAnchor(.wizardPathPicker)
         }
     }
 
@@ -492,15 +505,22 @@ struct AddServerWizardView: View {
                         subtitle: "PC · Cross-play optional",
                         systemImage: "cup.and.saucer.fill",
                         isSelected: serverType == .java
-                    ) { serverType = .java }
+                    ) {
+                        serverType = .java
+                        OnboardingManager.shared.tourServerType = .java
+                    }
 
                     WizardServerTypeCard(
                         title: "Bedrock",
                         subtitle: "PC · Console · Mobile",
                         systemImage: "square.grid.3x3.fill",
                         isSelected: serverType == .bedrock
-                    ) { serverType = .bedrock }
+                    ) {
+                        serverType = .bedrock
+                        OnboardingManager.shared.tourServerType = .bedrock
+                    }
                 }
+                .onboardingAnchor(.serverTypeSelector)
             }
 
             Divider()
@@ -511,15 +531,19 @@ struct AddServerWizardView: View {
                     .font(MSC.Typography.sectionHeader)
                 TextField("Enter server name", text: $serverName)
                     .textFieldStyle(.roundedBorder)
+                    .onboardingAnchor(.serverNameField)
             }
 
             Divider()
 
-            if serverType == .java {
-                javaFreshSection
-            } else {
-                bedrockFreshSection
+            Group {
+                if serverType == .java {
+                    javaFreshSection
+                } else {
+                    bedrockFreshSection
+                }
             }
+            .onboardingAnchor(.serverSettingsArea)
         }
     }
 
@@ -686,6 +710,7 @@ struct AddServerWizardView: View {
                 }
             }
         }
+        .onboardingAnchor(.worldCreationArea)
     }
 
     private var freshWorldSettings: some View {
@@ -827,10 +852,12 @@ struct AddServerWizardView: View {
                     Button("Create Server") { beginCreate() }
                         .buttonStyle(MSCPrimaryButtonStyle())
                         .disabled(!canCreate || isCreating)
+                        .onboardingAnchor(.createSaveButton)
                 } else {
                     Button("Continue") { advanceStep() }
                         .buttonStyle(MSCPrimaryButtonStyle())
                         .disabled(!canAdvance || isScanning)
+                        .onboardingAnchor(.wizardContinueButton)
                 }
             }
             .padding(.horizontal, MSC.Spacing.xl)
@@ -891,6 +918,35 @@ struct AddServerWizardView: View {
             displayName = serverName
         }
         withAnimation(.easeInOut(duration: 0.18)) { currentStep += 1 }
+
+        // Sync tour to match the wizard page we just entered
+        guard OnboardingManager.shared.isActive else { return }
+        let tourStep = OnboardingManager.shared.currentStep
+        switch currentStep {
+        case 2 where wizardPath == .fresh:
+            // Entered configure page — advance past wizardChoosePath (or jump if already past)
+            if tourStep == .wizardChoosePath {
+                OnboardingManager.shared.advance()    // → .serverName
+            } else if tourStep.rawValue < OnboardingStep.serverName.rawValue {
+                OnboardingManager.shared.jumpTo(.serverName)
+            }
+        case 3 where wizardPath == .fresh:
+            // Entered world page — advance past serverSettings (or jump if already past)
+            if tourStep == .serverSettings {
+                OnboardingManager.shared.advance()    // → .firstWorld
+            } else if tourStep.rawValue < OnboardingStep.firstWorld.rawValue {
+                OnboardingManager.shared.jumpTo(.firstWorld)
+            }
+        case 4:
+            // Entered confirm page — advance past firstWorld (or jump if already past)
+            if tourStep == .firstWorld {
+                OnboardingManager.shared.advance()    // → .createButton
+            } else if tourStep.rawValue < OnboardingStep.createButton.rawValue {
+                OnboardingManager.shared.jumpTo(.createButton)
+            }
+        default:
+            break
+        }
     }
 
     // MARK: - Create

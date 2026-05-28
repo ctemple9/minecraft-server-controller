@@ -110,7 +110,7 @@ extension AppViewModel {
         let output = String(data: data, encoding: .utf8) ?? ""
         let currentAppPID = ProcessInfo.processInfo.processIdentifier
         let managedJavaPID = javaBackend.processID
-        let excludedPIDs: Set<pid_t> = [currentAppPID, managedJavaPID, broadcastManager.processID, bedrockConnectManager.processID]
+        let excludedPIDs: Set<pid_t> = [currentAppPID, managedJavaPID, broadcastManager.processID]
             .compactMap { $0 }
             .reduce(into: Set<pid_t>()) { $0.insert($1) }
 
@@ -138,7 +138,6 @@ extension AppViewModel {
         guard lower.contains("--nogui") || lower.contains("paper") || lower.contains("purpur") || lower.contains("spigot") else {
             return nil
         }
-        guard !lower.contains("bedrockconnect") else { return nil }
         guard !lower.contains("mcxboxbroadcast") else { return nil }
 
         let isCurrentManagedServer = javaBackend.processID == pid

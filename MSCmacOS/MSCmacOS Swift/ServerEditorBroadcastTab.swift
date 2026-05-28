@@ -166,5 +166,83 @@ var broadcastTab: some View {
         }
     }
 }
+}
 
+
+// MARK: - BROADCAST TAB (Bedrock / MCXboxBroadcast Standalone)
+
+extension ServerEditorView {
+
+    var bedrockBroadcastTab: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+
+            if mode == .new || editingConfigServer == nil {
+                SEUnavailableCard(
+                    icon: "dot.radiowaves.left.and.right",
+                    title: "Save first to configure broadcast",
+                    message: "Xbox broadcast settings are available after this server is created. Save, then reopen Edit Server."
+                )
+            } else if let cfg = editingConfigServer {
+                let hostForDisplay = viewModel.previewBroadcastHost(for: cfg, mode: broadcastIPMode)
+                let port = viewModel.effectiveBedrockPort(for: cfg) ?? 19132
+
+                SESection(icon: "dot.radiowaves.left.and.right", title: "Xbox Broadcast for This Server", color: .green) {
+                    VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+
+                        HStack(spacing: MSC.Spacing.sm) {
+                            Toggle("", isOn: $broadcastEnabled).labelsHidden()
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Enable Xbox Broadcast when this server starts")
+                                    .font(.system(size: 12, weight: .medium))
+                                Text("Starts the MCXboxBroadcast Standalone container so Xbox friends can see and join via the Friends tab.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        Divider().opacity(0.5)
+
+                        SEInlineField(label: "Transfers to", hint: "The address sent to joining players") {
+                            Text("\(hostForDisplay):\(port)")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        SEInlineField(label: "IP Mode", hint: ipModeCaption(for: broadcastIPMode)) {
+                            Picker("", selection: $broadcastIPMode) {
+                                ForEach(XboxBroadcastIPMode.allCases, id: \.self) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 220)
+                            .labelsHidden()
+                        }
+
+                        Divider().opacity(0.5)
+
+                        Button("Open Data Folder…") {
+                            let url = BedrockBroadcastManager.dataDirectoryURL(for: cfg)
+                            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                            NSWorkspace.shared.open(url)
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                    }
+                }
+
+                SESection(icon: "info.circle", title: "How It Works", color: .blue) {
+                    SECallout(
+                        icon: "info.circle.fill",
+                        color: .blue,
+                        text: "MCXboxBroadcast Standalone runs as a Docker container. It authenticates with Xbox Live using your alt account and redirects friends to your BDS server. Use Auto mode unless you need friends outside your home network to connect — in that case, set IP Mode to Public IP and forward your BDS UDP port on your router."
+                    )
+                }
+            }
+
+            Spacer()
+        }
+        .padding(MSC.Spacing.lg)
+    }
 }

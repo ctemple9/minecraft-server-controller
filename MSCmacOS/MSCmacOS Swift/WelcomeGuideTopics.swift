@@ -492,65 +492,6 @@ Xbox broadcast has occasional authentication token expiry \u{2014} if it stops w
         }
     }
 
-    // ── Bedrock Connect ───────────────────────────────────────────────────
-
-    var bedrockConnectContent: some View {
-        GuideSection {
-            GuideTopicHeader(
-                icon: "gamecontroller.fill",
-                title: "Bedrock Connect",
-                subtitle: "Let PlayStation, Switch, and mobile players join using the Featured Servers menu.",
-                color: .purple
-            )
-
-            AnalogyBox(
-                title: "Think of it like this",
-                text: "Consoles like PlayStation and Nintendo Switch can't add custom servers directly in Minecraft. Bedrock Connect tricks the console into thinking your server is an official Featured Server. It's like a decoy entrance that secretly leads to your house."
-            )
-
-            GuideBodyText("""
-**The problem Bedrock Connect solves:**
-
-On PC, Bedrock players can add any server address in Settings \u{2192} Servers. But on PlayStation and Nintendo Switch, Minecraft only shows a list of approved "Featured Servers" \u{2014} you can't type in a custom address.
-
-**Bedrock Connect** is a DNS-based redirect tool. When enabled, it intercepts the request for the official Featured Servers list and replaces it with your own servers. Players on consoles see your server in the Featured Servers section and can join from there.
-""")
-
-            GuideCallout(style: .warning, text: "Bedrock Connect requires changing the DNS settings on the player's console or router to point at your Mac. This is a slightly advanced step that requires coordination with the player who wants to join.")
-
-            GuideBodyText("""
-**What you need:**
-- Your Mac must be on the same network as the console, OR you must set up DNS routing through a VPN or external DNS
-- Bedrock Connect JAR downloaded and configured
-- Your Geyser/Bedrock port must be reachable from the console
-""")
-
-            InAppBox(items: [
-                "Bedrock Connect is a global service \u{2014} one instance serves all configured servers at once, not per-server.",
-                "Manage the JAR in the Components tab and the global service settings from the Bedrock Connect section in the sidebar.",
-                "The app auto-generates a servers.json file from all your configured servers with Bedrock ports.",
-                "Log output tagged [BedrockConnect] appears in the console when it's running.",
-                "The JAR is managed through the app's JAR library alongside the Xbox Broadcast JAR."
-            ])
-
-            GuideCallout(style: .note, text: "Bedrock Connect is best for situations where you're hosting a regular gaming session with console friends who are on your local network or a known VPN. It's more setup overhead than Xbox Broadcast but covers PlayStation and Switch which Xbox Broadcast doesn't.")
-
-            AdvancedSection(content: """
-Bedrock Connect works by running a local DNS server on your Mac. When a console's DNS is pointed at your Mac:
-
-1. The console requests the Featured Servers list from Mojang's DNS
-2. Bedrock Connect intercepts that request
-3. It returns your servers.json instead
-4. The console displays your servers in the Featured Servers tab
-
-The DNS interception only affects Minecraft-specific DNS lookups \u{2014} regular internet traffic is unaffected.
-
-You can find the Bedrock Connect open-source project at:
-github.com/Pugmatt/BedrockConnect
-""")
-        }
-    }
-
     // ── Worlds & Backups ──────────────────────────────────────────────────
 
     var worldsBackupsContent: some View {

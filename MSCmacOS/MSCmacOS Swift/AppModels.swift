@@ -42,7 +42,6 @@ struct ComponentsVersionSnapshot: Equatable {
     var geyser: ComponentVersionInfo = ComponentVersionInfo()
     var floodgate: ComponentVersionInfo = ComponentVersionInfo()
     var broadcast: ComponentVersionInfo = ComponentVersionInfo()
-    var bedrockConnect: ComponentVersionInfo = ComponentVersionInfo()
 }
 
 // MARK: - Backup sidecar metadata
@@ -96,10 +95,9 @@ struct PaperTemplateItem: Identifiable, Hashable {
     var filename: String { url.lastPathComponent }
 }
 
-/// Represents one JAR in the XboxBroadcast or BedrockConnect library folder.
+/// Represents one JAR in the XboxBroadcast library folder.
 /// The version label is extracted from the filename by splitting on the last "-".
 /// e.g. "MCXboxBroadcastStandalone-v3.0.2.jar" → versionLabel = "v3.0.2"
-///      "BedrockConnect-1.62.jar"               → versionLabel = "1.62"
 struct JarLibraryItem: Identifiable, Hashable {
     let url: URL
 

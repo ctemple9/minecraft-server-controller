@@ -41,7 +41,7 @@ struct OverviewServerStatusBarView: View {
                         HStack(spacing: MSC.Spacing.sm) {
 
                             Button {
-                    viewModel.sendQuickCommand("save-all")
+                    viewModel.runSaveAll()
                 } label: {
                     Label("Save World", systemImage: "arrow.down.doc")
                 }

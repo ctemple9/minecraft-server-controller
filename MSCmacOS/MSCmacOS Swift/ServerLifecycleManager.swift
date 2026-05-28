@@ -31,7 +31,7 @@ final class ServerLifecycleManager {
     // MARK: - Stop requested
 
     /// Set to true when the user initiates a stop.
-    /// Used to prevent delayed auto-start tasks (Broadcast/BedrockConnect) from firing during shutdown.
+    /// Used to prevent delayed auto-start tasks (Broadcast) from firing during shutdown.
     var isStopRequested: Bool = false
 
     // MARK: - Initiate / first-run state (per run, per server)

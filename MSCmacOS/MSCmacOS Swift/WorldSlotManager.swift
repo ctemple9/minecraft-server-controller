@@ -161,7 +161,11 @@ enum WorldSlotManager {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return fallback }
 
-        let invalid = CharacterSet(charactersIn: "/\\:\n\r\t")
+        // BDS strips '=' when resolving the level-name to a folder name, so we
+        // normalise it out here to prevent a mismatch between server.properties
+        // and the actual worlds/ subdirectory (e.g. base64-encoded Realm exports
+        // whose folder names end with a padding '=').
+        let invalid = CharacterSet(charactersIn: "/\\:\n\r\t=")
         let components = trimmed.components(separatedBy: invalid)
         let collapsed = components
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

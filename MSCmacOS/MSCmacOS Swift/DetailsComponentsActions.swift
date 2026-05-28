@@ -146,43 +146,4 @@ extension DetailsComponentsTabView {
         }
     }
 
-    func replaceBedrockConnectJarFromFilePicker() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.canCreateDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedFileTypes = ["jar"]
-        panel.prompt = "Replace"
-
-        if panel.runModal() == .OK, let srcURL = panel.url {
-            guard let path = viewModel.configManager.config.bedrockConnectJarPath, !path.isEmpty else {
-                viewModel.logAppMessage("[Components] Bedrock Connect JAR path is not configured. Use the JAR Manager first.")
-                return
-            }
-
-            let destURL = URL(fileURLWithPath: path)
-            do {
-                let fm = FileManager.default
-                try fm.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                if fm.fileExists(atPath: destURL.path) {
-                    try fm.removeItem(at: destURL)
-                }
-                try fm.copyItem(at: srcURL, to: destURL)
-                viewModel.logAppMessage("[Components] Replaced Bedrock Connect JAR with \(srcURL.lastPathComponent).")
-                viewModel.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
-            } catch {
-                viewModel.logAppMessage("[Components] Failed to replace Bedrock Connect JAR: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    func revealBedrockConnectJarInFinder() {
-        if let path = viewModel.configManager.config.bedrockConnectJarPath, !path.isEmpty {
-            viewModel.revealInFinder(url: URL(fileURLWithPath: path))
-        } else {
-            viewModel.openBedrockConnectJarFolder()
-        }
-    }
-
 }

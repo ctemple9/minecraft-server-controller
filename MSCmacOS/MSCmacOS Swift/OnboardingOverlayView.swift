@@ -39,7 +39,10 @@ struct OnboardingOverlayView: View {
                         Color.black.opacity(0.72)
                             .ignoresSafeArea()
                     } else {
-                        dimLayer(in: geo.size)
+                        ZStack(alignment: .topLeading) {
+                            dimLayer(in: geo.size)
+                        }
+                        .allowsHitTesting(false)
                     }
 
                     tooltipCard(in: geo.size)
@@ -191,11 +194,20 @@ struct OnboardingOverlayView: View {
         let spaceBelow = size.height - (spotlight.maxY + 16)
         let placeBelow = spaceBelow >= cardEstimatedHeight
 
-        let cardY: CGFloat = placeBelow
+        let idealY: CGFloat = placeBelow
             ? spotlight.maxY + 16 + cardEstimatedHeight / 2
             : spotlight.minY - 16 - cardEstimatedHeight / 2
-        let cardX = max(cardWidth / 2 + 16,
-                        min(size.width - cardWidth / 2 - 16, spotlight.midX))
+
+        // When the spotlight is in the lower 35% of the view (footer buttons like
+        // Continue or Create Server), park the card at the top so it doesn't block
+        // the content the user needs to read or fill in.
+        let isBottomAnchored = spotlight.midY > size.height * 0.65
+        let cardY: CGFloat = isBottomAnchored
+            ? cardEstimatedHeight / 2 + 80
+            : idealY
+        let cardX: CGFloat = isBottomAnchored
+            ? size.width / 2
+            : max(cardWidth / 2 + 16, min(size.width - cardWidth / 2 - 16, spotlight.midX))
 
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
             if let idx = step.displayIndex {
@@ -264,7 +276,7 @@ struct OnboardingOverlayView: View {
                     Image(systemName: "hand.tap.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(manager.accentColor)
-                    Text("Tap the highlighted element above")
+                    Text(step.instruction ?? "Tap the highlighted element above")
                         .font(.system(size: 11))
                         .foregroundStyle(.white.opacity(0.55))
                 }
@@ -300,15 +312,11 @@ struct OnboardingOverlayView: View {
         switch step {
         case .manageServers:         return f[OnboardingAnchorID.manageServersButton.rawValue] ?? .zero
         case .createServer:          return f[OnboardingAnchorID.createServerButton.rawValue] ?? .zero
+        case .wizardChoosePath:      return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .serverName:            return f[OnboardingAnchorID.serverNameField.rawValue] ?? .zero
         case .serverType:            return f[OnboardingAnchorID.serverTypeSelector.rawValue] ?? .zero
-        case .serverSettings:
-            return f[OnboardingAnchorID.serverSettingsArea.rawValue] ?? .zero
-        case .firstWorld:
-            return unionFrame(
-                f[OnboardingAnchorID.worldSourceArea.rawValue] ?? .zero,
-                f[OnboardingAnchorID.worldCreationArea.rawValue] ?? .zero
-            )
+        case .serverSettings:        return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
+        case .firstWorld:            return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .createButton:          return f[OnboardingAnchorID.createSaveButton.rawValue] ?? .zero
         case .dismissManage:         return f[OnboardingAnchorID.manageServersDoneButton.rawValue] ?? .zero
         case .acceptEula:            return f[OnboardingAnchorID.acceptEulaButton.rawValue] ?? .zero

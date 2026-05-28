@@ -79,23 +79,11 @@ struct DetailsComponentsTabView: View {
                         )
                     }
 
-                    ComponentSectionCard(title: "Bedrock Connect", icon: "network") {
-                        componentCard(
-                            title: "Bedrock Connect",
-                            icon: "server.rack",
-                            local: viewModel.componentsSnapshot.bedrockConnect.local,
-                            template: nil,
-                            online: viewModel.componentsSnapshot.bedrockConnect.online,
-                            isDownloading: false,
-                            onDownloadLatest: { viewModel.downloadOrUpdateBedrockConnectJar() },
-                            onReveal: revealBedrockConnectJarInFinder
-                        )
-                    }
                 }
 
                 if isBedrock {
                     BedrockRuntimeSectionCard()
-                    BedrockConnectStandaloneSectionCard()
+                    bedrockBroadcastCard
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,7 +91,68 @@ struct DetailsComponentsTabView: View {
         }
     }
 
-    // MARK: - Generic component card row (Geyser, Floodgate, Broadcast, BedrockConnect)
+    // MARK: - Bedrock broadcast card (Docker container)
+
+    @ViewBuilder private var bedrockBroadcastCard: some View {
+        ComponentSectionCard(title: "Broadcast", icon: "gamecontroller.fill") {
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+
+                HStack(spacing: MSC.Spacing.sm) {
+                    Label("MCXboxBroadcast Standalone", systemImage: "antenna.radiowaves.left.and.right")
+                        .font(MSC.Typography.cardTitle)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    MSCStatusDot(
+                        color: viewModel.isBedrockBroadcastRunning ? MSC.Colors.success : MSC.Colors.neutral,
+                        label: viewModel.isBedrockBroadcastRunning ? "Running" : "Stopped"
+                    )
+                }
+
+                HStack {
+                    Text("Image").font(MSC.Typography.caption).foregroundStyle(MSC.Colors.tertiary).frame(width: 44, alignment: .leading)
+                    Text("ghcr.io/mcxboxbroadcast/standalone:latest")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+
+                if let server = viewModel.selectedServer,
+                   let cfg = viewModel.configServer(for: server) {
+                    let port = viewModel.effectiveBedrockPort(for: cfg) ?? 19132
+                    let transferHost = viewModel.previewBroadcastHost(for: cfg, mode: cfg.xboxBroadcastIPMode)
+                    HStack {
+                        Text("Transfers to").font(MSC.Typography.caption).foregroundStyle(MSC.Colors.tertiary).frame(width: 72, alignment: .leading)
+                        Text("\(transferHost):\(port)")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Divider().opacity(0.5)
+
+                Text("Broadcasts your BDS server over Xbox Live — PS5, Switch, Xbox, mobile, and Windows players can join via the Friends tab. Enable auto-start in the sidebar to have this container start and stop with your server.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: MSC.Spacing.sm) {
+                    Button("Pull Latest") {
+                        viewModel.pullBedrockBroadcastImage()
+                    }
+                    Button("Open Data Folder") {
+                        if let server = viewModel.selectedServer,
+                           let cfg = viewModel.configServer(for: server) {
+                            let url = BedrockBroadcastManager.dataDirectoryURL(for: cfg)
+                            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+            }
+        }
+    }
+
+    // MARK: - Generic component card row (Geyser, Floodgate, Broadcast)
 
     private func componentCard(
         title: String,
@@ -586,104 +635,6 @@ private struct BedrockRuntimeSectionCard: View {
         }
         .onAppear {
             viewModel.fetchBedrockVersionsIfNeeded()
-        }
-    }
-}
-
-// MARK: - Bedrock Connect Standalone Section Card
-
-private struct BedrockConnectStandaloneSectionCard: View {
-    @EnvironmentObject var viewModel: AppViewModel
-
-    private var server: ConfigServer? {
-        viewModel.selectedServer.flatMap { viewModel.configServer(for: $0) }
-    }
-
-    private var isInstalled: Bool { viewModel.isBedrockConnectJarInstalled }
-
-    private var isEnabled: Bool {
-        server?.bedrockConnectStandaloneEnabled ?? false
-    }
-
-    var body: some View {
-        ComponentSectionCard(title: "Bedrock Connect", icon: "network") {
-            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-
-                HStack(spacing: MSC.Spacing.sm) {
-                    Label("Bedrock Connect", systemImage: "gamecontroller.fill")
-                        .font(MSC.Typography.cardTitle)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    BedrockStatusPill(
-                        label: isInstalled ? (isEnabled ? "Enabled" : "Installed") : "Not installed",
-                        symbol: isInstalled ? (isEnabled ? "checkmark.circle.fill" : "circle") : "xmark.circle",
-                        color: isInstalled ? (isEnabled ? MSC.Colors.success : MSC.Colors.tertiary) : MSC.Colors.error
-                    )
-                }
-
-                Text("Bedrock Connect lets players on PlayStation, Nintendo Switch, and Xbox join your server by redirecting the built-in Featured Servers list to your IP.")
-                    .font(MSC.Typography.caption)
-                    .foregroundStyle(MSC.Colors.caption)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Divider().opacity(0.5)
-
-                ComponentVersionRow(
-                    label: "JAR",
-                    value: viewModel.componentsSnapshot.bedrockConnect.local ?? "Not downloaded",
-                    missing: viewModel.componentsSnapshot.bedrockConnect.local == nil
-                )
-                ComponentVersionRow(
-                    label: "DNS Port",
-                    value: viewModel.configManager.config.bedrockConnectDNSPort.map { "\($0)" } ?? "19132 (default)"
-                )
-
-                HStack(spacing: MSC.Spacing.sm) {
-                    Button {
-                        viewModel.downloadOrUpdateBedrockConnectJar()
-                    } label: {
-                        Label("Download Latest", systemImage: "arrow.down.circle.fill")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.mini)
-
-                    Button {
-                        viewModel.openBedrockConnectJarFolder()
-                    } label: {
-                        Label("Reveal", systemImage: "folder")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.mini)
-
-                    Spacer()
-
-                    Button {
-                        NSApp.sendAction(#selector(NSWindow.makeKeyAndOrderFront(_:)), to: nil, from: nil)
-                        viewModel.logAppMessage("[BedrockConnect] See the Bedrock Connect section in the sidebar to configure DNS port and auto-start settings.")
-                    } label: {
-                        Label("Settings\u{2026}", systemImage: "sidebar.left")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.mini)
-                    .help("Open Cross-Platform Access in the sidebar for DNS port and auto-start settings")
-                }
-
-                let globalDNSPort = viewModel.configManager.config.bedrockConnectDNSPort ?? 19132
-                if isEnabled,
-                   let srv = server,
-                   let serverPort = srv.bedrockPort,
-                   globalDNSPort == serverPort {
-                    HStack(spacing: MSC.Spacing.xs) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(MSC.Colors.warning)
-                            .font(MSC.Typography.caption)
-                        Text("DNS port \(globalDNSPort) collides with this server's Bedrock port. Change the DNS port in Server Settings \u{2192} Bedrock Connect.")
-                            .font(MSC.Typography.caption)
-                            .foregroundStyle(MSC.Colors.warning)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
         }
     }
 }

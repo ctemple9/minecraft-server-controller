@@ -30,7 +30,6 @@ extension AppViewModel {
         snapshot.geyser.local     = localPluginBuildString(for: cfg, matching: "geyser")
         snapshot.floodgate.local  = localPluginBuildString(for: cfg, matching: "floodgate")
         snapshot.broadcast.local  = localBroadcastVersionString()
-        snapshot.bedrockConnect.local = localBedrockConnectVersionString()
 
         snapshot.paper.template    = nil
         snapshot.geyser.template   = nil
@@ -41,7 +40,6 @@ extension AppViewModel {
             snapshot.geyser.online       = nil
             snapshot.floodgate.online    = nil
             snapshot.broadcast.online    = nil
-            snapshot.bedrockConnect.online = nil
             componentsOnlineErrorMessage = nil
             availablePaperVersions       = []
             selectedPaperVersionOption   = nil
@@ -50,8 +48,7 @@ extension AppViewModel {
         componentsSnapshot = snapshot
     }
 
-    /// Full online check: Paper version list + Geyser, Floodgate, Broadcast,
-    /// and BedrockConnect. All fetches run concurrently.
+    /// Full online check: Paper version list + Geyser, Floodgate, Broadcast. All fetches run concurrently.
     func checkComponentsOnline() {
         guard !isCheckingComponentsOnline else { return }
 
@@ -72,12 +69,9 @@ extension AppViewModel {
                 async let broadcastTag    = GitHubReleaseChecker.fetchLatestReleaseTag(
                     owner: "MCXboxBroadcast", repo: "Broadcaster"
                 )
-                async let bedrockConnectTag = GitHubReleaseChecker.fetchLatestReleaseTag(
-                    owner: "Pugmatt", repo: "BedrockConnect"
-                )
 
-                let (versions, g, f, b, bc) = try await (
-                    paperVersions, geyserMeta, floodgateMeta, broadcastTag, bedrockConnectTag
+                let (versions, g, f, b) = try await (
+                    paperVersions, geyserMeta, floodgateMeta, broadcastTag
                 )
 
                 await MainActor.run {
@@ -86,7 +80,6 @@ extension AppViewModel {
                     snapshot.geyser.online      = "\(g.version) (build \(g.build))"
                     snapshot.floodgate.online   = "\(f.version) (build \(f.build))"
                     snapshot.broadcast.online   = b
-                    snapshot.bedrockConnect.online = bc
                     self.componentsSnapshot     = snapshot
                     self.availablePaperVersions = versions
                     self.isCheckingComponentsOnline = false
@@ -102,7 +95,7 @@ extension AppViewModel {
 
     /// Paper-only online check. Called automatically when the user switches tracks
     /// (Stable vs Experimental) so the version list refreshes without re-checking
-    /// Geyser, Floodgate, Broadcast, or BedrockConnect.
+    /// Geyser, Floodgate, or Broadcast.
     func checkPaperVersionsOnline() {
         guard !isCheckingComponentsOnline else { return }
 
@@ -292,24 +285,6 @@ extension AppViewModel {
            let s = String(data: data, encoding: .utf8) {
             let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty { return trimmed }
-        }
-
-        return "Installed (version unknown)"
-    }
-
-    // MARK: - Bedrock Connect local version tracking
-
-    private func localBedrockConnectVersionString() -> String? {
-        guard let path = configManager.config.bedrockConnectJarPath,
-              !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              FileManager.default.fileExists(atPath: path) else { return nil }
-
-        let filename = URL(fileURLWithPath: path).lastPathComponent
-        let base     = filename.replacingOccurrences(of: ".jar", with: "", options: .caseInsensitive)
-        let prefix   = "BedrockConnect-"
-        if base.hasPrefix(prefix) {
-            let version = String(base.dropFirst(prefix.count))
-            if !version.isEmpty { return version }
         }
 
         return "Installed (version unknown)"

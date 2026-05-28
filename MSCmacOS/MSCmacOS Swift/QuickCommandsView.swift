@@ -240,8 +240,10 @@ struct QuickCommandsView: View {
                         ActionButton(icon: "arrow.down.doc", label: "Save All") {
                             viewModel.runSaveAll()
                         }
-                        ActionButton(icon: "arrow.clockwise", label: "Reload") {
-                            viewModel.runReload()
+                        if !viewModel.selectedServerIsBedrock {
+                            ActionButton(icon: "arrow.clockwise", label: "Reload") {
+                                viewModel.runReload()
+                            }
                         }
                     }
                 }

@@ -261,7 +261,7 @@ extension AppViewModel {
 
     // MARK: - Card: Components (Java)
     //
-    // Java: Paper · Geyser · Floodgate · XboxBroadcast · BedrockConnect (as plugin)
+    // Java: Paper · Geyser · Floodgate · XboxBroadcast
     // Red    — Paper JAR missing (required)
     // Yellow — at least one installed JAR has an update available
     // Green  — all installed JARs up to date
@@ -284,7 +284,6 @@ extension AppViewModel {
             ("Geyser",         snap.geyser.local,         snap.geyser.online),
             ("Floodgate",      snap.floodgate.local,      snap.floodgate.online),
             ("XboxBroadcast",  snap.broadcast.local,      snap.broadcast.online),
-            ("BedrockConnect", snap.bedrockConnect.local,  snap.bedrockConnect.online),
         ]
 
         let installed = allComponents.filter { $0.local != nil }
@@ -335,17 +334,11 @@ extension AppViewModel {
         )
     }
 
-    // MARK: - Card: Bedrock Components (merged: BDS Image + BedrockConnect standalone)
-    //
-    // This replaces both the old standalone bdsImage card and the old jar card for Bedrock.
-    // Worst status wins: if BDS image is red, the whole card is red.
-    // BedrockConnect is optional — gray if not installed, green/yellow if installed.
+    // MARK: - Card: Bedrock Components (BDS Image)
 
     private func checkBedrockComponents(for server: ConfigServer) async -> HealthCardResult {
-        // --- BDS Image check (primary — determines red vs not-red) ---
         let imageResult = await checkBedrockImageStatus()
 
-        // RED: BDS image is not pulled. Nothing else matters.
         if imageResult.status == .red {
             return HealthCardResult(
                 id: "jar",
@@ -356,37 +349,10 @@ extension AppViewModel {
             )
         }
 
-        // Image is present. Now check BedrockConnect — but ONLY if it is enabled.
-        // If BC is not enabled, its installation state is irrelevant and does not affect status.
-        let bcEnabled = server.bedrockConnectStandaloneEnabled
-        let bcInstalled = await MainActor.run { isBedrockConnectJarInstalled }
-
-        var lines: [String] = []
-        lines.append("BDS Image: \(imageResult.summary)")
-
-        if bcEnabled && !bcInstalled {
-            // YELLOW: User turned on BC but hasn't downloaded the JAR yet.
-            lines.append("BedrockConnect: enabled but JAR not installed")
-            return HealthCardResult(
-                id: "jar",
-                status: .yellow,
-                detectedValue: lines.joined(separator: "\n"),
-                actionLabel: "Go to Components",
-                actionType: .openComponentsTab
-            )
-        }
-
-        // GREEN: image is present; BC is either not enabled (irrelevant) or enabled+installed.
-        if bcEnabled && bcInstalled {
-            lines.append("BedrockConnect: installed and enabled")
-        } else {
-            lines.append("BedrockConnect: not enabled")
-        }
-
         return HealthCardResult(
             id: "jar",
             status: .green,
-            detectedValue: lines.joined(separator: "\n"),
+            detectedValue: "BDS Image: \(imageResult.summary)",
             actionLabel: "Manage in Components",
             actionType: .openComponentsTab
         )
@@ -414,24 +380,6 @@ extension AppViewModel {
         }
         let firstLine = output.components(separatedBy: "\n").first ?? output
         return ComponentCheckSummary(status: .green, summary: firstLine)
-    }
-
-    // Must be called on MainActor since it reads isBedrockConnectJarInstalled
-    @MainActor
-    private func checkBedrockConnectStandaloneStatus(for server: ConfigServer) -> ComponentCheckSummary {
-        // Check if BedrockConnect standalone JAR is installed in the app's BC directory
-        let jarExists = isBedrockConnectJarInstalled
-        if !jarExists {
-            return ComponentCheckSummary(status: .gray, summary: "Not installed (optional)")
-        }
-
-        // Check if it's enabled for this server
-        let enabled = server.bedrockConnectStandaloneEnabled
-        if !enabled {
-            return ComponentCheckSummary(status: .yellow, summary: "Installed, not enabled")
-        }
-
-        return ComponentCheckSummary(status: .green, summary: "Installed and enabled")
     }
 
     // MARK: - Card: RAM Allocation (Java)

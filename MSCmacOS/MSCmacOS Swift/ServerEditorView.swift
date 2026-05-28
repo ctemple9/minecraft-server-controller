@@ -19,7 +19,6 @@ struct ServerEditorView: View {
         case world
         case settings
         case broadcast
-        case bedrockConnect
         case docker
     }
 
@@ -93,7 +92,6 @@ struct ServerEditorView: View {
     // HUD
     @State var showSaveHUD: Bool = false
     @State var isShowingCrossPlatformGuide: Bool = false
-      @State var isShowingPortForwardGuideFromEditor: Bool = false
 
     // Danger zone
     @State var showDeleteServerConfirm = false
@@ -151,7 +149,7 @@ struct ServerEditorView: View {
 
     var safeTab: EditorTab {
         if data.serverType == .bedrock {
-            let bedrockTabs: Set<EditorTab> = [.general, .backups, .world, .settings, .bedrockConnect, .docker]
+            let bedrockTabs: Set<EditorTab> = [.general, .backups, .world, .settings, .docker, .broadcast]
             return bedrockTabs.contains(selectedTab) ? selectedTab : .general
         }
         return selectedTab
@@ -165,9 +163,7 @@ struct ServerEditorView: View {
         case .backups:        backupsTab
         case .world:          worldTab
         case .settings:       settingsTab
-        case .broadcast:      broadcastTab
-        case .bedrockConnect:
-            if data.serverType == .java { bedrockConnectTab } else { consoleAccessTab }
+        case .broadcast:      data.serverType == .bedrock ? AnyView(bedrockBroadcastTab) : AnyView(broadcastTab)
         case .docker:         dockerTab
         }
     }
@@ -180,8 +176,6 @@ struct ServerEditorView: View {
             "server-editor.world",
             "server-editor.settings",
             "server-editor.broadcast",
-            "server-editor.bedrock-connect.java",
-            "server-editor.bedrock-connect.bedrock",
             "server-editor.docker"
         ]
     }
@@ -194,10 +188,6 @@ struct ServerEditorView: View {
         case .world: return "serverEditor.content.world"
         case .settings: return "serverEditor.content.settings"
         case .broadcast: return "serverEditor.content.broadcast"
-        case .bedrockConnect:
-            return data.serverType == .java
-                ? "serverEditor.content.bedrockConnect.java"
-                : "serverEditor.content.bedrockConnect.bedrock"
         case .docker: return "serverEditor.content.docker"
         }
     }
@@ -256,8 +246,6 @@ struct ServerEditorView: View {
             return settingsHelpGuide
         case .broadcast:
             return broadcastHelpGuide
-        case .bedrockConnect:
-            return data.serverType == .java ? javaBedrockConnectHelpGuide : bedrockConsoleAccessHelpGuide
         case .docker:
             return dockerHelpGuide
         }
@@ -593,64 +581,6 @@ struct ServerEditorView: View {
         )
     }
 
-    var javaBedrockConnectHelpGuide: ContextualHelpGuide {
-        return ContextualHelpGuide(
-            id: "server-editor.bedrock-connect.java",
-            steps: [
-                helpStep(
-                    id: "bedrockConnectJava.scope",
-                    title: "Bedrock Connect is a shared console-access service",
-                    body: "On Java servers, this tab explains the global Bedrock Connect service and how this server contributes its host and Bedrock port to the generated console list.",
-                    anchorID: tabAnchorID(.bedrockConnect)
-                ),
-                helpStep(
-                    id: "bedrockConnectJava.decisions",
-                    title: "Most rows here are global or derived",
-                    body: "The service and DNS settings are shared across servers. The host and Bedrock port shown for this server are previews driven by Broadcast and Server Settings.",
-                    anchorID: currentTabContentAnchorID
-                ),
-                helpStep(
-                    id: "bedrockConnectJava.save",
-                    title: "DNS changes save immediately",
-                    body: "The DNS port field writes to app config as soon as you change it, and Download/Open actions also run immediately. The footer Save does not control those global actions.",
-                    anchorID: saveButtonAnchorID,
-                    nextLabel: "Done"
-                )
-            ]
-        )
-    }
-
-    var bedrockConsoleAccessHelpGuide: ContextualHelpGuide {
-        let scopeBody = editorHasSavedServer
-            ? "On Bedrock servers, this tab still controls the shared Bedrock Connect service. This server's host and Bedrock port simply feed the list console players will see."
-            : "On Bedrock servers, this tab can still configure the shared Bedrock Connect service before the server is saved. The per-server listing becomes meaningful once this server has a saved host and Bedrock port."
-
-        return ContextualHelpGuide(
-            id: "server-editor.bedrock-connect.bedrock",
-            steps: [
-                helpStep(
-                    id: "bedrockConnectBedrock.scope",
-                    title: "Bedrock Connect is still a global service",
-                    body: scopeBody,
-                    anchorID: tabAnchorID(.bedrockConnect)
-                ),
-                helpStep(
-                    id: "bedrockConnectBedrock.decisions",
-                    title: "Console DNS lives here; server behavior does not",
-                    body: "Use this tab for the shared console-join pathway. Bedrock gameplay and normal server settings still belong in the other Edit Server tabs.",
-                    anchorID: currentTabContentAnchorID
-                ),
-                helpStep(
-                    id: "bedrockConnectBedrock.save",
-                    title: "DNS changes save immediately",
-                    body: "The DNS port field writes to app config as soon as you change it, and Download/Open actions also run immediately. The footer Save is only for normal editor fields elsewhere.",
-                    anchorID: saveButtonAnchorID,
-                    nextLabel: "Done"
-                )
-            ]
-        )
-    }
-
     var dockerHelpGuide: ContextualHelpGuide {
         return ContextualHelpGuide(
             id: "server-editor.docker",
@@ -706,7 +636,6 @@ struct ServerEditorView: View {
         case .world: return "serverEditor.tab.world"
         case .settings: return "serverEditor.tab.settings"
         case .broadcast: return "serverEditor.tab.broadcast"
-        case .bedrockConnect: return "serverEditor.tab.bedrockConnect"
         case .docker: return "serverEditor.tab.docker"
         }
     }
@@ -770,13 +699,6 @@ struct ServerEditorView: View {
         // Cross-Platform Setup Guide
                         .sheet(isPresented: $isShowingCrossPlatformGuide) {
                             CrossPlatformGuideSheet().environmentObject(viewModel)
-                        }
-                        // Router Port Forwarding Guide (opened from Bedrock Connect tab)
-                        .sheet(isPresented: $isShowingPortForwardGuideFromEditor) {
-                            RouterPortForwardGuideSheet(
-                                runtimeContext: viewModel.routerPortForwardGuideRuntimeContextForSelectedServer()
-                            )
-                            .environmentObject(viewModel)
                         }
                 // Delete server confirmation
                 .confirmationDialog("Delete Server from Disk?",
@@ -867,16 +789,14 @@ struct ServerEditorView: View {
                     .contextualHelpAnchor(tabAnchorID(.settings))
 
                 if data.serverType == .java {
-                    SETabButton(icon: "dot.radiowaves.left.and.right", label: "Broadcast",       tab: .broadcast,      selected: $selectedTab)
+                    SETabButton(icon: "dot.radiowaves.left.and.right", label: "Broadcast", tab: .broadcast, selected: $selectedTab)
                         .contextualHelpAnchor(tabAnchorID(.broadcast))
-                    SETabButton(icon: "gamecontroller.fill",           label: "Bedrock Connect", tab: .bedrockConnect, selected: $selectedTab)
-                        .contextualHelpAnchor(tabAnchorID(.bedrockConnect))
                 }
 
                 if data.serverType == .bedrock {
-                    SETabButton(icon: "gamecontroller.fill", label: "Bedrock Connect", tab: .bedrockConnect, selected: $selectedTab)
-                        .contextualHelpAnchor(tabAnchorID(.bedrockConnect))
-                    SETabButton(icon: "shippingbox.fill",    label: "Docker",          tab: .docker,         selected: $selectedTab)
+                    SETabButton(icon: "dot.radiowaves.left.and.right", label: "Broadcast", tab: .broadcast, selected: $selectedTab)
+                        .contextualHelpAnchor(tabAnchorID(.broadcast))
+                    SETabButton(icon: "shippingbox.fill", label: "Docker", tab: .docker, selected: $selectedTab)
                         .contextualHelpAnchor(tabAnchorID(.docker))
                 }
             }
@@ -909,15 +829,29 @@ struct ServerEditorView: View {
                     onSave(data)
 
                     if let cfg = editingConfigServer {
-                        viewModel.updateBroadcastProfile(
-                            for: cfg.id,
-                            enabled: broadcastEnabled,
-                            ipMode: broadcastIPMode,
-                            altEmail: broadcastAltEmail,
-                            altGamertag: broadcastAltGamertag,
-                            altPassword: broadcastAltPassword,
-                            altAvatarPath: broadcastAvatarPath
-                        )
+                        if data.serverType == .bedrock {
+                            // Bedrock broadcast: only needs enabled + IP mode.
+                            // Alt account fields are Java-JAR-only; pass empty strings.
+                            viewModel.updateBroadcastProfile(
+                                for: cfg.id,
+                                enabled: broadcastEnabled,
+                                ipMode: broadcastIPMode,
+                                altEmail: "",
+                                altGamertag: "",
+                                altPassword: "",
+                                altAvatarPath: ""
+                            )
+                        } else {
+                            viewModel.updateBroadcastProfile(
+                                for: cfg.id,
+                                enabled: broadcastEnabled,
+                                ipMode: broadcastIPMode,
+                                altEmail: broadcastAltEmail,
+                                altGamertag: broadcastAltGamertag,
+                                altPassword: broadcastAltPassword,
+                                altAvatarPath: broadcastAvatarPath
+                            )
+                        }
                     }
 
                     withAnimation { showSaveHUD = true }

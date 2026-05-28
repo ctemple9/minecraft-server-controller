@@ -11,7 +11,7 @@ extension OverviewHealthCardView {
 
     var outdatedJarCount: Int {
         let snap = viewModel.componentsSnapshot
-        let infos = [snap.paper, snap.geyser, snap.floodgate, snap.broadcast, snap.bedrockConnect]
+        let infos = [snap.paper, snap.geyser, snap.floodgate, snap.broadcast]
         return infos.filter { info in
             guard let local = info.local, let online = info.online else { return false }
             return !jarVersionsMatch(local, online)

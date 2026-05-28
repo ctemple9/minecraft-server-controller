@@ -21,7 +21,6 @@ enum WelcomeGuideTopic: String, CaseIterable, Identifiable {
     case eulaOnlineMode
     case portsForwardingDuckDNS
     case broadcast
-    case bedrockConnect
     case worldsBackups
     case remoteAccess
     case firstServer
@@ -42,7 +41,6 @@ enum WelcomeGuideTopic: String, CaseIterable, Identifiable {
         case .eulaOnlineMode:         return "EULA & Online Mode"
         case .portsForwardingDuckDNS: return "Ports & DuckDNS"
         case .broadcast:              return "Xbox Broadcast"
-        case .bedrockConnect:         return "Bedrock Connect"
         case .worldsBackups:          return "Worlds & Backups"
         case .remoteAccess:           return "MSC Remote (iOS)"
         case .firstServer:            return "Your First Java Server"
@@ -63,7 +61,6 @@ enum WelcomeGuideTopic: String, CaseIterable, Identifiable {
         case .eulaOnlineMode:         return "checkmark.seal.fill"
         case .portsForwardingDuckDNS: return "network"
         case .broadcast:              return "dot.radiowaves.left.and.right"
-        case .bedrockConnect:         return "gamecontroller.fill"
         case .worldsBackups:          return "archivebox.fill"
         case .remoteAccess:           return "iphone"
         case .firstServer:            return "flag.checkered"
@@ -78,7 +75,7 @@ enum WelcomeGuideTopic: String, CaseIterable, Identifiable {
             return .basics
         case .pluginsGeyserFloodgate, .eulaOnlineMode, .portsForwardingDuckDNS:
             return .setup
-        case .broadcast, .bedrockConnect, .remoteAccess:
+        case .broadcast, .remoteAccess:
             return .advanced
         case .worldsBackups, .firstServer, .bedrockSetup, .serverFiles:
             return .management
@@ -448,7 +445,6 @@ struct WelcomeGuideView: View {
         case .eulaOnlineMode:           eulaOnlineModeContent
         case .portsForwardingDuckDNS:   portsForwardingDuckDNSContent
         case .broadcast:                broadcastContent
-        case .bedrockConnect:           bedrockConnectContent
         case .worldsBackups:            worldsBackupsContent
         case .remoteAccess:             remoteAccessContent
         case .firstServer:              firstServerContent

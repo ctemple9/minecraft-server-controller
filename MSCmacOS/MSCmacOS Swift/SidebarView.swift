@@ -80,18 +80,18 @@ struct SidebarView: View {
                 ),
                 sidebarHelpStep(
                     id: "crossPlatform.content",
-                    title: isBedrockServer ? "What lives here" : "What lives here",
+                    title: "What lives here",
                     body: isBedrockServer
-                        ? "For Bedrock servers, this section stays focused on Bedrock Connect status, DNS details, and whether the helper is installed."
-                        : "For Java servers, this section summarizes Xbox Broadcast and Bedrock Connect so you can see what is installed and start or stop those helpers without leaving the sidebar.",
+                        ? "For Bedrock servers, this section shows Xbox Broadcast status. MCXboxBroadcast Standalone runs as a Docker container alongside your BDS — the app does not manage it directly."
+                        : "For Java servers, this section summarizes Xbox Broadcast so you can see what is installed and start or stop the helper without leaving the sidebar.",
                     anchorID: crossPlatformContentAnchorID
                 ),
                 sidebarHelpStep(
                     id: "crossPlatform.autostart",
                     title: "Auto-start and deeper setup",
                     body: isBedrockServer
-                        ? "If Bedrock Connect is installed, you can let it auto-start with the server here. If it is not installed yet, use Edit Server or Components for the real setup work."
-                        : "If a helper is installed, you can let it auto-start with the server here. Use Edit Server for the deeper setup path, because this sidebar section is only the quick-control surface.",
+                        ? "Use the Components tab to find setup guidance for MCXboxBroadcast Standalone alongside your BDS."
+                        : "If Xbox Broadcast is installed, you can let it auto-start with the server here. Use Edit Server for the deeper setup path, because this sidebar section is only the quick-control surface.",
                     anchorID: crossPlatformAutoStartAnchorID,
                     nextLabel: "Done"
                 )
@@ -496,30 +496,62 @@ private struct SidebarDisclosureSection<Content: View>: View {
 
 struct BedrockCrossPlatformSidebarSection: View {
     @EnvironmentObject var viewModel: AppViewModel
+    @State private var showingInfoPopover = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            BedrockConnectSidebarRow().environmentObject(viewModel)
-
-            if viewModel.isBedrockConnectJarInstalled {
-                HStack {
-                    Text("Bedrock Connect auto-start").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Toggle("", isOn: Binding(
-                        get: { viewModel.bedrockConnectAutoStartEnabled },
-                        set: { viewModel.bedrockConnectAutoStartEnabled = $0 }
-                    ))
-                    .labelsHidden().toggleStyle(.switch).controlSize(.mini)
+            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                HStack(spacing: 4) {
+                    Text("Xbox Broadcast").font(MSC.Typography.cardTitle)
+                    Button {
+                        showingInfoPopover.toggle()
+                    } label: {
+                        Image(systemName: "info.circle").imageScale(.small).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingInfoPopover, arrowEdge: .trailing) {
+                        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                            Text("Xbox Broadcast").font(MSC.Typography.sectionHeader)
+                            Text("Runs a Docker container that broadcasts your BDS server to Xbox friends via a Microsoft alt account.")
+                                .font(MSC.Typography.caption).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(MSC.Spacing.md).frame(width: 220)
+                    }
                 }
-                .padding(.horizontal, MSC.Spacing.xs)
-                .padding(.vertical, MSC.Spacing.sm)
-                .background(
-                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                        .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.15))
-                )
-                .contextualHelpAnchor("sidebar.crossPlatform.autoStart")
-                .id("sidebar.crossPlatform.autoStart")
+
+                HStack(spacing: MSC.Spacing.sm) {
+                    MSCStatusDot(
+                        color: viewModel.isBedrockBroadcastRunning ? MSC.Colors.success : MSC.Colors.neutral,
+                        label: viewModel.isBedrockBroadcastRunning ? "Running" : "Stopped"
+                    )
+                    Spacer()
+                    Button(viewModel.isBedrockBroadcastRunning ? "Stop" : "Start") {
+                        if viewModel.isBedrockBroadcastRunning { viewModel.stopBedrockBroadcast() }
+                        else { viewModel.startBedrockBroadcast() }
+                    }
+                    .controlSize(.small)
+                }
             }
+            .contextualHelpAnchor("sidebar.crossPlatform.content")
+            .id("sidebar.crossPlatform.content")
+
+            HStack {
+                Text("Xbox Broadcast auto-start").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { viewModel.selectedServerXboxBroadcastEnabled },
+                    set: { viewModel.selectedServerXboxBroadcastEnabled = $0 }
+                ))
+                .labelsHidden().toggleStyle(.switch).controlSize(.mini)
+            }
+            .padding(.horizontal, MSC.Spacing.xs)
+            .padding(.vertical, MSC.Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color(nsColor: .quaternaryLabelColor).opacity(0.15))
+            )
+            .contextualHelpAnchor("sidebar.crossPlatform.autoStart")
+            .id("sidebar.crossPlatform.autoStart")
         }
     }
 }
@@ -548,6 +580,8 @@ struct XboxBroadcastSidebarRow: View {
     @EnvironmentObject var viewModel: AppViewModel
     @State private var showingInfoPopover = false
 
+    var notInstalledHint: String = "Set up in Edit Server \u{2192} Broadcast"
+
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
             HStack(spacing: 4) {
@@ -561,7 +595,7 @@ struct XboxBroadcastSidebarRow: View {
                 .popover(isPresented: $showingInfoPopover, arrowEdge: .trailing) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                         Text("Xbox Broadcast").font(MSC.Typography.sectionHeader)
-                        Text("Broadcasts your Bedrock server to Xbox friends via a Microsoft alt account. No port-forwarding needed.")
+                        Text("Broadcasts your server to Xbox friends via a Microsoft alt account.")
                             .font(MSC.Typography.caption).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(MSC.Spacing.md).frame(width: 220)
@@ -582,54 +616,7 @@ struct XboxBroadcastSidebarRow: View {
                     .controlSize(.small)
                 }
             } else {
-                Text("Set up in Edit Server \u{2192} Broadcast")
-                    .font(MSC.Typography.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-// MARK: - Bedrock Connect Sidebar Row
-
-struct BedrockConnectSidebarRow: View {
-    @EnvironmentObject var viewModel: AppViewModel
-    @State private var showingInfoPopover = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-            HStack(spacing: 4) {
-                Text("Bedrock Connect").font(MSC.Typography.cardTitle)
-                Button {
-                    showingInfoPopover.toggle()
-                } label: {
-                    Image(systemName: "info.circle").imageScale(.small).foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingInfoPopover, arrowEdge: .trailing) {
-                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                        Text("Bedrock Connect").font(MSC.Typography.sectionHeader)
-                        Text("Intercepts the Mojang server list on your network via DNS, replacing it with your own servers. Requires a DNS change on your router or console.")
-                            .font(MSC.Typography.caption).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(MSC.Spacing.md).frame(width: 220)
-                }
-            }
-
-            if viewModel.isBedrockConnectJarInstalled {
-                HStack(spacing: MSC.Spacing.sm) {
-                    MSCStatusDot(
-                        color: viewModel.isBedrockConnectRunning ? MSC.Colors.success : MSC.Colors.neutral,
-                        label: viewModel.isBedrockConnectRunning ? "Running" : "Stopped"
-                    )
-                    Spacer()
-                    Button(viewModel.isBedrockConnectRunning ? "Stop" : "Start") {
-                        if viewModel.isBedrockConnectRunning { viewModel.stopBedrockConnect() }
-                        else { viewModel.startBedrockConnect() }
-                    }
-                    .controlSize(.small)
-                }
-            } else {
-                Text("Set up in Edit Server \u{2192} Bedrock Connect")
+                Text(notInstalledHint)
                     .font(MSC.Typography.caption).foregroundStyle(.secondary)
             }
         }
@@ -644,33 +631,16 @@ struct CrossPlatformAccessSidebarSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
             XboxBroadcastSidebarRow().environmentObject(viewModel)
-            BedrockConnectSidebarRow().environmentObject(viewModel)
 
-            let eitherInstalled = viewModel.isXboxBroadcastHelperInstalled || viewModel.isBedrockConnectJarInstalled
-            if eitherInstalled {
-                VStack(spacing: 4) {
-                    if viewModel.isXboxBroadcastHelperInstalled {
-                        HStack {
-                            Text("Xbox Broadcast auto-start").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Toggle("", isOn: Binding(
-                                get: { viewModel.selectedServerXboxBroadcastEnabled },
-                                                                set: { viewModel.selectedServerXboxBroadcastEnabled = $0 }
-                            ))
-                            .labelsHidden().toggleStyle(.switch).controlSize(.mini)
-                        }
-                    }
-                    if viewModel.isBedrockConnectJarInstalled {
-                        HStack {
-                            Text("Bedrock Connect auto-start").font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Toggle("", isOn: Binding(
-                                get: { viewModel.bedrockConnectAutoStartEnabled },
-                                set: { viewModel.bedrockConnectAutoStartEnabled = $0 }
-                            ))
-                            .labelsHidden().toggleStyle(.switch).controlSize(.mini)
-                        }
-                    }
+            if viewModel.isXboxBroadcastHelperInstalled {
+                HStack {
+                    Text("Xbox Broadcast auto-start").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { viewModel.selectedServerXboxBroadcastEnabled },
+                        set: { viewModel.selectedServerXboxBroadcastEnabled = $0 }
+                    ))
+                    .labelsHidden().toggleStyle(.switch).controlSize(.mini)
                 }
                 .padding(.horizontal, MSC.Spacing.xs)
                 .padding(.vertical, MSC.Spacing.sm)

@@ -368,7 +368,16 @@ struct MinecraftCommandRegistry {
                   .keyword(options: ["on", "off", "add", "remove", "list", "reload"], label: "action"),
                   .playerName(label: "player (for add/remove)")
               ],
-              supportsJava: true, supportsBedrock: true),
+              supportsJava: true, supportsBedrock: false),
+
+        .init(name: "allowlist",
+              description: "Manage the BDS allowlist (Bedrock equivalent of whitelist)",
+              category: .serverAdmin,
+              argumentSlots: [
+                  .keyword(options: ["on", "off", "add", "remove", "list", "reload"], label: "action"),
+                  .playerName(label: "player (for add/remove)")
+              ],
+              supportsJava: false, supportsBedrock: true),
 
         .init(name: "banlist",
               description: "Display the current ban list",

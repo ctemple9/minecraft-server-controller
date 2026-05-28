@@ -16,27 +16,28 @@ enum OnboardingStep: Int, CaseIterable {
     case welcome               = 0
     case manageServers         = 1
     case createServer          = 2
-    case serverName            = 3
-    case serverType            = 4
-    case serverSettings        = 5
-    case firstWorld            = 6   // ← NEW: dedicated world creation step
-    case createButton          = 7
-    case dismissManage         = 8
-    case acceptEula            = 9
-    case startButton           = 10
-    case console               = 11
-    case continueDetails       = 12
-    case expandDetails         = 13
-    case detailsOverviewTab    = 14
-    case detailsPlayersTab     = 15
-    case detailsWorldsTab      = 16
-    case detailsPacksTab       = 17
-    case detailsPerformanceTab = 18
-    case detailsComponentsTab  = 19
-    case detailsSettingsTab    = 20
-    case detailsFilesTab       = 21
-    case portForwardGuide      = 22
-    case done                  = 23
+    case wizardChoosePath      = 3   // wizard Step 1: path picker
+    case serverName            = 4
+    case serverType            = 5
+    case serverSettings        = 6
+    case firstWorld            = 7
+    case createButton          = 8
+    case dismissManage         = 9
+    case acceptEula            = 10
+    case startButton           = 11
+    case console               = 12
+    case continueDetails       = 13
+    case expandDetails         = 14
+    case detailsOverviewTab    = 15
+    case detailsPlayersTab     = 16
+    case detailsWorldsTab      = 17
+    case detailsPacksTab       = 18
+    case detailsPerformanceTab = 19
+    case detailsComponentsTab  = 20
+    case detailsSettingsTab    = 21
+    case detailsFilesTab       = 22
+    case portForwardGuide      = 23
+    case done                  = 24
 
     var totalSteps: Int { OnboardingStep.allCases.count - 2 }
 
@@ -54,6 +55,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .welcome:               return "Welcome to MSC"
         case .manageServers:         return "Your Server List"
         case .createServer:          return "Create a Server"
+        case .wizardChoosePath:      return "Choose Your Path"
         case .serverName:            return "Name Your Server"
         case .serverType:            return "Pick a Type"
         case .serverSettings:        return "Review Your Settings"
@@ -85,9 +87,11 @@ enum OnboardingStep: Int, CaseIterable {
         case .manageServers:
             return "This button opens your server list. Tap it to add your first server."
         case .createServer:
-            return "Tap \"Create New Server…\" to open the server builder."
+            return "Tap \"Add Server\u{2026}\" to open the server builder."
+        case .wizardChoosePath:
+            return "Start Fresh sets up a brand new server from scratch. It's already selected for you."
         case .serverName:
-            return "Give your server a name here. The world itself is set up in the next step and can use a different name."
+            return "Give your server a name. It's just a label for this controller — the world name is set on the next screen and can be different."
         case .serverType:
             return "Java is for PC players. Bedrock is for mobile, console, and Windows 10/11. Pick whichever fits — you can switch before creating."
         case .serverSettings:
@@ -97,9 +101,9 @@ enum OnboardingStep: Int, CaseIterable {
                 return "Set the Bedrock port here and adjust the image or player limit if needed."
             }
         case .firstWorld:
-            return "This section creates the first world for your server. Choose \"New world\" for a fresh start, then set the world name, difficulty, game mode, and optional seed. You can add more worlds later from the Worlds tab, but only one world is active at a time."
+            return "Choose \"New world\" for a fresh start, then set the world name, difficulty, game mode, and optional seed. You can add more worlds later from the Worlds tab, but only one world is active at a time."
         case .createButton:
-            return "Everything looks good! Tap Create to build your server."
+            return "Check the summary, give your server a display name, then tap Create Server to build it."
         case .dismissManage:
             return "Your server is ready! Click Done to return to the main screen."
         case .acceptEula:
@@ -124,9 +128,9 @@ enum OnboardingStep: Int, CaseIterable {
             return "Performance gives you a quick view of TPS, memory, CPU, and overall server health."
         case .detailsComponentsTab:
             if OnboardingManager.shared.tourServerType == .java {
-                return "Components is where you manage Paper, plugins, Broadcast, and Bedrock Connect."
+                return "Components is where you manage Paper, plugins, and Xbox Broadcast."
             } else {
-                return "Components is where you manage the Bedrock runtime, image version, and Bedrock Connect tools."
+                return "Components is where you manage the Bedrock runtime, image version, and Xbox Broadcast tools."
             }
         case .detailsSettingsTab:
             return "Settings is where you change core server options. Changes stay local here until you click Save Changes."
@@ -154,6 +158,9 @@ enum OnboardingStep: Int, CaseIterable {
         switch self {
         case .manageServers,
              .createServer,
+             .wizardChoosePath,
+             .serverSettings,
+             .firstWorld,
              .createButton,
              .dismissManage,
              .acceptEula,
@@ -164,6 +171,17 @@ enum OnboardingStep: Int, CaseIterable {
             return false
         }
     }
+
+    /// Custom instruction shown instead of the default "Tap the highlighted element above".
+    var instruction: String? {
+        switch self {
+        case .wizardChoosePath, .serverSettings, .firstWorld:
+            return "Tap Continue at the bottom to proceed"
+        default:
+            return nil
+        }
+    }
+
 }
 
 // MARK: - Anchor IDs
@@ -171,11 +189,14 @@ enum OnboardingStep: Int, CaseIterable {
 enum OnboardingAnchorID: String {
     case manageServersButton     = "ob_manage_servers"
     case createServerButton      = "ob_create_server"
+    case wizardPathPicker        = "ob_wizard_path_picker"
+    case wizardStartFreshCard    = "ob_wizard_fresh_card"
+    case wizardContinueButton    = "ob_wizard_continue"
     case serverNameField         = "ob_server_name"
     case serverTypeSelector      = "ob_server_type"
     case serverSettingsArea      = "ob_server_settings"
     case worldSourceArea         = "ob_world_source"
-    case worldCreationArea       = "ob_world_creation"   // ← NEW: dedicated world step anchor
+    case worldCreationArea       = "ob_world_creation"
     case createSaveButton        = "ob_create_save"
     case manageServersDoneButton = "ob_manage_done"
     case acceptEulaButton        = "ob_accept_eula"

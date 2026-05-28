@@ -139,7 +139,7 @@ extension AppViewModel {
                     message += "• Open Server Settings and review/save your Bedrock settings.\n"
                     message += "• Check Bedrock-specific files like server.properties, allowlist.json, and permissions.json if you plan to customise them.\n"
                     message += "• Start the server again when you're ready.\n\n"
-                    message += "If you use Bedrock Connect or Xbox Broadcast, confirm your host and Bedrock port after saving settings."
+                    message += "If you use Xbox Broadcast, confirm your host and Bedrock port after saving settings."
 
                     firstStartAlertTitle = "Bedrock First Start"
                 } else {
@@ -162,8 +162,11 @@ extension AppViewModel {
             }
 
             if !wasFirstRun {
-                startBroadcastIfNeeded(for: cfgServer)
-                startBedrockConnectIfNeeded()
+                if cfgServer.isBedrock {
+                    startBedrockBroadcastIfNeeded(for: cfgServer)
+                } else {
+                    startBroadcastIfNeeded(for: cfgServer)
+                }
                 if cfgServer.autoBackupEnabled {
                     startAutoBackupTimer(for: cfgServer)
                 }
@@ -193,7 +196,7 @@ extension AppViewModel {
         isMetricsPaused = false
         lifecycle.isStopRequested = true
         stopBroadcastIfRunning()
-        stopBedrockConnectIfRunning()
+        stopBedrockBroadcastIfRunning()
 
         guard activeBackend?.isRunning == true else {
             logAppMessage("[App] Server is not running.")
@@ -266,7 +269,11 @@ extension AppViewModel {
             logAppMessage("[App] Server is not running.")
             return
         }
-        guard activeBackend?.sendCommand(cmd) == true else {
+        // BDS console does not accept a leading slash — strip it automatically
+        // so both hand-typed "/gamemode creative" and palette commands work correctly.
+        let finalCmd = (selectedServerIsBedrock && cmd.hasPrefix("/"))
+            ? String(cmd.dropFirst()) : cmd
+        guard activeBackend?.sendCommand(finalCmd) == true else {
             let msg = activeBackend?.lastCommandError ?? "Failed to send command to server."
             logAppMessage("[App] Failed to send command: \(msg)")
             showError(title: "Command Failed", message: msg)
@@ -295,36 +302,56 @@ extension AppViewModel {
 
     func applyDifficulty(_ difficulty: ServerDifficulty) {
         guard activeBackend?.isRunning == true else { return }
+        // Same command on both Java and BDS.
         sendQuickCommand("difficulty \(difficulty.rawValue)")
     }
 
     func applyGamemode(_ gamemode: ServerGamemode) {
         guard activeBackend?.isRunning == true else { return }
+        // Both Java and BDS support defaultgamemode.
         sendQuickCommand("defaultgamemode \(gamemode.rawValue)")
     }
 
     func setWhitelistEnabled(_ enabled: Bool) {
         guard activeBackend?.isRunning == true else { return }
-        sendQuickCommand(enabled ? "whitelist on" : "whitelist off")
+        if selectedServerIsBedrock {
+            // BDS renamed the command from whitelist → allowlist.
+            sendQuickCommand(enabled ? "allowlist on" : "allowlist off")
+        } else {
+            sendQuickCommand(enabled ? "whitelist on" : "whitelist off")
+        }
     }
 
     func runSaveAll() {
         guard activeBackend?.isRunning == true else { return }
-        sendQuickCommand("save-all")
+        if selectedServerIsBedrock {
+            // BDS doesn't have save-all; save hold flushes to disk then
+            // save resume re-enables auto-saves.
+            sendQuickCommand("save hold")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.sendQuickCommand("save resume")
+            }
+        } else {
+            sendQuickCommand("save-all")
+        }
     }
 
     func runReload() {
         guard activeBackend?.isRunning == true else { return }
+        // BDS has no reload command (no plugins); only send on Java.
+        guard !selectedServerIsBedrock else { return }
         sendQuickCommand("reload")
     }
 
     func setTimeOfDay(_ preset: TimeOfDayPreset) {
         guard activeBackend?.isRunning == true else { return }
+        // Same command on both Java and BDS.
         sendQuickCommand("time set \(preset.rawValue)")
     }
 
     func setWeather(_ preset: WeatherPreset) {
         guard activeBackend?.isRunning == true else { return }
+        // Same command on both Java and BDS.
         sendQuickCommand("weather \(preset.rawValue)")
     }
 

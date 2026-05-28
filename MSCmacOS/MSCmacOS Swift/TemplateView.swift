@@ -49,7 +49,6 @@ struct TemplatesView: View {
     @State private var isShowingPaperImporter: Bool = false
     @State private var isShowingPluginImporter: Bool = false
     @State private var isShowingXboxBroadcastImporter: Bool = false
-    @State private var isShowingBedrockConnectImporter: Bool = false
 
     // MARK: - Active status helpers
 
@@ -121,7 +120,6 @@ struct TemplatesView: View {
             viewModel.loadPaperTemplates()
             viewModel.loadPluginTemplates()
             viewModel.loadXboxBroadcastJars()
-            viewModel.loadBedrockConnectJars()
         }
         .fileImporter(
             isPresented: $isShowingPaperImporter,
@@ -161,20 +159,6 @@ struct TemplatesView: View {
                 }
             case .failure(let error):
                 viewModel.logAppMessage("[Broadcast] File import failed: \(error.localizedDescription)")
-            }
-        }
-        .fileImporter(
-            isPresented: $isShowingBedrockConnectImporter,
-            allowedContentTypes: [UTType.data],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first, url.pathExtension.lowercased() == "jar" {
-                    viewModel.addBedrockConnectJarFromBrowse(url)
-                }
-            case .failure(let error):
-                viewModel.logAppMessage("[BedrockConnect] File import failed: \(error.localizedDescription)")
             }
         }
     }
@@ -400,54 +384,6 @@ struct TemplatesView: View {
 
                         Button("Open Folder") { viewModel.openXboxBroadcastJarFolder() }
                             .help("Open the MCXboxBroadcast JAR library folder in Finder.")
-                    }
-                }
-
-                JarSectionCard(
-                    icon: "gamecontroller.fill",
-                    iconColor: .cyan,
-                    title: "Bedrock Connect",
-                    description: "Lets PlayStation and Nintendo Switch players join via a DNS trick — intercepts Mojang's featured-server lookup and replaces it with your server list. Requires pointing your router or console DNS to this Mac's IP."
-                ) {
-                    JarLibraryList(
-                        items: viewModel.bedrockConnectJarItems.map { .library($0) },
-                        isActive: { item in
-                            if case .library(let l) = item {
-                                return viewModel.configManager.config.bedrockConnectJarPath == l.url.path
-                            }
-                            return false
-                        },
-                        onApply: { item in
-                            if case .library(let l) = item {
-                                viewModel.setActiveBedrockConnectJar(l)
-                            }
-                        },
-                        onDelete: { item in
-                            if case .library(let l) = item {
-                                viewModel.deleteBedrockConnectJarItem(l)
-                            }
-                        },
-                        applyDisabled: false
-                    )
-
-                    JarActionRow {
-                        Button("Download Latest") {
-                            viewModel.downloadOrUpdateBedrockConnectJar()
-                        }
-                        .help("Download the latest BedrockConnect.jar from GitHub.")
-
-                        Button("Browse\u{2026}") { isShowingBedrockConnectImporter = true }
-                            .help("Choose an existing JAR from your Mac — it will be copied into the library folder.")
-
-                        Button("Releases Page") {
-                            if let url = URL(string: "https://github.com/Pugmatt/BedrockConnect/releases") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .help("Open the BedrockConnect releases page on GitHub.")
-
-                        Button("Open Folder") { viewModel.openBedrockConnectJarFolder() }
-                            .help("Open the BedrockConnect JAR library folder in Finder.")
                     }
                 }
 
