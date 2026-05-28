@@ -103,7 +103,18 @@ extension AppViewModel {
                 return
             }
 
-            // 2. Mark online players
+            // 2. Apply the local name cache — fills in names that were seen during
+            //    previous sessions (persisted across server log rollovers).
+            let nameCache = BedrockNameCache.load(serverDir: serverDir)
+            for i in profiles.indices {
+                guard let xuid = profiles[i].xuid,
+                      profiles[i].username == nil else { continue }
+                if let cachedName = nameCache[xuid] {
+                    profiles[i].username = cachedName
+                }
+            }
+
+            // 3. Mark online players
             for i in profiles.indices {
                 if let xuid = profiles[i].xuid {
                     profiles[i].isOnline = onlineXUIDs.contains(xuid)
@@ -115,20 +126,21 @@ extension AppViewModel {
                 self.isLoadingProfiles = false
             }
 
-            // 3. Batch-resolve XUIDs → gamertags (and Floodgate UUIDs) via GeyserMC.
+            // 4. Batch-resolve remaining XUIDs → gamertags (and Floodgate UUIDs) via GeyserMC.
             //    Only attempt resolution for purely-numeric XUIDs (real Xbox Live IDs).
             //    UUID-format and server_* entries cannot be resolved this way.
+            //    Successfully resolved names are written back into the local cache.
             let unresolved = profiles.filter {
                 guard let x = $0.xuid else { return false }
                 return $0.username == nil && x.allSatisfy({ $0.isNumber })
             }
             if !unresolved.isEmpty {
-                await self.resolveBedrockXUIDs(unresolved)
+                await self.resolveBedrockXUIDs(unresolved, serverDir: serverDir)
             }
         }
     }
 
-    private func resolveBedrockXUIDs(_ profiles: [PlayerProfile]) async {
+    private func resolveBedrockXUIDs(_ profiles: [PlayerProfile], serverDir: String) async {
         let batchSize = 5
         for batchStart in stride(from: 0, to: profiles.count, by: batchSize) {
             let batch = Array(profiles[batchStart..<min(batchStart + batchSize, profiles.count)])
@@ -147,6 +159,10 @@ extension AppViewModel {
                 }
 
                 for await (xuid, gamertag, floodgateUUID) in group {
+                    // Cache the resolved name so it survives log rollovers
+                    if let tag = gamertag {
+                        BedrockNameCache.record(xuid: xuid, name: tag, serverDir: serverDir)
+                    }
                     await MainActor.run {
                         if let i = self.playerProfiles.firstIndex(where: { $0.xuid == xuid }) {
                             if let tag = gamertag { self.playerProfiles[i].username = tag }

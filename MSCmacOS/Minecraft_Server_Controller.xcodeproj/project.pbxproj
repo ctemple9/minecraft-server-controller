@@ -182,6 +182,7 @@
 		BB020009AA0000000000009B /* BedrockLevelDB.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010009AA0000000000009A /* BedrockLevelDB.swift */; };
 		BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000AAA000000000000AA /* BedrockNBTReader.swift */; };
 		BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */; };
+		BB02000CAA000000000000CB /* BedrockNameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000CAA000000000000CA /* BedrockNameCache.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -362,6 +363,7 @@
 		BB010009AA0000000000009A /* BedrockLevelDB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockLevelDB.swift; sourceTree = "<group>"; };
 		BB01000AAA000000000000AA /* BedrockNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNBTReader.swift; sourceTree = "<group>"; };
 		BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPlayerDataManager.swift; sourceTree = "<group>"; };
+		BB01000CAA000000000000CA /* BedrockNameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNameCache.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -426,6 +428,7 @@
 				BB010009AA0000000000009A /* BedrockLevelDB.swift */,
 				BB01000AAA000000000000AA /* BedrockNBTReader.swift */,
 				BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */,
+				BB01000CAA000000000000CA /* BedrockNameCache.swift */,
 				9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */,
 				9A5632002F65AD6C00FB8246 /* BannerView.swift */,
 				9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */,
@@ -826,6 +829,7 @@
 				BB020009AA0000000000009B /* BedrockLevelDB.swift in Sources */,
 				BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */,
 				BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */,
+				BB02000CAA000000000000CB /* BedrockNameCache.swift in Sources */,
 				9A5633022F65AD6D00FB8246 /* DetailsPerformanceTabContent.swift in Sources */,
 				9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */,
 				9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */,

@@ -228,6 +228,11 @@ extension AppViewModel {
             }
             if let xuid = identity.xuid, !xuid.isEmpty {
                 backfillBedrockAllowlistXUIDIfNeeded(name: identity.name, xuid: xuid)
+                // Persist the XUID→name mapping so profile cards show the right name
+                // even after the server log is overwritten on next startup.
+                if let serverDir = selectedServer.flatMap({ configServer(for: $0)?.serverDir }) {
+                    BedrockNameCache.record(xuid: xuid, name: identity.name, serverDir: serverDir)
+                }
             }
             appendPlayerCountHistory(onlinePlayers.count)
             recordSessionEvent(playerName: identity.name, eventType: .joined)
