@@ -483,6 +483,108 @@ struct PreferencesDataFoldersSection: View {
     }
 }
 
+struct PreferencesStorageSection: View {
+    let appSupportBytes: Int64?
+    let serversRootBytes: Int64?
+    let isLoading: Bool
+    let anchorID: String
+    let onRefresh: () -> Void
+
+    private var totalBytes: Int64? {
+        guard let a = appSupportBytes, let s = serversRootBytes else { return nil }
+        return a + s
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            HStack {
+                Label("Storage", systemImage: "internaldrive")
+                    .font(MSC.Typography.cardTitle)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Button(action: onRefresh) {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+                }
+            }
+
+            Divider()
+
+            if let total = totalBytes {
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    StorageBarRow(label: "App Support", bytes: appSupportBytes ?? 0, total: total)
+                    StorageBarRow(label: "Servers Root", bytes: serversRootBytes ?? 0, total: total)
+                    Divider().opacity(0.5)
+                    HStack {
+                        Text("Total")
+                            .font(.system(size: 12, weight: .semibold))
+                        Spacer()
+                        Text(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))
+                            .font(.system(size: 12, design: .monospaced))
+                    }
+                }
+            } else if isLoading {
+                HStack {
+                    Spacer()
+                    VStack(spacing: MSC.Spacing.xs) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Calculating…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, MSC.Spacing.sm)
+                    Spacer()
+                }
+            }
+        }
+        .pscCard()
+        .id(anchorID)
+        .contextualHelpAnchor(anchorID)
+    }
+}
+
+private struct StorageBarRow: View {
+    let label: String
+    let bytes: Int64
+    let total: Int64
+
+    private var fraction: Double {
+        guard total > 0 else { return 0 }
+        return min(1.0, Double(bytes) / Double(total))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(MSC.Colors.insetBackground)
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.65))
+                        .frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 4)
+        }
+    }
+}
+
 struct PreferencesLearnHelpSection: View {
     let onShowWelcomeGuide: () -> Void
     let onShowPrerequisites: () -> Void

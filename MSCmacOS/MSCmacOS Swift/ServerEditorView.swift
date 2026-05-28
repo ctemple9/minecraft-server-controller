@@ -44,6 +44,8 @@ struct ServerEditorView: View {
     @State var showDuplicateSheet = false      // server-duplicate (existing)
     @State var newServerName: String = ""
     @State var autoBackupEnabledLocal: Bool = false
+    @State var autoBackupIntervalLocal: Int = 30
+    @State var autoBackupMaxCountLocal: Int = 12
 
     // Per-server notification preferences used by the editor
     @State var notifOnStart: Bool = false
@@ -674,14 +676,17 @@ struct ServerEditorView: View {
             if selectedTab == .world   { loadWorldDataForEditingServer() }
             loadSettingsDraftsForEditingServer()
             loadBroadcastFieldsFromConfig()
+            loadNotificationPrefsForEditingServer()
         }
         .onChange(of: selectedTab) { newValue in
-            if newValue == .backups { loadBackupsForEditingServer() }
-            if newValue == .world   { loadWorldDataForEditingServer() }
+            if newValue == .backups  { loadBackupsForEditingServer() }
+            if newValue == .world    { loadWorldDataForEditingServer() }
+            if newValue == .settings { loadNotificationPrefsForEditingServer() }
         }
         .onChange(of: editingConfigServer?.id) { _ in
             if selectedTab == .world { loadWorldDataForEditingServer() }
             loadSettingsDraftsForEditingServer()
+            loadNotificationPrefsForEditingServer()
         }
         // Restore backup alert
         .alert("Restore Backup?",
@@ -1073,8 +1078,13 @@ struct ServerEditorView: View {
         guard mode == .edit, let server = editingConfigServer else { return }
         syncSelectedServerForEditing()
         viewModel.loadBackupsForSelectedServer()
-        autoBackupEnabledLocal = server.autoBackupEnabled
+        autoBackupEnabledLocal    = server.autoBackupEnabled
+        autoBackupIntervalLocal   = server.autoBackupIntervalMinutes
+        autoBackupMaxCountLocal   = server.autoBackupMaxCount
+    }
 
+    func loadNotificationPrefsForEditingServer() {
+        guard mode == .edit, let server = editingConfigServer else { return }
         let prefs = server.notificationPrefs
         notifOnStart  = prefs.notifyOnStart
         notifOnStop   = prefs.notifyOnStop

@@ -49,6 +49,11 @@ struct PreferencesView: View {
     @State private var showResetFailed: Bool = false
     @State private var resetFailureMessage: String = ""
 
+    // Storage usage
+    @State private var storageAppSupportBytes: Int64? = nil
+    @State private var storageServersRootBytes: Int64? = nil
+    @State private var storageIsLoading: Bool = false
+
     private let contextualHelpGuideIDs: Set<String> = [
         "preferences.page",
         "preferences.remote-access"
@@ -63,6 +68,7 @@ struct PreferencesView: View {
     private let remoteAccessPreferredHostAnchorID = "preferences.remoteAccess.preferredHost"
     private let remoteAccessActionsAnchorID = "preferences.remoteAccess.actions"
     private let dataFoldersCardAnchorID = "preferences.dataFolders"
+    private let storageCardAnchorID = "preferences.storage"
     private let saveButtonAnchorID = "preferences.saveButton"
 
     private var preferencesPageHelpGuide: ContextualHelpGuide {
@@ -252,6 +258,9 @@ struct PreferencesView: View {
                         // ── DATA & FOLDERS ──────────────────────────────────────
                         dataFoldersCard
 
+                        // ── STORAGE ─────────────────────────────────────────────
+                        storageCard
+
                         // ── LEARN & HELP ────────────────────────────────────────
                         learnHelpCard
 
@@ -328,6 +337,8 @@ struct PreferencesView: View {
                               let color = Color(hexRGB: hex) {
                         bannerColorDraft = color.clampedAwayFromWhite().clampedAwayFromBlack()
                     }
+
+                    computeStorageSizes()
                 }
         .alert("Copied", isPresented: $showCopiedAlert) {
             Button("OK", role: .cancel) { }
@@ -671,6 +682,52 @@ struct PreferencesView: View {
         pb.clearContents()
         pb.setString(s, forType: .string)
         #endif
+    }
+
+    private var storageCard: some View {
+        PreferencesStorageSection(
+            appSupportBytes: storageAppSupportBytes,
+            serversRootBytes: storageServersRootBytes,
+            isLoading: storageIsLoading,
+            anchorID: storageCardAnchorID,
+            onRefresh: computeStorageSizes
+        )
+    }
+
+    private func computeStorageSizes() {
+        guard !storageIsLoading else { return }
+        storageIsLoading = true
+        storageAppSupportBytes = nil
+        storageServersRootBytes = nil
+
+        let appSupportURL = viewModel.configManager.appDirectoryURL
+        let serversRootURL = viewModel.configManager.serversRootURL
+
+        Task.detached(priority: .utility) {
+            let appSize = Self.directorySize(at: appSupportURL)
+            let serversSize = Self.directorySize(at: serversRootURL)
+            await MainActor.run {
+                storageAppSupportBytes = appSize
+                storageServersRootBytes = serversSize
+                storageIsLoading = false
+            }
+        }
+    }
+
+    private static func directorySize(at url: URL) -> Int64 {
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(
+            at: url,
+            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return 0 }
+        var total: Int64 = 0
+        for case let fileURL as URL in enumerator {
+            let values = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+            guard values?.isRegularFile == true else { continue }
+            total += Int64(values?.fileSize ?? 0)
+        }
+        return total
     }
 }
 

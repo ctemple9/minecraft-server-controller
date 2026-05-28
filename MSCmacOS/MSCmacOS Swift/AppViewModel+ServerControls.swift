@@ -551,13 +551,26 @@ extension AppViewModel {
 
     func startAutoBackupTimer(for configServer: ConfigServer) {
         stopAutoBackupTimer()
-        logAppMessage("[Backup] Auto backup timer started (every 30 min) for \(configServer.displayName).")
+        let intervalMin = configServer.autoBackupIntervalMinutes
+        let intervalDisplay: String
+        if intervalMin >= 60 {
+            let h = intervalMin / 60
+            let m = intervalMin % 60
+            intervalDisplay = m > 0 ? "\(h)h \(m)m" : "\(h)h"
+        } else {
+            intervalDisplay = "\(intervalMin)m"
+        }
+        logAppMessage("[Backup] Auto backup timer started (every \(intervalDisplay)) for \(configServer.displayName).")
         let serverCopy = configServer
-        autoBackupTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: true) { [weak self] _ in
+        autoBackupTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(intervalMin) * 60, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 guard self.activeBackend?.isRunning == true, self.isServerRunning else {
                     self.stopAutoBackupTimer()
+                    return
+                }
+                guard !self.onlinePlayers.isEmpty else {
+                    self.logAppMessage("[Backup] Auto backup skipped — no players online for \(serverCopy.displayName).")
                     return
                 }
                 self.logAppMessage("[Backup] Auto backup timer fired for \(serverCopy.displayName).")
@@ -583,5 +596,22 @@ extension AppViewModel {
         } else {
             stopAutoBackupTimer()
         }
+    }
+
+    func setAutoBackupInterval(_ minutes: Int, for serverId: String) {
+        guard let idx = configManager.config.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        configManager.config.servers[idx].autoBackupIntervalMinutes = minutes
+        configManager.save()
+        logAppMessage("[Backup] Auto backup interval set to \(minutes) min for \(configManager.config.servers[idx].displayName).")
+        guard isServerRunning, lifecycle.runningServerId == serverId,
+              configManager.config.servers[idx].autoBackupEnabled else { return }
+        startAutoBackupTimer(for: configManager.config.servers[idx])
+    }
+
+    func setAutoBackupMaxCount(_ count: Int, for serverId: String) {
+        guard let idx = configManager.config.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        configManager.config.servers[idx].autoBackupMaxCount = count
+        configManager.save()
+        logAppMessage("[Backup] Auto backup max count set to \(count) for \(configManager.config.servers[idx].displayName).")
     }
 }

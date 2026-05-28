@@ -67,11 +67,20 @@ var generalTab: some View {
                 }
             }
         } else {
-            SECallout(
-                icon: "shippingbox.fill",
-                color: .blue,
-                text: "Memory is managed by Docker. Configure container resource limits in Docker Desktop if needed."
-            )
+            SESection(icon: "memorychip.fill", title: "Memory", color: .green) {
+                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                    SEInlineField(label: "Memory Limit (GB)", hint: "Docker --memory") {
+                        TextField("0", text: $data.maxRamGB)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 80)
+                    }
+                    SECallout(
+                        icon: "lightbulb.fill",
+                        color: .blue,
+                        text: "Sets the Docker container memory limit. 0 = no limit (Docker default). 4–6 GB is typical for a Bedrock server."
+                    )
+                }
+            }
         }
 
         SESection(icon: "note.text", title: "Notes", color: .secondary) {

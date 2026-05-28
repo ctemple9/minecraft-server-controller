@@ -344,6 +344,11 @@ final class BedrockServerBackend: ServerBackend {
                     "--restart=no"
                 ]
 
+                // Apply Docker memory limit when the user has configured one (> 0 GB).
+                if config.maxRamGB > 0 {
+                    runArgs.append(contentsOf: ["--memory", "\(config.maxRamGB)g"])
+                }
+
                 // Pin to a specific BDS version if configured.
                 // The itzg image reads BEDROCK_SERVER_VERSION at container start.
                 // nil, empty, or "LATEST" means use the image default (latest stable).

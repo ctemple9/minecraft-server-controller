@@ -16,7 +16,6 @@ import Foundation
 
 private let autoBackupToken   = "_auto_"
 private let manualBackupToken = "_manual_"
-private let maxAutoBackupCount = 12
 
 extension AppViewModel {
 
@@ -222,7 +221,8 @@ extension AppViewModel {
         }
 
         if isAutomatic {
-            await MainActor.run { pruneAutoBackupsIfNeeded(in: backupsDir) }
+            let maxCount = configServer.autoBackupMaxCount
+            await MainActor.run { pruneAutoBackupsIfNeeded(in: backupsDir, maxCount: maxCount) }
         }
 
         let tsFormatter = DateFormatter()
@@ -335,15 +335,17 @@ extension AppViewModel {
             return
         }
         let backupsDir = configManager.backupsDirectoryURL(forServerDirectory: server.directory)
-        pruneAutoBackupsIfNeeded(in: backupsDir)
+        let maxCount = configManager.config.servers
+            .first(where: { $0.serverDir == server.directory })?.autoBackupMaxCount ?? 12
+        pruneAutoBackupsIfNeeded(in: backupsDir, maxCount: maxCount)
         loadBackupsForSelectedServer()
         logAppMessage("[Backup] Manual prune complete for \"\(server.name)\".")
     }
 
     /// Deletes the oldest automatic backups from `backupsDir` until the count of
-    /// app-managed backups is at most `maxAutoBackupCount - 1`.
+    /// app-managed backups is at most `maxCount - 1`.
     /// Also removes orphaned .meta.json sidecars when their paired ZIP is deleted.
-    private func pruneAutoBackupsIfNeeded(in backupsDir: URL) {
+    private func pruneAutoBackupsIfNeeded(in backupsDir: URL, maxCount: Int) {
         let fm = FileManager.default
         let resourceKeys: Set<URLResourceKey> = [.contentModificationDateKey]
 
@@ -365,7 +367,7 @@ extension AppViewModel {
                 && (name.contains(autoBackupToken) || name.contains(manualBackupToken))
         }
 
-        guard managedFiles.count >= maxAutoBackupCount else { return }
+        guard managedFiles.count >= maxCount else { return }
 
         var dated: [(date: Date, url: URL)] = []
         for url in managedFiles {
@@ -379,7 +381,7 @@ extension AppViewModel {
 
         dated.sort { $0.date < $1.date }
 
-        let deleteCount = managedFiles.count - (maxAutoBackupCount - 1)
+        let deleteCount = managedFiles.count - (maxCount - 1)
         let toDelete = dated.prefix(deleteCount)
 
         for (_, url) in toDelete {

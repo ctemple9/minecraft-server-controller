@@ -117,10 +117,14 @@ struct ConfigServer: Codable, Identifiable {
     var hasShownFirstStartPopup: Bool = false
 
     // Auto Backups (per-server)
-    /// When true, the app creates a backup every 30 minutes while the server is running,
-    /// keeps at most 12 automatic backups (oldest pruned first), and creates one final
-    /// backup when the user clicks Stop. Defaults to off so existing servers are unaffected.
+    /// When true, the app creates a backup on the configured interval while the server is
+    /// running, keeps at most autoBackupMaxCount automatic backups (oldest pruned first),
+    /// and creates one final backup when the user clicks Stop.
     var autoBackupEnabled: Bool = false
+    /// How often (in minutes) to create an automatic backup while the server is running.
+    var autoBackupIntervalMinutes: Int = 30
+    /// Maximum number of automatic backups to keep before pruning the oldest.
+    var autoBackupMaxCount: Int = 12
 
     // Xbox Broadcast (per-server)
     /// Whether this server should start MCXboxBroadcast when the server starts.
@@ -184,6 +188,8 @@ struct ConfigServer: Codable, Identifiable {
         case hasShownFirstStartPopup = "has_shown_first_start_popup"
 
         case autoBackupEnabled = "auto_backup_enabled"
+        case autoBackupIntervalMinutes = "auto_backup_interval_minutes"
+        case autoBackupMaxCount = "auto_backup_max_count"
 
         case xboxBroadcastIPMode    = "xbox_broadcast_ip_mode"
         case xboxBroadcastEnabled = "xbox_broadcast_enabled"
@@ -236,7 +242,9 @@ extension ConfigServer {
         hasEverStarted         = try c.decodeIfPresent(Bool.self,   forKey: .hasEverStarted)         ?? false
         hasShownFirstStartPopup = try c.decodeIfPresent(Bool.self,  forKey: .hasShownFirstStartPopup) ?? false
 
-        autoBackupEnabled      = try c.decodeIfPresent(Bool.self,   forKey: .autoBackupEnabled)      ?? false
+        autoBackupEnabled          = try c.decodeIfPresent(Bool.self, forKey: .autoBackupEnabled)          ?? false
+        autoBackupIntervalMinutes  = try c.decodeIfPresent(Int.self,  forKey: .autoBackupIntervalMinutes)  ?? 30
+        autoBackupMaxCount         = try c.decodeIfPresent(Int.self,  forKey: .autoBackupMaxCount)         ?? 12
 
         xboxBroadcastIPMode         = try c.decodeIfPresent(XboxBroadcastIPMode.self, forKey: .xboxBroadcastIPMode) ?? .auto
         xboxBroadcastEnabled        = try c.decodeIfPresent(Bool.self,   forKey: .xboxBroadcastEnabled)        ?? false
@@ -274,7 +282,9 @@ extension ConfigServer {
         try c.encode(hasEverStarted,                forKey: .hasEverStarted)
         try c.encode(hasShownFirstStartPopup,       forKey: .hasShownFirstStartPopup)
 
-        try c.encode(autoBackupEnabled,             forKey: .autoBackupEnabled)
+        try c.encode(autoBackupEnabled,            forKey: .autoBackupEnabled)
+        try c.encode(autoBackupIntervalMinutes,    forKey: .autoBackupIntervalMinutes)
+        try c.encode(autoBackupMaxCount,           forKey: .autoBackupMaxCount)
 
         try c.encode(xboxBroadcastIPMode,              forKey: .xboxBroadcastIPMode)
         try c.encode(xboxBroadcastEnabled,              forKey: .xboxBroadcastEnabled)
