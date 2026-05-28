@@ -96,7 +96,6 @@ MSC would not exist without these projects. Thanks to everyone who built and mai
 | [GeyserMC / Geyser](https://github.com/GeyserMC/Geyser) | Protocol bridge, lets Bedrock clients join Java servers |
 | [GeyserMC / Floodgate](https://github.com/GeyserMC/Floodgate) | Allows Bedrock players to join without a Java account |
 | [itzg / minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server) | Docker image for Bedrock Dedicated Server |
-| [BedrockConnect](https://github.com/Pugmatt/BedrockConnect) | Cross-platform server browser for Bedrock and console players |
 | [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) | Xbox and console LAN discovery broadcasting |
 
 
