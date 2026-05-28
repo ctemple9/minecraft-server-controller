@@ -61,17 +61,24 @@ enum BedrockPlayerDataManager {
                 profileUUID = UUID(uuidString: uuidPart) ?? UUID()
             }
 
+            // UUID-format offline players (no Xbox auth) with empty stats and no inventory
+            // are ghost entries from failed or very brief connections — skip them.
+            let isUUIDFormatXUID = !isNumericXUID && !isServerXUID && xuid != "local"
+            if isUUIDFormatXUID && stats == nil && inventory.isEmpty {
+                continue
+            }
+
             // Assign a readable placeholder for players we can never resolve.
             let initialUsername: String?
             switch xuid {
             case "local":
                 initialUsername = "Local Player"
             case _ where isNumericXUID:
-                initialUsername = nil           // Will be resolved via GeyserMC
+                initialUsername = nil               // Will be resolved via GeyserMC
             case _ where isServerXUID:
-                initialUsername = nil           // May resolve via Floodgate UUID on mc-heads.net
+                initialUsername = "Unknown Player"  // Geyser/Floodgate bridge player; no API lookup available
             default:
-                initialUsername = "Offline Player"  // UUID-format key: offline/LAN player
+                initialUsername = "Offline Player"  // UUID-format key: offline/LAN player with some data
             }
 
             var profile = PlayerProfile(

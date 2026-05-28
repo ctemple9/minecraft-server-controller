@@ -25,11 +25,13 @@ struct PlayerProfilesCard: View {
         let trim = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         var result = viewModel.playerProfiles
 
-        // Filter
+        // Filter — search username, display name, UUID, and XUID (Bedrock)
         if !trim.isEmpty {
             result = result.filter {
-                ($0.username?.lowercased().contains(trim) ?? false)
+                $0.displayName.lowercased().contains(trim)
+                || ($0.username?.lowercased().contains(trim) ?? false)
                 || $0.uuid.uuidString.lowercased().contains(trim)
+                || ($0.xuid?.lowercased().contains(trim) ?? false)
             }
         }
 
