@@ -6,16 +6,24 @@
 
 I made this app because Realms kept charging me for months I barely played, and self-hosting a server on macOS was more annoying than it needed to be. Terminal works, but parsing through console output gets old, and keeping things updated is a pain when you've never done it before. I also wanted cross-play between Bedrock and Java, which meant setting up Geyser and Floodgate, which meant more things to break.
 
-So I built MSC. It handles both Java and Bedrock servers, walks you through port forwarding, and keeps everything in one place. If you've been putting off hosting your own server because it seemed like too much work, and you're just trying to play with friends or family in different houses, this is for you.
+So I built MSC. It handles all of it. You pick a server type, it sets everything up, and a guide walks you through port forwarding so friends outside your house can actually connect. No terminal, no config files, no hunting down the right version of paper/plugins.
+
+If you just want to play Minecraft with friends or family without paying for Realms every month, this is probably what you need.
 
 > [!WARNING]
 > **Work in progress.** It works, but you will hit bugs. Open an issue if something breaks, it genuinely helps.
 
 ---
 
+## This is for you if:
+You're on a Mac, you want to host a server for friends or family, and you don't want to learn how servers work to do it. Java, Bedrock, or both. 
+
+## This is probably not for you if:
+You need Windows or Linux, or you're running a large public server.
+
 ## Quick Start
 
-### Before you begin
+### Before you begin (the app walks through these steps if you need help)
 - **macOS 13+**
 - **Java** is required for **Paper / Java Edition** servers
 - **Docker Desktop** is required for **Bedrock** servers
