@@ -43,10 +43,41 @@ enum BedrockPlayerDataManager {
             // Parse NBT immediately so stats/inventory are available without a second load.
             let (stats, inventory) = BedrockNBTReader.readAll(from: nbtData)
 
+            // Classify the XUID to set meaningful defaults before async resolution.
+            //
+            //   "local"              → Local Player (split-screen / single-player)
+            //   all digits           → Xbox Live XUID; resolved later via GeyserMC
+            //   "server_<UUID>"      → Geyser/Floodgate bridge player; UUID may be
+            //                          the Floodgate UUID usable directly on mc-heads.net
+            //   UUID-format (dashes) → Offline/LAN player; no gamertag available
+            let isNumericXUID   = xuid.allSatisfy { $0.isNumber }
+            let isServerXUID    = xuid.hasPrefix("server_")
+
+            // For server_ entries, the embedded UUID may be a Floodgate UUID.
+            // Pre-load it so mc-heads.net can attempt to render the real skin.
+            var profileUUID = UUID()
+            if isServerXUID {
+                let uuidPart = String(xuid.dropFirst("server_".count))
+                profileUUID = UUID(uuidString: uuidPart) ?? UUID()
+            }
+
+            // Assign a readable placeholder for players we can never resolve.
+            let initialUsername: String?
+            switch xuid {
+            case "local":
+                initialUsername = "Local Player"
+            case _ where isNumericXUID:
+                initialUsername = nil           // Will be resolved via GeyserMC
+            case _ where isServerXUID:
+                initialUsername = nil           // May resolve via Floodgate UUID on mc-heads.net
+            default:
+                initialUsername = "Offline Player"  // UUID-format key: offline/LAN player
+            }
+
             var profile = PlayerProfile(
-                uuid: UUID(),               // Placeholder; updated to Floodgate UUID later
-                username: xuid == "local" ? "Local Player" : nil,
-                datFilePath: "",            // No .dat file for Bedrock
+                uuid: profileUUID,              // Floodgate UUID for server_ entries; placeholder otherwise
+                username: initialUsername,
+                datFilePath: "",                // No .dat file for Bedrock
                 lastModified: dbMtime
             )
             profile.xuid = xuid

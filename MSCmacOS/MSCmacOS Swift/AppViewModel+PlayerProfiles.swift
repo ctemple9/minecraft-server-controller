@@ -115,8 +115,13 @@ extension AppViewModel {
                 self.isLoadingProfiles = false
             }
 
-            // 3. Batch-resolve XUIDs → gamertags (and Floodgate UUIDs) via GeyserMC
-            let unresolved = profiles.filter { $0.username == nil && $0.xuid != "local" }
+            // 3. Batch-resolve XUIDs → gamertags (and Floodgate UUIDs) via GeyserMC.
+            //    Only attempt resolution for purely-numeric XUIDs (real Xbox Live IDs).
+            //    UUID-format and server_* entries cannot be resolved this way.
+            let unresolved = profiles.filter {
+                guard let x = $0.xuid else { return false }
+                return $0.username == nil && x.allSatisfy({ $0.isNumber })
+            }
             if !unresolved.isEmpty {
                 await self.resolveBedrockXUIDs(unresolved)
             }
