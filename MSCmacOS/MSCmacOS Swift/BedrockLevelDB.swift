@@ -2,25 +2,30 @@
 //  BedrockLevelDB.swift
 //  MinecraftServerController
 //
-//  Self-contained LevelDB SST (table) reader and Snappy decompressor for
-//  reading Bedrock Edition player data from the world's LevelDB database.
-//  No external dependencies — pure Swift.
+//  Self-contained LevelDB SST (table) reader for reading Bedrock Edition
+//  player data from the world's LevelDB database.
+//  No external Swift dependencies — uses the system zlib via `import zlib`.
 //
 //  LevelDB table format (v1):
 //    - Footer: 48 bytes at end-of-file (two block handles + 8-byte magic)
 //    - Index block: prefix-compressed key→block-handle records
-//    - Data blocks: prefix-compressed key→value records (optionally Snappy-compressed)
+//    - Data blocks: prefix-compressed key→value records
+//    - Block compression: type byte follows the raw block bytes in the file
+//        0 = uncompressed, 4 = raw deflate (zlib wbits=-15) — used by Bedrock BDS
 //    - Internal key: user_key + 8-byte suffix (7-byte seq LE + 1-byte type)
 //
 
 import Foundation
+import zlib
 
 // MARK: - Public API
 
 enum BedrockLevelDB {
 
-    private static let kMagicLo: UInt32 = 0x24f09b77
-    private static let kMagicHi: UInt32 = 0x57fb808b
+    // Standard LevelDB table magic: 0xdb4775248b80fb57
+    // Stored LE in file bytes: 57 fb 80 8b  24 75 47 db
+    private static let kMagicLo: UInt32 = 0x8b80fb57   // bytes[40..43] in footer
+    private static let kMagicHi: UInt32 = 0xdb477524   // bytes[44..47] in footer
 
     /// Reads all `player_<xuid>` and `~local_player` entries from the LevelDB
     /// database at `dbPath`. Returns a mapping of user-key string → raw NBT bytes.
@@ -71,14 +76,16 @@ enum BedrockLevelDB {
 
     // MARK: - Block reading
 
-    /// Reads a block from file data: checks compression byte, decompresses if Snappy.
+    /// Reads a block from file data: checks compression type byte, decompresses if needed.
+    /// Compression byte is stored immediately after the block bytes (at offset+size).
+    /// Type 0 = uncompressed; Type 4 = raw deflate (wbits=-15), used by Bedrock BDS.
     private static func readBlock(data: Data, offset: Int, size: Int) -> Data? {
         guard offset >= 0, size >= 0, offset + size + 5 <= data.count else { return nil }
         let type = data[offset + size]
         let raw  = data[offset..<(offset + size)]
         switch type {
         case 0: return Data(raw)
-        case 1: return Snappy.decompress(Data(raw))
+        case 4: return ZlibRaw.decompress(Data(raw))
         default: return nil
         }
     }
@@ -146,7 +153,7 @@ enum BedrockLevelDB {
             let value = block[cursor..<(cursor + vl)]
             cursor += vl
 
-            // Internal key = user_key + 8-byte suffix: low byte of LE uint64 = record type
+            // Internal key = user_key + 8-byte suffix; low byte of LE uint64 = record type
             guard internalKey.count > 8 else { continue }
             let typeAndSeq = internalKey.readLE64(at: internalKey.count - 8)
             guard (typeAndSeq & 0xFF) == 1 else { continue } // 0 = deletion, 1 = value
@@ -155,7 +162,7 @@ enum BedrockLevelDB {
             guard let keyStr = String(data: userKey, encoding: .utf8) else { continue }
             guard keyStr.hasPrefix("player_") || keyStr == "~local_player" else { continue }
 
-            // LevelDB iterates newest-first within a SST; keep first occurrence per key
+            // Keep first occurrence per key (newest version wins within an SST)
             if result[keyStr] == nil {
                 result[keyStr] = Data(value)
             }
@@ -196,92 +203,56 @@ private extension Data {
     }
 }
 
-// MARK: - Snappy decompressor
+// MARK: - Raw deflate decompressor (zlib wbits = -15)
 
-enum Snappy {
+/// Decompresses a raw deflate stream (no zlib/gzip header) using the system zlib.
+/// This is the compression format Bedrock BDS uses for all LevelDB blocks (type=4).
+enum ZlibRaw {
 
-    /// Decompresses a Snappy-compressed block (raw/block format, not the framing format).
-    /// Returns nil on any parse error or if the output exceeds the sanity cap.
     static func decompress(_ input: Data) -> Data? {
-        var src = 0
+        guard !input.isEmpty else { return Data() }
 
-        // Uncompressed length (varint)
-        guard let uncompressedLen = readVarint(input, cursor: &src) else { return nil }
-        let outLen = Int(uncompressedLen)
-        guard outLen >= 0, outLen <= 64 * 1024 * 1024 else { return nil }
+        var stream = z_stream()
+        // inflateInit2 with windowBits=-15 selects raw deflate (no header/trailer)
+        let initResult = input.withUnsafeBytes { ptr in
+            inflateInit2_(&stream, -15, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+        }
+        guard initResult == Z_OK else { return nil }
+        defer { inflateEnd(&stream) }
 
-        var output = [UInt8]()
-        output.reserveCapacity(outLen)
+        // Start with 4× the compressed size as a guess; grow if needed
+        var output = Data(count: max(input.count * 4, 4096))
+        var totalOut = 0
 
-        while src < input.count {
-            let tag = input[src]; src += 1
+        var status: Int32 = Z_OK
+        input.withUnsafeBytes { srcPtr in
+            guard let srcBase = srcPtr.baseAddress else { return }
+            stream.next_in  = UnsafeMutablePointer<Bytef>(mutating: srcBase.assumingMemoryBound(to: Bytef.self))
+            stream.avail_in = uInt(input.count)
 
-            switch tag & 0x03 {
-
-            case 0x00: // Literal
-                let lenBits = Int(tag >> 2)
-                let literalLen: Int
-                if lenBits < 60 {
-                    literalLen = lenBits + 1
-                } else {
-                    let extraCount = lenBits - 59   // 1, 2, 3, or 4
-                    guard src + extraCount <= input.count else { return nil }
-                    var len = 0
-                    for i in 0..<extraCount { len |= Int(input[src + i]) << (i * 8) }
-                    src += extraCount
-                    literalLen = len + 1
+            while status != Z_STREAM_END {
+                let needed = totalOut + 4096
+                if needed > output.count {
+                    output.count = needed + 4096
                 }
-                guard src + literalLen <= input.count else { return nil }
-                output.append(contentsOf: input[src..<(src + literalLen)])
-                src += literalLen
 
-            case 0x01: // Copy 1-byte offset  (ooolll01 | offset_lo)
-                let length = Int((tag >> 2) & 0x07) + 4
-                guard src < input.count else { return nil }
-                let offsetLo = Int(input[src]); src += 1
-                let copyOffset = (Int(tag >> 5) << 8) | offsetLo
-                guard copyOffset > 0, copyOffset <= output.count else { return nil }
-                let base = output.count - copyOffset
-                for i in 0..<length { output.append(output[base + (i % copyOffset)]) }
+                let capacity = output.count
+                output.withUnsafeMutableBytes { dstPtr in
+                    guard let dstBase = dstPtr.baseAddress else { return }
+                    stream.next_out  = dstBase.advanced(by: totalOut).assumingMemoryBound(to: Bytef.self)
+                    stream.avail_out = uInt(capacity - totalOut)
+                    status = inflate(&stream, Z_NO_FLUSH)
+                    totalOut = Int(stream.total_out)
+                }
 
-            case 0x02: // Copy 2-byte offset  (llllll10 | offset_lo | offset_hi)
-                let length = Int(tag >> 2) + 1
-                guard src + 2 <= input.count else { return nil }
-                let copyOffset = Int(input[src]) | (Int(input[src + 1]) << 8); src += 2
-                guard copyOffset > 0, copyOffset <= output.count else { return nil }
-                let base = output.count - copyOffset
-                for i in 0..<length { output.append(output[base + (i % copyOffset)]) }
-
-            case 0x03: // Copy 4-byte offset  (llllll11 | 4-byte LE offset)
-                let length = Int(tag >> 2) + 1
-                guard src + 4 <= input.count else { return nil }
-                let copyOffset = Int(input[src])
-                                | (Int(input[src + 1]) << 8)
-                                | (Int(input[src + 2]) << 16)
-                                | (Int(input[src + 3]) << 24)
-                src += 4
-                guard copyOffset > 0, copyOffset <= output.count else { return nil }
-                let base = output.count - copyOffset
-                for i in 0..<length { output.append(output[base + (i % copyOffset)]) }
-
-            default:
-                return nil
+                if status == Z_STREAM_END { break }
+                guard status == Z_OK || status == Z_BUF_ERROR else { return }
+                if stream.avail_in == 0 { break }
             }
         }
 
-        return Data(output)
-    }
-
-    private static func readVarint(_ data: Data, cursor: inout Int) -> UInt64? {
-        var result: UInt64 = 0
-        var shift = 0
-        while cursor < data.count {
-            let byte = data[cursor]; cursor += 1
-            result |= UInt64(byte & 0x7F) << shift
-            if byte & 0x80 == 0 { return result }
-            shift += 7
-            if shift >= 64 { return nil }
-        }
-        return nil
+        guard status == Z_STREAM_END || status == Z_OK else { return nil }
+        output.count = totalOut
+        return output
     }
 }
