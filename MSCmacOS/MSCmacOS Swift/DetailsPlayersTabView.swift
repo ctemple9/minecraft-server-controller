@@ -20,7 +20,7 @@ struct DetailsPlayersTabView: View {
     @State private var messageText: String = ""
     @State private var showAllSessionEvents: Bool = false
 
-    private static let recentEventLimit = 25
+    private static let recentEventLimit = 10
 
     private var isBedrock: Bool {
         guard let s = viewModel.selectedServer else { return false }
