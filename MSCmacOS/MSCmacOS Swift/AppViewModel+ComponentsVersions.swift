@@ -46,9 +46,11 @@ extension AppViewModel {
         }
 
         componentsSnapshot = snapshot
+        refreshDiscoveredPlugins()
     }
 
-    /// Full online check: Paper version list + Geyser, Floodgate, Broadcast. All fetches run concurrently.
+    /// Full online check: Paper version list + Geyser, Floodgate, Broadcast,
+    /// and all user-sourced plugins. All fetches run concurrently.
     func checkComponentsOnline() {
         guard !isCheckingComponentsOnline else { return }
 
@@ -82,15 +84,235 @@ extension AppViewModel {
                     snapshot.broadcast.online   = b
                     self.componentsSnapshot     = snapshot
                     self.availablePaperVersions = versions
-                    self.isCheckingComponentsOnline = false
+
+                    // Mirror geyser/floodgate online data into discoveredPlugins entries
+                    self.updateManagedPluginOnlineVersions(
+                        geyserOnline: "\(g.version) (build \(g.build))",
+                        floodgateOnline: "\(f.version) (build \(f.build))"
+                    )
                 }
             } catch {
                 await MainActor.run {
                     self.componentsOnlineErrorMessage = error.localizedDescription
-                    self.isCheckingComponentsOnline = false
+                }
+            }
+
+            // Check user-sourced plugins — don't let failures here block the overall check
+            await self.checkUserSourcedPluginsOnline()
+
+            await MainActor.run {
+                self.isCheckingComponentsOnline = false
+            }
+        }
+    }
+
+    // MARK: - Plugin discovery
+
+    /// Scans the selected server's plugins folder and rebuilds `discoveredPlugins`.
+    /// Merges source configs from config and preserves any already-fetched online data.
+    func refreshDiscoveredPlugins() {
+        guard let cfg = selectedServerConfig else {
+            discoveredPlugins = []
+            return
+        }
+
+        let serverDirURL = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+        let pluginsDir   = serverDirURL.appendingPathComponent("plugins", isDirectory: true)
+        let fm           = FileManager.default
+
+        // Collect all .jar and .jar.disabled files
+        var jarURLs: [URL] = []
+        if let contents = try? fm.contentsOfDirectory(
+            at: pluginsDir,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) {
+            jarURLs = contents.filter { url in
+                let name = url.lastPathComponent.lowercased()
+                return name.hasSuffix(".jar") || name.hasSuffix(".jar.disabled")
+            }
+        }
+
+        let sources = cfg.pluginSources ?? [:]
+        let existing = discoveredPlugins  // preserve online data already fetched
+
+        var entries: [PluginEntry] = jarURLs.map { url in
+            let filename  = url.lastPathComponent
+            let isEnabled = !filename.lowercased().hasSuffix(".jar.disabled")
+            let jarStem   = isEnabled
+                ? (url.deletingPathExtension().lastPathComponent)
+                : String(filename.dropLast(".jar.disabled".count))
+
+            let displayName   = PluginNameParser.extractDisplayName(from: jarStem)
+            let parsedVersion = PluginNameParser.extractVersion(from: jarStem)
+
+            // Determine tier
+            let isGeyser     = jarStem.lowercased().contains("geyser")
+            let isFloodgate  = jarStem.lowercased().contains("floodgate")
+
+            let tier: PluginTier
+            if isGeyser || isFloodgate {
+                tier = .managed
+            } else if findSource(for: jarStem, in: sources) != nil {
+                tier = .userSourced
+            } else {
+                tier = .unmanaged
+            }
+
+            let sourceConfig = findSource(for: jarStem, in: sources)
+
+            // Preserve previously fetched online data for this stem
+            let prior = existing.first(where: { $0.jarStem == jarStem })
+
+            var entry = PluginEntry(
+                filename:      filename,
+                jarStem:       jarStem,
+                displayName:   displayName,
+                isEnabled:     isEnabled,
+                parsedVersion: parsedVersion,
+                tier:          tier,
+                sourceConfig:  sourceConfig,
+                onlineVersion:     prior?.onlineVersion,
+                onlineDownloadURL: prior?.onlineDownloadURL
+            )
+
+            // Populate local/template from snapshot for managed plugins
+            if isGeyser {
+                entry.localVersion    = componentsSnapshot.geyser.local
+                entry.templateVersion = componentsSnapshot.geyser.template
+            } else if isFloodgate {
+                entry.localVersion    = componentsSnapshot.floodgate.local
+                entry.templateVersion = componentsSnapshot.floodgate.template
+            }
+
+            return entry
+        }
+
+        // Sort: managed → userSourced → unmanaged; within tier alpha by displayName
+        // Managed: Geyser before Floodgate by convention
+        entries.sort { a, b in
+            if a.tier != b.tier { return a.tier < b.tier }
+            if a.tier == .managed {
+                let aG = a.jarStem.lowercased().contains("geyser")
+                let bG = b.jarStem.lowercased().contains("geyser")
+                if aG != bG { return aG }
+            }
+            return a.displayName.lowercased() < b.displayName.lowercased()
+        }
+
+        discoveredPlugins = entries
+    }
+
+    /// Finds the source config for a jarStem: exact match first, then prefix match.
+    private func findSource(for jarStem: String, in sources: [String: PluginSourceConfig]) -> PluginSourceConfig? {
+        if let exact = sources[jarStem] { return exact }
+        // Prefix match: source key is a prefix of the current stem (or vice-versa)
+        let lower = jarStem.lowercased()
+        for (key, config) in sources {
+            let kl = key.lowercased()
+            if lower.hasPrefix(kl) || kl.hasPrefix(lower) { return config }
+        }
+        return nil
+    }
+
+    /// Mirrors updated Geyser/Floodgate online versions into the discoveredPlugins array.
+    private func updateManagedPluginOnlineVersions(geyserOnline: String, floodgateOnline: String) {
+        discoveredPlugins = discoveredPlugins.map { entry in
+            var e = entry
+            if entry.tier == .managed {
+                if entry.jarStem.lowercased().contains("geyser") {
+                    e.onlineVersion = geyserOnline
+                } else if entry.jarStem.lowercased().contains("floodgate") {
+                    e.onlineVersion = floodgateOnline
+                }
+            }
+            return e
+        }
+    }
+
+    // MARK: - User-sourced plugin online checks
+
+    /// Checks all user-sourced plugins for updates concurrently.
+    func checkUserSourcedPluginsOnline() async {
+        let plugins = await MainActor.run { discoveredPlugins.filter { $0.tier == .userSourced } }
+        let mcVersion = await MainActor.run { currentMCVersion() } ?? "1.21"
+
+        await withTaskGroup(of: (String, String?, URL?)?.self) { group in
+            for plugin in plugins {
+                guard let source = plugin.sourceConfig else { continue }
+                group.addTask {
+                    do {
+                        let (version, url) = try await self.fetchOnlineVersion(
+                            for: source, mcVersion: mcVersion
+                        )
+                        return (plugin.jarStem, version, url)
+                    } catch {
+                        return nil
+                    }
+                }
+            }
+
+            for await result in group {
+                guard let (stem, version, url) = result else { continue }
+                await MainActor.run {
+                    self.discoveredPlugins = self.discoveredPlugins.map { entry in
+                        guard entry.jarStem == stem else { return entry }
+                        var e = entry
+                        e.onlineVersion = version
+                        e.onlineDownloadURL = url
+                        return e
+                    }
                 }
             }
         }
+    }
+
+    /// Fetches the online version and download URL for a single source config.
+    func fetchOnlineVersion(
+        for source: PluginSourceConfig,
+        mcVersion: String
+    ) async throws -> (String, URL) {
+        switch source.type {
+        case .github:
+            guard let (owner, repo) = PluginSourceDetector.parseGitHub(url: source.url) else {
+                throw NSError(domain: "PluginSource", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Could not parse GitHub URL."])
+            }
+            let (tag, jarURL) = try await GitHubReleaseChecker.fetchLatestRelease(owner: owner, repo: repo)
+            guard let url = jarURL else {
+                throw NSError(domain: "PluginSource", code: 2,
+                              userInfo: [NSLocalizedDescriptionKey: "No JAR asset found in GitHub release."])
+            }
+            return (tag, url)
+
+        case .modrinth:
+            guard let slug = PluginSourceDetector.parseModrinth(url: source.url) else {
+                throw NSError(domain: "PluginSource", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Could not parse Modrinth URL."])
+            }
+            return try await ModrinthAPI.fetchLatest(slug: slug, mcVersion: mcVersion)
+
+        case .hangar:
+            guard let (author, slug) = PluginSourceDetector.parseHangar(url: source.url) else {
+                throw NSError(domain: "PluginSource", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Could not parse Hangar URL."])
+            }
+            return try await HangarAPI.fetchLatest(author: author, slug: slug, mcVersion: mcVersion)
+
+        case .direct:
+            guard let url = URL(string: source.url) else {
+                throw NSError(domain: "PluginSource", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Invalid direct download URL."])
+            }
+            // Direct URL: no version to display, but we can still download
+            return ("(direct)", url)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func currentMCVersion() -> String? {
+        componentsSnapshot.paper.local?.split(separator: " ").first.map(String.init)
     }
 
     /// Paper-only online check. Called automatically when the user switches tracks
@@ -206,11 +428,6 @@ extension AppViewModel {
     }
 
     // MARK: - Local version detection
-
-    private var selectedServerConfig: ConfigServer? {
-        guard let server = selectedServer else { return nil }
-        return configManager.config.servers.first(where: { $0.id == server.id })
-    }
 
     private func localPaperVersionString(for cfg: ConfigServer) -> String? {
         guard let jarURL = effectivePaperJarURL(for: cfg) else { return nil }

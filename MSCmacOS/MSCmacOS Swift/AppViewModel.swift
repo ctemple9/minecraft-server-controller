@@ -36,6 +36,9 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Components tab state
 
+    @Published var discoveredPlugins: [PluginEntry] = []
+    @Published var downloadingPlugins: Set<String> = []   // jarStem keys
+
     @Published var componentsSnapshot: ComponentsVersionSnapshot = ComponentsVersionSnapshot()
     @Published var isCheckingComponentsOnline: Bool = false
         @Published var componentsOnlineErrorMessage: String? = nil

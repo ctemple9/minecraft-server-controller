@@ -35,36 +35,11 @@ struct DetailsComponentsTabView: View {
                 }
 
                 if !isBedrock {
-
                     ComponentSectionCard(title: "Core Server", icon: "shippingbox.fill") {
                         PaperComponentCard(onReveal: revealPaperJarInFinder)
                     }
 
-                    ComponentSectionCard(title: "Plugins", icon: "puzzlepiece.extension.fill") {
-                        componentCard(
-                            title: "Geyser",
-                            icon: "water.waves",
-                            local: viewModel.componentsSnapshot.geyser.local,
-                            template: viewModel.componentsSnapshot.geyser.template,
-                            online: viewModel.componentsSnapshot.geyser.online,
-                            isDownloading: viewModel.isDownloadingAndApplyingGeyser,
-                            onDownloadLatest: { viewModel.downloadAndApplyLatestGeyser() },
-                            onReveal: { revealPluginInFinder(keyword: "geyser") }
-                        )
-
-                        ComponentRowDivider()
-
-                        componentCard(
-                            title: "Floodgate",
-                            icon: "lock.open.fill",
-                            local: viewModel.componentsSnapshot.floodgate.local,
-                            template: viewModel.componentsSnapshot.floodgate.template,
-                            online: viewModel.componentsSnapshot.floodgate.online,
-                            isDownloading: viewModel.isDownloadingAndApplyingFloodgate,
-                            onDownloadLatest: { viewModel.downloadAndApplyLatestFloodgate() },
-                            onReveal: { revealPluginInFinder(keyword: "floodgate") }
-                        )
-                    }
+                    PluginsSectionCard()
 
                     ComponentSectionCard(title: "Broadcast", icon: "gamecontroller.fill") {
                         componentCard(
@@ -78,7 +53,6 @@ struct DetailsComponentsTabView: View {
                             onReveal: revealBroadcastJarInFinder
                         )
                     }
-
                 }
 
                 if isBedrock {
@@ -152,7 +126,7 @@ struct DetailsComponentsTabView: View {
         }
     }
 
-    // MARK: - Generic component card row (Geyser, Floodgate, Broadcast)
+    // MARK: - Generic component card row (Broadcast)
 
     private func componentCard(
         title: String,
@@ -217,7 +191,405 @@ struct DetailsComponentsTabView: View {
     }
 }
 
-// MARK: - Paper Component Card
+// MARK: - Plugins Section Card
+
+private struct PluginsSectionCard: View {
+    @EnvironmentObject var viewModel: AppViewModel
+
+    var body: some View {
+        ComponentSectionCard(
+            title: "Plugins",
+            icon: "puzzlepiece.extension.fill",
+            count: viewModel.discoveredPlugins.isEmpty ? nil : viewModel.discoveredPlugins.count,
+            headerTrailing: {
+                HStack(spacing: MSC.Spacing.xs) {
+                    Button {
+                        revealPluginsFolder()
+                    } label: {
+                        Label("Reveal", systemImage: "folder")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
+
+                    Button {
+                        viewModel.addPluginFromFilePicker()
+                    } label: {
+                        Label("Add Plugin", systemImage: "plus")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
+                }
+            }
+        ) {
+            if viewModel.discoveredPlugins.isEmpty {
+                Text("No plugins found. Click Add Plugin to install one.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                    .padding(.vertical, MSC.Spacing.xs)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(viewModel.discoveredPlugins.enumerated()), id: \.element.id) { idx, entry in
+                        if idx > 0 { ComponentRowDivider() }
+                        PluginRowView(entry: entry)
+                    }
+                }
+            }
+        }
+        .task {
+            viewModel.refreshDiscoveredPlugins()
+        }
+    }
+
+    private func revealPluginsFolder() {
+        guard let cfg = viewModel.selectedServerConfig else { return }
+        let pluginsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            .appendingPathComponent("plugins", isDirectory: true)
+        try? FileManager.default.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
+        viewModel.revealInFinder(url: pluginsDir)
+    }
+}
+
+// MARK: - Plugin Row
+
+private struct PluginRowView: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let entry: PluginEntry
+
+    @State private var isShowingSourcePopover: Bool = false
+    @State private var isShowingDownloadConfirm: Bool = false
+
+    private var isDownloading: Bool { viewModel.downloadingPlugins.contains(entry.jarStem) }
+    private var hasUpdate: Bool {
+        guard let online = entry.onlineVersion, !online.isEmpty, online != "(direct)" else { return false }
+        if let local = entry.parsedVersion ?? entry.localVersion {
+            return online != local
+        }
+        return false
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            // Top row: icon + name + badges + Enable/Disable
+            HStack(spacing: MSC.Spacing.sm) {
+                Image(systemName: pluginIcon)
+                    .font(.system(size: 13))
+                    .foregroundStyle(MSC.Colors.tertiary)
+                    .frame(width: 16)
+
+                Text(entry.displayName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(entry.isEnabled ? Color.primary : Color.secondary)
+
+                // Tier badge
+                switch entry.tier {
+                case .managed:
+                    PluginTierBadge(label: "Managed", icon: "sparkles", color: MSC.Colors.info)
+                case .userSourced:
+                    if let source = entry.sourceConfig {
+                        PluginTierBadge(label: source.type.displayName,
+                                        icon: source.type.symbolName,
+                                        color: sourceBadgeColor(source.type))
+                    }
+                case .unmanaged:
+                    EmptyView()
+                }
+
+                // Update / status pill
+                if entry.tier != .unmanaged {
+                    if hasUpdate {
+                        ComponentStatusPill(
+                            local: entry.parsedVersion ?? entry.localVersion,
+                            template: entry.templateVersion,
+                            online: entry.onlineVersion
+                        )
+                    } else if entry.onlineVersion != nil {
+                        ComponentStatusPill(
+                            local: entry.parsedVersion ?? entry.localVersion,
+                            template: entry.templateVersion,
+                            online: entry.onlineVersion
+                        )
+                    }
+                }
+
+                Spacer()
+
+                // Enable / Disable button
+                Button {
+                    viewModel.togglePlugin(jarStem: entry.jarStem)
+                } label: {
+                    Text(entry.isEnabled ? "Disable" : "Enable")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
+            }
+
+            // Extended row: version info + action buttons (only for managed/user-sourced)
+            if entry.tier != .unmanaged || entry.parsedVersion != nil {
+                HStack(alignment: .center) {
+                    // Version info
+                    HStack(spacing: MSC.Spacing.md) {
+                        if let local = entry.parsedVersion ?? entry.localVersion {
+                            versionPair(label: "Local", value: local)
+                        }
+                        if let template = entry.templateVersion {
+                            versionPair(label: "Template", value: template)
+                        }
+                        if let online = entry.onlineVersion, online != "(direct)" {
+                            versionPair(label: "Online", value: online, highlight: hasUpdate)
+                        }
+                    }
+                    .padding(.leading, 24)  // indent to align under name
+
+                    Spacer()
+
+                    // Action buttons
+                    HStack(spacing: 4) {
+                        // Download button (managed always; user-sourced as soon as source is linked)
+                        if canDownload {
+                            Button {
+                                isShowingDownloadConfirm = true
+                            } label: {
+                                if isDownloading {
+                                    ProgressView().controlSize(.mini)
+                                } else {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                }
+                            }
+                            .buttonStyle(MSCSecondaryButtonStyle())
+                            .controlSize(.mini)
+                            .disabled(viewModel.isServerRunning || isDownloading || (entry.tier == .userSourced && entry.onlineDownloadURL == nil && !entry.isCheckingOnline))
+                            .confirmationDialog(
+                                "Download latest version of \(entry.displayName)?",
+                                isPresented: $isShowingDownloadConfirm,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Download Latest") { triggerDownload() }
+                                Button("Cancel", role: .cancel) { }
+                            } message: {
+                                if let version = entry.onlineVersion {
+                                    Text("This will download version \(version) and replace the current JAR.")
+                                } else {
+                                    Text("This will download and replace the current JAR.")
+                                }
+                            }
+                        }
+
+                        // Source link button (shown for all non-managed plugins)
+                        if entry.tier != .managed {
+                            Button {
+                                isShowingSourcePopover = true
+                            } label: {
+                                Image(systemName: entry.sourceConfig != nil ? "link.badge.plus" : "link")
+                            }
+                            .buttonStyle(MSCSecondaryButtonStyle())
+                            .controlSize(.mini)
+                            .popover(isPresented: $isShowingSourcePopover, arrowEdge: .bottom) {
+                                PluginSourcePopover(entry: entry, isPresented: $isShowingSourcePopover)
+                                    .environmentObject(viewModel)
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Unmanaged with no version: just show source button
+                HStack {
+                    Spacer()
+                    Button {
+                        isShowingSourcePopover = true
+                    } label: {
+                        Image(systemName: "link")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
+                    .popover(isPresented: $isShowingSourcePopover, arrowEdge: .bottom) {
+                        PluginSourcePopover(entry: entry, isPresented: $isShowingSourcePopover)
+                            .environmentObject(viewModel)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, MSC.Spacing.xxs)
+        .opacity(entry.isEnabled ? 1.0 : 0.38)
+
+    }
+
+    // MARK: - Helpers
+
+    @ViewBuilder
+    private func versionPair(label: String, value: String, highlight: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(label)
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.tertiary)
+            Text(value)
+                .font(MSC.Typography.caption)
+                .foregroundStyle(highlight ? MSC.Colors.warning : MSC.Colors.caption)
+        }
+    }
+
+    private var pluginIcon: String {
+        switch entry.tier {
+        case .managed:    return entry.jarStem.lowercased().contains("geyser") ? "water.waves" : "lock.open.fill"
+        case .userSourced: return "puzzlepiece.extension"
+        case .unmanaged:  return "puzzlepiece"
+        }
+    }
+
+    private func sourceBadgeColor(_ type: PluginSourceType) -> Color {
+        switch type {
+        case .github:   return Color(red: 0.55, green: 0.58, blue: 0.62) // GitHub grey
+        case .modrinth: return Color(red: 0.11, green: 0.85, blue: 0.42) // Modrinth green
+        case .hangar:   return MSC.Colors.info
+        case .direct:   return MSC.Colors.tertiary
+        }
+    }
+
+    private var canDownload: Bool {
+        switch entry.tier {
+        case .managed:      return true
+        case .userSourced:  return entry.sourceConfig != nil
+        case .unmanaged:    return false
+        }
+    }
+
+    private func triggerDownload() {
+        switch entry.tier {
+        case .managed:
+            if entry.jarStem.lowercased().contains("geyser") {
+                viewModel.downloadAndApplyLatestGeyser()
+            } else if entry.jarStem.lowercased().contains("floodgate") {
+                viewModel.downloadAndApplyLatestFloodgate()
+            }
+        case .userSourced:
+            viewModel.downloadLatestForPlugin(entry: entry)
+        case .unmanaged:
+            break
+        }
+    }
+
+}
+
+// MARK: - Plugin Source Popover
+
+private struct PluginSourcePopover: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let entry: PluginEntry
+    @Binding var isPresented: Bool
+
+    @State private var urlText: String = ""
+    @State private var detectedType: PluginSourceType? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            Text("Source URL")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(MSC.Colors.tertiary)
+                .textCase(.uppercase)
+
+            TextField("https://github.com/owner/repo", text: $urlText)
+                .font(.system(size: 11, design: .monospaced))
+                .textFieldStyle(.plain)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .fill(Color.black.opacity(0.3))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                        )
+                )
+                .onChange(of: urlText) { _, new in
+                    detectedType = PluginSourceDetector.detect(url: new)
+                }
+
+            if let type = detectedType {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(MSC.Colors.success)
+                    Text("Detected as \(type.displayName)")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.success)
+                }
+            } else if !urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                    Text("Unrecognised URL — will use as direct download")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.tertiary)
+                }
+            }
+
+            Divider().opacity(0.5)
+
+            HStack(spacing: MSC.Spacing.sm) {
+                // Remove source option
+                if entry.sourceConfig != nil {
+                    Button("Remove Source") {
+                        viewModel.removePluginSource(jarStem: entry.jarStem)
+                        isPresented = false
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
+                    .foregroundStyle(MSC.Colors.error)
+                }
+
+                Spacer()
+
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
+
+                Button("Confirm") {
+                    let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { isPresented = false; return }
+                    let type = PluginSourceDetector.detect(url: trimmed) ?? .direct
+                    viewModel.setPluginSource(jarStem: entry.jarStem, url: trimmed, type: type)
+                    isPresented = false
+                }
+                .buttonStyle(MSCPrimaryButtonStyle())
+                .controlSize(.mini)
+                .disabled(urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(MSC.Spacing.md)
+        .frame(width: 320)
+        .onAppear {
+            urlText = entry.sourceConfig?.url ?? ""
+            detectedType = entry.sourceConfig.map { PluginSourceDetector.detect(url: $0.url) } ?? nil
+        }
+    }
+}
+
+// MARK: - Plugin Tier Badge
+
+private struct PluginTierBadge: View {
+    let label: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        Label(label, systemImage: icon)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, MSC.Spacing.xs)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(color.opacity(0.1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(color.opacity(0.22), lineWidth: 0.5)
+                    )
+            )
+    }
+}
+
+// MARK: - Paper Component Card (unchanged)
 
 private struct PaperComponentCard: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -392,7 +764,7 @@ private struct PaperComponentCard: View {
     }
 }
 
-// MARK: - Paper Version Row
+// MARK: - Paper Version Row (unchanged)
 
 private struct PaperVersionRow: View {
     let option: PaperVersionOption
@@ -437,12 +809,12 @@ private struct PaperVersionRow: View {
                 Spacer()
 
                 HStack(alignment: .center, spacing: 6) {
-                                    channelBadge(option.channel)
-                                    Text(option.formattedDate ?? "")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(MSC.Colors.tertiary)
-                                        .frame(width: 80, alignment: .leading)
-                                }
+                    channelBadge(option.channel)
+                    Text(option.formattedDate ?? "")
+                        .font(.system(size: 10))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .frame(width: 80, alignment: .leading)
+                }
             }
             .contentShape(Rectangle())
         }
@@ -562,7 +934,7 @@ private struct BedrockComponentsToolbarCard: View {
     }
 }
 
-// MARK: - Bedrock Runtime Section Card
+// MARK: - Bedrock Runtime Section Card (unchanged)
 
 private struct BedrockRuntimeSectionCard: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -639,7 +1011,7 @@ private struct BedrockRuntimeSectionCard: View {
     }
 }
 
-// MARK: - Bedrock Version Picker Row
+// MARK: - Bedrock Version Picker Row (unchanged)
 
 private struct BedrockVersionPickerRow: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -684,7 +1056,7 @@ private struct BedrockVersionPickerRow: View {
     }
 }
 
-// MARK: - Bedrock Status Pill
+// MARK: - Bedrock Status Pill (unchanged)
 
 private struct BedrockStatusPill: View {
     let label: String
@@ -702,18 +1074,43 @@ private struct BedrockStatusPill: View {
     }
 }
 
-// MARK: - Section Card Shell
+// MARK: - Section Card Shell (updated to support optional count)
 
-private struct ComponentSectionCard<Content: View>: View {
+private struct ComponentSectionCard<Content: View, Trailing: View>: View {
     let title: String
     let icon: String
+    var count: Int? = nil
+    @ViewBuilder let headerTrailing: () -> Trailing
     @ViewBuilder let content: () -> Content
+
+    init(
+        title: String,
+        icon: String,
+        count: Int? = nil,
+        @ViewBuilder headerTrailing: @escaping () -> Trailing = { EmptyView() },
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.icon = icon
+        self.count = count
+        self.headerTrailing = headerTrailing
+        self.content = content
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            Label(title, systemImage: icon)
-                .font(MSC.Typography.cardTitle)
-                .foregroundStyle(.secondary)
+            HStack {
+                Label(title, systemImage: icon)
+                    .font(MSC.Typography.cardTitle)
+                    .foregroundStyle(.secondary)
+                if let count {
+                    Text("\(count) installed")
+                        .font(.system(size: 10))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                }
+                Spacer()
+                headerTrailing()
+            }
             Divider()
             content()
         }
@@ -725,7 +1122,7 @@ private struct ComponentSectionCard<Content: View>: View {
     }
 }
 
-// MARK: - Version Row
+// MARK: - Version Row (unchanged)
 
 private struct ComponentVersionRow: View {
     let label: String
@@ -747,7 +1144,7 @@ private struct ComponentVersionRow: View {
     }
 }
 
-// MARK: - Status Pill (Java component status)
+// MARK: - Status Pill (unchanged)
 
 private struct ComponentStatusPill: View {
     let local: String?
@@ -766,7 +1163,7 @@ private struct ComponentStatusPill: View {
     }
 }
 
-// MARK: - Component Status Model
+// MARK: - Component Status Model (unchanged)
 
 private struct ComponentStatus {
     let label: String
@@ -781,36 +1178,32 @@ private struct ComponentStatus {
             return ComponentStatus(label: "Template mismatch", symbol: "exclamationmark.triangle.fill", color: .yellow)
         }
         if let o = online, let l = local, !versionsMatch(o, l) {
-                    // Only flag as needing update if online is actually newer than local.
-                    // If local is ahead (e.g. user is on experimental while viewing stable),
-                    // treat it as up to date.
-                    if isVersionNewer(o, than: l) {
-                        return ComponentStatus(label: "Update available", symbol: "arrow.down.circle.fill", color: MSC.Colors.warning)
-                    }
-                }
+            if isVersionNewer(o, than: l) {
+                return ComponentStatus(label: "Update available", symbol: "arrow.down.circle.fill", color: MSC.Colors.warning)
+            }
+        }
         return ComponentStatus(label: "Up to date",            symbol: "checkmark.circle.fill",         color: MSC.Colors.success)
     }
 
     private static func isVersionNewer(_ a: String, than b: String) -> Bool {
-            let aParts = a.split(separator: " ").first.map(String.init) ?? a
-            let bParts = b.split(separator: " ").first.map(String.init) ?? b
-            let aComponents = aParts.split(separator: ".").compactMap { Int($0) }
-            let bComponents = bParts.split(separator: ".").compactMap { Int($0) }
-            let count = max(aComponents.count, bComponents.count)
-            for i in 0..<count {
-                let av = i < aComponents.count ? aComponents[i] : 0
-                let bv = i < bComponents.count ? bComponents[i] : 0
-                if av > bv { return true }
-                if av < bv { return false }
-            }
-            // Same version string — compare build numbers
-            if let ab = parseBuild(a), let bb = parseBuild(b) {
-                return ab > bb
-            }
-            return false
+        let aParts = a.split(separator: " ").first.map(String.init) ?? a
+        let bParts = b.split(separator: " ").first.map(String.init) ?? b
+        let aComponents = aParts.split(separator: ".").compactMap { Int($0) }
+        let bComponents = bParts.split(separator: ".").compactMap { Int($0) }
+        let count = max(aComponents.count, bComponents.count)
+        for i in 0..<count {
+            let av = i < aComponents.count ? aComponents[i] : 0
+            let bv = i < bComponents.count ? bComponents[i] : 0
+            if av > bv { return true }
+            if av < bv { return false }
         }
+        if let ab = parseBuild(a), let bb = parseBuild(b) {
+            return ab > bb
+        }
+        return false
+    }
 
-        private static func parseBuild(_ s: String) -> Int? {
+    private static func parseBuild(_ s: String) -> Int? {
         let lower = s.lowercased()
         guard let range = lower.range(of: "build") else { return nil }
         let after  = lower[range.upperBound...]
@@ -825,7 +1218,7 @@ private struct ComponentStatus {
     }
 }
 
-// MARK: - Row Divider
+// MARK: - Row Divider (unchanged)
 
 private struct ComponentRowDivider: View {
     var body: some View {

@@ -67,7 +67,7 @@ struct JoinCardView: View {
                                 axis: (x: 0, y: 1, z: 0)
                             )
 
-                        JoinCardBackView()
+                        JoinCardBackView(cardColor: cardColor)
                             .environmentObject(viewModel)
                             .opacity(isFlipped ? 1 : 0)
                             .rotation3DEffect(
@@ -80,8 +80,8 @@ struct JoinCardView: View {
 
                     // ── Flip hint ──────────────────────────────────────
                     Text(isFlipped
-                         ? "Back side \u{2014} connection details (not exported)"
-                         : "Tap card to flip  \u{2022}  Front is what gets exported and shared")
+                         ? "Back \u{2014} Java direct connect (IP + port)"
+                         : "Front \u{2014} Bedrock friends method (no IP)")
                         .font(MSC.Typography.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -241,7 +241,7 @@ struct JoinCardView: View {
         }
     }
 
-    // MARK: - Image rendering (front only — back is never exported)
+    // MARK: - Image rendering (both sides exported)
 
     private func renderFrontImage() -> NSImage? {
         let view = JoinCardFrontView(cardColor: cardColor)
@@ -252,18 +252,30 @@ struct JoinCardView: View {
         return renderer.nsImage
     }
 
+    private func renderBackImage() -> NSImage? {
+        let view = JoinCardBackView(cardColor: cardColor)
+            .environmentObject(viewModel)
+            .frame(width: 360, height: 200)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2.0
+        return renderer.nsImage
+    }
+
     private func exportCardAsPNG() {
-        guard let image = renderFrontImage() else {
+        guard let front = renderFrontImage(), let back = renderBackImage() else {
             showHUD("Export failed")
             return
         }
+
+        // Combine front + back vertically into one PNG
+        let combined = combinedImage(top: front, bottom: back)
 
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.nameFieldStringValue = "\(selectedServerName) - Join Card.png"
         panel.begin { result in
             guard result == .OK, let url = panel.url else { return }
-            guard let tiff = image.tiffRepresentation,
+            guard let tiff = combined.tiffRepresentation,
                   let bitmap = NSBitmapImageRep(data: tiff),
                   let pngData = bitmap.representation(using: .png, properties: [:]) else {
                 self.showHUD("Export failed")
@@ -279,12 +291,12 @@ struct JoinCardView: View {
     }
 
     private func shareCard() {
-        guard let image = renderFrontImage() else {
+        guard let front = renderFrontImage(), let back = renderBackImage() else {
             showHUD("Share failed")
             return
         }
 
-        let picker = NSSharingServicePicker(items: [image])
+        let picker = NSSharingServicePicker(items: [front, back])
 
         if let window = NSApp.keyWindow,
            let contentView = window.contentView {
@@ -296,6 +308,18 @@ struct JoinCardView: View {
         }
     }
 
+    /// Stacks two NSImages vertically with a small gap into a single NSImage.
+    private func combinedImage(top: NSImage, bottom: NSImage, gap: CGFloat = 16) -> NSImage {
+        let w = max(top.size.width, bottom.size.width)
+        let h = top.size.height + gap + bottom.size.height
+        let result = NSImage(size: NSSize(width: w, height: h))
+        result.lockFocus()
+        top.draw(in: NSRect(x: 0, y: bottom.size.height + gap, width: top.size.width, height: top.size.height))
+        bottom.draw(in: NSRect(x: 0, y: 0, width: bottom.size.width, height: bottom.size.height))
+        result.unlockFocus()
+        return result
+    }
+
     private func showHUD(_ text: String) {
         exportHUDText = text
         withAnimation { showExportHUD = true }
@@ -305,15 +329,13 @@ struct JoinCardView: View {
     }
 }
 
-// MARK: - Card Front (safe to share — no IP address)
+// MARK: - Card Front (Friends / Xbox join — safe to share, no IP)
 
 struct JoinCardFrontView: View {
     @EnvironmentObject var viewModel: AppViewModel
     let cardColor: Color
 
-    private var serverName: String {
-        viewModel.selectedServer?.name ?? "My Server"
-    }
+    private var serverName: String { viewModel.selectedServer?.name ?? "My Server" }
 
     private var serverType: ServerType {
         guard let server = viewModel.selectedServer,
@@ -321,28 +343,12 @@ struct JoinCardFrontView: View {
         return cfg.serverType
     }
 
-    private var typeBadgeColor: Color {
-        serverType == .bedrock ? MSC.Colors.success : .blue
-    }
+    private var isBedrock: Bool { serverType == .bedrock }
 
-    private var typeBadgeLabel: String {
-        serverType == .bedrock ? "Bedrock" : "Java"
-    }
-
-    private var portDisplay: String {
-        if serverType == .bedrock {
-            if let p = viewModel.bedrockPortForDisplay { return String(p) }
-            if let server = viewModel.selectedServer,
-               let cfg = viewModel.configServer(for: server),
-               let p = cfg.bedrockPort { return String(p) }
-            return "19132"
-        } else {
-            return viewModel.javaPortForDisplay
-        }
-    }
-
-    private var protocolLabel: String {
-        serverType == .bedrock ? "UDP" : "TCP"
+    private var xboxGamertag: String? {
+        guard let server = viewModel.selectedServer else { return nil }
+        let tag = viewModel.configServer(for: server)?.xboxBroadcastAltGamertag ?? ""
+        return tag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : tag.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
@@ -370,32 +376,30 @@ struct JoinCardFrontView: View {
 
             VStack(alignment: .leading, spacing: 0) {
 
-                // ── Top row ───────────────────────────────────────
-                HStack(alignment: .center) {
+                // ── Top row: icon + branding ─────────────────────
+                HStack {
                     Image(systemName: "cube.fill")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(.white.opacity(0.85))
-
                     Spacer()
-
-                    Text(typeBadgeLabel.uppercased())
-                        .font(.system(size: 9, weight: .bold))
-                        .tracking(1.2)
-                        .foregroundStyle(typeBadgeColor)
-                        .padding(.horizontal, MSC.Spacing.sm)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(typeBadgeColor.opacity(0.18)))
-                        .overlay(Capsule().stroke(typeBadgeColor.opacity(0.45), lineWidth: 0.75))
+                    Text("Hosted with MSC")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.30))
                 }
 
                 Spacer()
 
-                // ── Server name ───────────────────────────────────
+                // ── Server name + type ────────────────────────────
                 Text(serverName)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
+
+                Text(isBedrock ? "Bedrock Server" : "Java Server")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.50))
+                    .padding(.top, 1)
 
                 Text("You\u{2019}re invited to join")
                     .font(.system(size: 11, weight: .medium))
@@ -404,39 +408,34 @@ struct JoinCardFrontView: View {
 
                 Spacer()
 
-                // ── Port + protocol + branding ────────────────────
-                HStack(spacing: MSC.Spacing.md) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "network")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.55))
-                        Text("Port \(portDisplay)")
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.85))
+                // ── Friend instruction (gamertag required) ────────
+                if let tag = xboxGamertag {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.75))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Add \u{201C}\(tag)\u{201D} as a friend in Minecraft")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.95))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                            Text("The server will appear in your Worlds tab")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.55))
+                        }
+                        Spacer()
                     }
                     .padding(.horizontal, MSC.Spacing.sm)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.75))
-
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(typeBadgeColor)
-                            .frame(width: 5, height: 5)
-                        Text(protocolLabel)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    .padding(.horizontal, MSC.Spacing.sm)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.75))
-
-                    Spacer()
-
-                    Text("Hosted with MSC")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.30))
+                    .padding(.vertical, 7)
+                    .background(
+                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                            .fill(Color.white.opacity(0.12))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                            .stroke(Color.white.opacity(0.20), lineWidth: 0.75)
+                    )
                 }
             }
             .padding(MSC.Spacing.xl)
@@ -450,10 +449,11 @@ struct JoinCardFrontView: View {
     }
 }
 
-// MARK: - Card Back (eyes-only — never exported)
+// MARK: - Card Back (Java direct connect — public IP + port)
 
 struct JoinCardBackView: View {
     @EnvironmentObject var viewModel: AppViewModel
+    let cardColor: Color
 
     private var hostAddress: String {
         let duck = viewModel.duckdnsInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -462,97 +462,81 @@ struct JoinCardBackView: View {
         return viewModel.javaAddressForDisplay
     }
 
-    private var serverType: ServerType {
-        guard let server = viewModel.selectedServer,
-              let cfg = viewModel.configServer(for: server) else { return .java }
-        return cfg.serverType
-    }
-
-    private var portDisplay: String {
-        if serverType == .bedrock {
-            if let p = viewModel.bedrockPortForDisplay { return String(p) }
-            if let server = viewModel.selectedServer,
-               let cfg = viewModel.configServer(for: server),
-               let p = cfg.bedrockPort { return String(p) }
-            return "19132"
-        } else {
-            return viewModel.javaPortForDisplay
-        }
-    }
-
-    private var protocolLabel: String { serverType == .bedrock ? "UDP" : "TCP" }
-    private var protocolColor: Color { serverType == .bedrock ? MSC.Colors.success : .blue }
-
-    private var instructionText: String {
-        serverType == .bedrock
-            ? "Minecraft \u{2192} Play \u{2192} Friends \u{2192} Add Server"
-            : "Multiplayer \u{2192} Add Server \u{2192} Paste address"
-    }
-
+    private var portDisplay: String { viewModel.javaPortForDisplay }
     private var serverName: String { viewModel.selectedServer?.name ?? "My Server" }
 
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [
-                    Color(red: 0.10, green: 0.12, blue: 0.18),
-                    Color(red: 0.07, green: 0.09, blue: 0.14)
-                ],
+                colors: [cardColor, cardColor.opacity(0.75)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
+            // Subtle grid texture (matches front)
+            Canvas { ctx, size in
+                let spacing: CGFloat = 24
+                var x: CGFloat = 0
+                while x < size.width {
+                    var y: CGFloat = 0
+                    while y < size.height {
+                        let rect = CGRect(x: x, y: y, width: spacing - 1, height: spacing - 1)
+                        ctx.fill(Path(rect), with: .color(.white.opacity(0.03)))
+                        y += spacing
+                    }
+                    x += spacing
+                }
+            }
+
             VStack(alignment: .leading, spacing: 0) {
 
+                // ── Top row: app icon + branding ──────────────────
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CONNECTION DETAILS")
-                            .font(.system(size: 9, weight: .bold))
-                            .tracking(1.5)
-                            .foregroundStyle(.white.opacity(0.35))
-                        Text(serverName)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.90))
-                            .lineLimit(1)
-                    }
-
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .frame(width: 32, height: 32)
                     Spacer()
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "eye.slash")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
-                        Text("Not exported")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
-                    }
-                    .padding(.horizontal, MSC.Spacing.sm)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.white.opacity(0.07)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.75))
-                }
-
-                Divider()
-                    .background(Color.white.opacity(0.12))
-                    .padding(.vertical, MSC.Spacing.sm)
-
-                HStack(spacing: MSC.Spacing.md) {
-                    connectionField(label: "ADDRESS", value: hostAddress)
-                    connectionField(label: "PORT", value: portDisplay)
-                    connectionField(label: "PROTOCOL", value: protocolLabel)
+                    Text("Hosted with MSC")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.30))
                 }
 
                 Spacer()
 
+                // ── Header ────────────────────────────────────────
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DIRECT CONNECT")
+                        .font(.system(size: 9, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundStyle(.white.opacity(0.45))
+                    Text(serverName)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.90))
+                        .lineLimit(1)
+                }
+
+                Divider()
+                    .background(Color.white.opacity(0.20))
+                    .padding(.vertical, MSC.Spacing.sm)
+
+                // ── Connection fields ─────────────────────────────
+                HStack(spacing: MSC.Spacing.md) {
+                    connectionField(label: "ADDRESS", value: hostAddress)
+                    connectionField(label: "PORT", value: portDisplay)
+                }
+
+                Spacer()
+
+                // ── Instruction ───────────────────────────────────
                 HStack(spacing: MSC.Spacing.xs) {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.white.opacity(0.35))
-                    Text(instructionText)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.50))
+                    Text("Multiplayer \u{2192} Add Server \u{2192} Paste address")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.60))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.8)
                 }
             }
             .padding(MSC.Spacing.xl)
@@ -560,7 +544,7 @@ struct JoinCardBackView: View {
         .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.xl, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: MSC.Radius.xl, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
     }
@@ -573,8 +557,8 @@ struct JoinCardBackView: View {
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.35))
             Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.90))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }

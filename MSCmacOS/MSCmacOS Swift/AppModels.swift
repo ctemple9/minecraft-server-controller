@@ -29,6 +29,79 @@ struct AppError: Identifiable {
     let message: String
 }
 
+// MARK: - Plugin management
+
+/// Which tier of management a discovered plugin has.
+enum PluginTier: Int, Comparable {
+    case managed    = 0   // Geyser, Floodgate — app knows source natively
+    case userSourced = 1  // user has attached a source URL
+    case unmanaged  = 2   // JAR on disk, no source
+
+    static func < (lhs: PluginTier, rhs: PluginTier) -> Bool { lhs.rawValue < rhs.rawValue }
+}
+
+/// Where updates are fetched from for a user-sourced plugin.
+enum PluginSourceType: String, Codable, CaseIterable {
+    case github    = "github"
+    case modrinth  = "modrinth"
+    case hangar    = "hangar"
+    case direct    = "direct"
+
+    var displayName: String {
+        switch self {
+        case .github:   return "GitHub Releases"
+        case .modrinth: return "Modrinth"
+        case .hangar:   return "Hangar"
+        case .direct:   return "Direct URL"
+        }
+    }
+
+    /// SF Symbol for badge icon
+    var symbolName: String {
+        switch self {
+        case .github:   return "chevron.left.forwardslash.chevron.right"
+        case .modrinth: return "hexagon"
+        case .hangar:   return "shippingbox"
+        case .direct:   return "link"
+        }
+    }
+}
+
+/// Persisted source configuration for a user-linked plugin.
+struct PluginSourceConfig: Codable, Equatable {
+    let url: String
+    let type: PluginSourceType
+}
+
+/// One plugin JAR discovered on disk (or managed by the app).
+struct PluginEntry: Identifiable, Equatable {
+    /// Stable key: filename stem with `.disabled` stripped.
+    var id: String { jarStem }
+
+    /// Actual filename on disk, e.g. `LuckPerms-Bukkit-5.4.141.jar` or `VaultAPI.jar.disabled`
+    let filename: String
+    /// Filename without extension and without `.disabled`, e.g. `LuckPerms-Bukkit-5.4.141`
+    let jarStem: String
+    /// Human-readable name with version stripped, e.g. `LuckPerms-Bukkit`
+    let displayName: String
+    /// Whether the JAR is active (`.jar`) vs disabled (`.jar.disabled`)
+    let isEnabled: Bool
+    /// Version parsed from filename, if extractable
+    let parsedVersion: String?
+    let tier: PluginTier
+    var sourceConfig: PluginSourceConfig?
+    /// Online version string fetched from the source API
+    var onlineVersion: String?
+    /// Direct download URL for the latest release (set after online check)
+    var onlineDownloadURL: URL?
+    var isCheckingOnline: Bool = false
+    var isDownloading: Bool = false
+
+    // For managed plugins: mirror of ComponentVersionInfo fields
+    var localVersion: String?    // set from componentsSnapshot after refresh
+    var templateVersion: String? // set from componentsSnapshot after refresh
+}
+
 // MARK: - Components (Paper / Cross-play / Broadcast) version tracking
 
 struct ComponentVersionInfo: Equatable {

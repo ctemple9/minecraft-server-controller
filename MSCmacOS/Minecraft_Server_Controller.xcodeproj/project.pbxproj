@@ -107,6 +107,11 @@
 		9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */; };
 		9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326B2F65AD6C00FB8246 /* TemplateView.swift */; };
 		9A5632D82F65AD6D00FB8246 /* PluginDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */; };
+		9A563310AABBCCDD00FB8246 /* PluginSourceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */; };
+		9A563312AABBCCDD00FB8246 /* PluginNameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */; };
+		9A563314AABBCCDD00FB8246 /* HangarAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563315AABBCCDD00FB8246 /* HangarAPI.swift */; };
+		9A563316AABBCCDD00FB8246 /* ModrinthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */; };
+		9A563318AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */; };
 		9A5632D92F65AD6D00FB8246 /* PlayerAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */; };
 		9A5632DA2F65AD6D00FB8246 /* ManageServersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322A2F65AD6C00FB8246 /* ManageServersView.swift */; };
 		9A5632DB2F65AD6D00FB8246 /* AppViewModel+BedrockProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */; };
@@ -283,6 +288,11 @@
 		9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
 		9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSessionTimelineView.swift; sourceTree = "<group>"; };
 		9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDownloader.swift; sourceTree = "<group>"; };
+		9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginSourceDetector.swift; sourceTree = "<group>"; };
+		9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginNameParser.swift; sourceTree = "<group>"; };
+		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
+		9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthAPI.swift; sourceTree = "<group>"; };
+		9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PluginManagement.swift"; sourceTree = "<group>"; };
 		9A5632442F65AD6C00FB8246 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrerequisitesView.swift; sourceTree = "<group>"; };
 		9A5632462F65AD6C00FB8246 /* MSCStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCStyles.swift; sourceTree = "<group>"; };
@@ -493,6 +503,11 @@
 				9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */,
 				9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */,
 				9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */,
+				9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */,
+				9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */,
+				9A563315AABBCCDD00FB8246 /* HangarAPI.swift */,
+				9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */,
+				9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */,
 				9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */,
 				9A5632442F65AD6C00FB8246 /* PreferencesView.swift */,
 				9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */,
@@ -777,6 +792,11 @@
 				9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */,
 				9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */,
 				9A5632D82F65AD6D00FB8246 /* PluginDownloader.swift in Sources */,
+				9A563310AABBCCDD00FB8246 /* PluginSourceDetector.swift in Sources */,
+				9A563312AABBCCDD00FB8246 /* PluginNameParser.swift in Sources */,
+				9A563314AABBCCDD00FB8246 /* HangarAPI.swift in Sources */,
+				9A563316AABBCCDD00FB8246 /* ModrinthAPI.swift in Sources */,
+				9A563318AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift in Sources */,
 				9A5632D92F65AD6D00FB8246 /* PlayerAvatarView.swift in Sources */,
 				9A5632DA2F65AD6D00FB8246 /* ManageServersView.swift in Sources */,
 				9A5632DB2F65AD6D00FB8246 /* AppViewModel+BedrockProperties.swift in Sources */,

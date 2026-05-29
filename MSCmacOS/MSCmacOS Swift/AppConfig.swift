@@ -170,6 +170,10 @@ struct ConfigServer: Codable, Identifiable {
     var xboxBroadcastAltPassword: String? = nil
     var xboxBroadcastAltAvatarPath: String? = nil
 
+    /// Per-plugin source configs, keyed by jarStem (filename without extension / .disabled).
+    /// Nil for old configs — treated as empty (all plugins unmanaged).
+    var pluginSources: [String: PluginSourceConfig]? = nil
+
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
@@ -206,6 +210,7 @@ struct ConfigServer: Codable, Identifiable {
                         case bedrockVersion      = "bedrock_version"
 
                         case notificationPrefs   = "notification_prefs"
+                        case pluginSources       = "plugin_sources"
             }
         }
 
@@ -260,6 +265,7 @@ extension ConfigServer {
                         bedrockVersion     = try c.decodeIfPresent(String.self, forKey: .bedrockVersion)
 
                         notificationPrefs  = try c.decodeIfPresent(ServerNotificationPrefs.self, forKey: .notificationPrefs) ?? ServerNotificationPrefs()
+                        pluginSources      = try c.decodeIfPresent([String: PluginSourceConfig].self, forKey: .pluginSources)
             }
 
     func encode(to encoder: Encoder) throws {
@@ -300,6 +306,7 @@ extension ConfigServer {
                         try c.encodeIfPresent(bedrockDockerImage,      forKey: .bedrockDockerImage)
 
                 try c.encode(notificationPrefs, forKey: .notificationPrefs)
+                try c.encodeIfPresent(pluginSources, forKey: .pluginSources)
             }
 }
 
