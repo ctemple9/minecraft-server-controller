@@ -48,6 +48,9 @@
 		9A2FC23F2F67D1C900D79E50 /* SettingsJoinCardSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2302F67D1C900D79E50 /* SettingsJoinCardSection.swift */; };
 		9A2FC2402F67D1C900D79E50 /* DashboardStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC22B2F67D1C900D79E50 /* DashboardStatusCard.swift */; };
 		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
+		9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0002F9A00000000AA01 /* HealthView.swift */; };
+		9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */; };
+		9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +97,9 @@
 		9A2FC2332F67D1C900D79E50 /* TailscaleHelpSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleHelpSheet.swift; sourceTree = "<group>"; };
 		9A8F436A2EF4B5D6001A9355 /* MSCRemoteiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MSCRemoteiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		9AB1C0002F9A00000000AA01 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
+		9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsStatusStripView.swift; sourceTree = "<group>"; };
+		9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxAuthBanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +157,9 @@
 				9A1695D12F6627D6002BB92F /* SettingsView.swift */,
 				9A1695D22F6627D6002BB92F /* splash_intro.mp4 */,
 				9A1695D32F6627D6002BB92F /* SplashGateView.swift */,
+				9AB1C0002F9A00000000AA01 /* HealthView.swift */,
+				9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */,
+				9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */,
 			);
 			path = MSCRemoteiOS_Swift;
 			sourceTree = "<group>";
@@ -284,6 +293,9 @@
 				9A1695EB2F6627D6002BB92F /* RemoteAPIClient.swift in Sources */,
 				9A1695ED2F6627D6002BB92F /* KeychainTokenStore.swift in Sources */,
 				9A1695EE2F6627D6002BB92F /* HapticHelpers.swift in Sources */,
+				9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */,
+				9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */,
+				9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

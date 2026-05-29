@@ -24,6 +24,7 @@ struct PreferencesView: View {
     // Preferred pairing host + shared access
     @State private var preferredPairingHostInput: String = ""
     @State private var newSharedAccessLabel: String = ""
+    @State private var newSharedAccessRole: String = "admin"
 
     // Pairing UI state
     @State private var showPairingQR: Bool = false
@@ -438,6 +439,7 @@ struct PreferencesView: View {
             remoteAPIExposeOnLAN: $remoteAPIExposeOnLAN,
             preferredPairingHostInput: $preferredPairingHostInput,
             newSharedAccessLabel: $newSharedAccessLabel,
+            newSharedAccessRole: $newSharedAccessRole,
             showPairingQR: $showPairingQR,
             pairingLinkForQR: $pairingLinkForQR,
             showCopiedAlert: $showCopiedAlert,
@@ -457,6 +459,7 @@ struct PreferencesView: View {
             onBuildPairingLink: buildPairingLink,
             onAddSharedAccessEntry: addSharedAccessEntry,
             onRevokeSharedAccessEntry: revokeSharedAccessEntry,
+            onSetSharedAccessEntryRole: setSharedAccessEntryRole,
             onRegenerateToken: regenerateRemoteAPIToken
         )
     }
@@ -633,17 +636,26 @@ struct PreferencesView: View {
             attempts += 1
         }
 
-        let entry = RemoteAPISharedAccessEntry.make(label: trimmedLabel, token: token)
+        let entry = RemoteAPISharedAccessEntry.make(label: trimmedLabel, token: token, role: newSharedAccessRole)
         cfg.remoteAPISharedAccess.append(entry)
 
         viewModel.configManager.config = cfg
         viewModel.configManager.save()
 
-        viewModel.logAppMessage("[Remote API] Added shared access: \(trimmedLabel).")
+        viewModel.logAppMessage("[Remote API] Added shared access (\(newSharedAccessRole)): \(trimmedLabel).")
 
         newSharedAccessLabel = ""
+        newSharedAccessRole = "admin"
         copiedMessage = "Shared access added. Use Copy Pairing Link / Show QR to share."
         showCopiedAlert = true
+    }
+
+    private func setSharedAccessEntryRole(id: String, role: String) {
+        var cfg = viewModel.configManager.config
+        guard let idx = cfg.remoteAPISharedAccess.firstIndex(where: { $0.id == id }) else { return }
+        cfg.remoteAPISharedAccess[idx].role = role
+        viewModel.configManager.config = cfg
+        viewModel.configManager.save()
     }
 
     private func revokeSharedAccessEntry(id: String) {

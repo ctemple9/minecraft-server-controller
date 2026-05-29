@@ -247,7 +247,7 @@ struct CommandPaletteView: View {
             }
         }
         .background(MSC.Colors.tierAtmosphere)
-        .frame(minWidth: 480, minHeight: 560)
+        .frame(minWidth: 480, minHeight: 460)
     }
 
     // MARK: - Helpers

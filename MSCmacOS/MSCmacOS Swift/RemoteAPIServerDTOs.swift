@@ -119,6 +119,56 @@ extension RemoteAPIServer {
         let entries: [AllowlistEntryDTO]
     }
 
+    // MARK: - Components
+
+    struct ComponentStatusDTO: Codable {
+        let name: String
+        let installedBuild: Int?
+        let latestBuild: Int?
+        let installedVersion: String?
+        let latestVersion: String?
+        let isUpToDate: Bool
+    }
+
+    struct ComponentsStatusDTO: Codable {
+        let components: [ComponentStatusDTO]
+        let restartRequiredToApply: Bool
+    }
+
+    struct ComponentUpdateRequestDTO: Codable {
+        let component: String
+    }
+
+    struct ComponentUpdateResultDTO: Codable {
+        let success: Bool
+        let message: String
+        let newBuild: Int?
+        let newVersion: String?
+    }
+
+    // MARK: - Broadcast
+
+    struct BroadcastStatusDTO: Codable {
+        let xboxBroadcastRunning: Bool
+        let bedrockBroadcastRunning: Bool
+    }
+
+    struct BroadcastCredentialsDTO: Codable {
+        let email: String
+        let password: String
+        let gamertag: String
+    }
+
+    struct BroadcastAutoStartDTO: Codable {
+        let enabled: Bool
+    }
+
+    struct BroadcastAuthPromptDTO: Codable {
+        let isPresent: Bool
+        let code: String?
+        let linkURL: String?
+    }
+
     // MARK: - Session Log
 
     /// One session event returned by GET /session-log.

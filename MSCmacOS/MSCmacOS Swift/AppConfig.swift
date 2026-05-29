@@ -316,20 +316,38 @@ struct RemoteAPISharedAccessEntry: Codable, Identifiable {
     var id: String
     var label: String
     var token: String
+    /// "admin" or "guest". Defaults to "admin" for entries created before this field existed.
+    var role: String
     var createdAtISO8601: String?
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case label
-        case token
+        case id, label, token, role
         case createdAtISO8601 = "created_at"
     }
 
-    static func make(label: String, token: String) -> RemoteAPISharedAccessEntry {
+    init(id: String, label: String, token: String, role: String = "admin", createdAtISO8601: String? = nil) {
+        self.id = id
+        self.label = label
+        self.token = token
+        self.role = role
+        self.createdAtISO8601 = createdAtISO8601
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id    = try c.decode(String.self, forKey: .id)
+        label = try c.decode(String.self, forKey: .label)
+        token = try c.decode(String.self, forKey: .token)
+        role  = (try? c.decodeIfPresent(String.self, forKey: .role)) ?? "admin"
+        createdAtISO8601 = try? c.decodeIfPresent(String.self, forKey: .createdAtISO8601)
+    }
+
+    static func make(label: String, token: String, role: String = "admin") -> RemoteAPISharedAccessEntry {
         RemoteAPISharedAccessEntry(
             id: UUID().uuidString,
             label: label,
             token: token,
+            role: role,
             createdAtISO8601: ISO8601DateFormatter().string(from: Date())
         )
     }

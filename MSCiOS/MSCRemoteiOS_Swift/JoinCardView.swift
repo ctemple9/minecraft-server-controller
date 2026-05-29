@@ -58,8 +58,8 @@ struct JoinCardView: View {
     @State private var showShareSheet: Bool = false
     @State private var shareImage: UIImage? = nil
     @State private var exportToast: String? = nil
+    @State private var showCustomize: Bool = false
 
-    // The active server, pulled from vm
     private var activeServer: ServerDTO? {
         guard let activeId = vm.status?.activeServerId else {
             return vm.servers.first
@@ -74,11 +74,11 @@ struct JoinCardView: View {
 
             // ── Flip card ─────────────────────────────────────────────────
             ZStack {
-                JoinCardFrontFace(server: activeServer, cardColor: cardColor)
+                JoinCardFrontFace(server: activeServer, cardColor: cardColor, gamertag: settings.xboxGamertag)
                     .opacity(isFlipped ? 0 : 1)
                     .rotation3DEffect(.degrees(rotation), axis: (x: 0, y: 1, z: 0))
 
-                JoinCardBackFace(server: activeServer, settings: settings)
+                JoinCardBackFace(server: activeServer, cardColor: cardColor, settings: settings)
                     .opacity(isFlipped ? 1 : 0)
                     .rotation3DEffect(.degrees(rotation - 180), axis: (x: 0, y: 1, z: 0))
             }
@@ -95,28 +95,93 @@ struct JoinCardView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
 
-            // ── Color swatches ────────────────────────────────────────────
-            HStack(spacing: MSCRemoteStyle.spaceSM) {
-                Text("COLOR")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundStyle(MSCRemoteStyle.textTertiary)
-                    .kerning(0.8)
+            // ── Customize toggle ──────────────────────────────────────────
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showCustomize.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("Customize")
+                        .font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Image(systemName: showCustomize ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(MSCRemoteStyle.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, showCustomize ? MSCRemoteStyle.spaceSM : MSCRemoteStyle.spaceMD)
 
-                Spacer()
+            if showCustomize {
+                VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceMD) {
 
-                ForEach(cardColorPresets) { preset in
-                    colorSwatch(preset.color, isSelected: colorsMatch(cardColor, preset.color)) {
-                        cardColor = preset.color
-                        settings.joinCardColorHex = preset.hex
-                        settings.saveJoinCardPreferences()
+                    // ── Color swatches + custom picker ────────────────────
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("COLOR")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                            .kerning(0.8)
+
+                        HStack(spacing: MSCRemoteStyle.spaceSM) {
+                            ForEach(cardColorPresets) { preset in
+                                colorSwatch(preset.color, isSelected: colorsMatch(cardColor, preset.color)) {
+                                    cardColor = preset.color
+                                    settings.joinCardColorHex = preset.hex
+                                    settings.saveJoinCardPreferences()
+                                }
+                            }
+
+                            Rectangle()
+                                .fill(MSCRemoteStyle.borderMid)
+                                .frame(width: 1, height: 22)
+                                .padding(.horizontal, 2)
+
+                            ColorPicker("", selection: $cardColor, supportsOpacity: false)
+                                .labelsHidden()
+                                .frame(width: 28, height: 28)
+                                .clipShape(Circle())
+                                .overlay(Circle().strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1.5))
+                                .onChange(of: cardColor) { _, newColor in
+                                    if let hex = newColor.hexRGBString() {
+                                        settings.joinCardColorHex = hex
+                                        settings.saveJoinCardPreferences()
+                                    }
+                                }
+                        }
+                    }
+
+                    // ── Xbox Gamertag input ───────────────────────────────
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("XBOX GAMERTAG")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                            .kerning(0.8)
+
+                        TextField("Enter your Xbox gamertag\u{2026}", text: $settings.xboxGamertag)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(MSCRemoteStyle.textPrimary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(MSCRemoteStyle.bgElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                                    .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
+                            )
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .onChange(of: settings.xboxGamertag) { _, _ in
+                                settings.saveJoinCardPreferences()
+                            }
                     }
                 }
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(.bottom, MSCRemoteStyle.spaceMD)
 
             // ── Action buttons ────────────────────────────────────────────
             HStack(spacing: MSCRemoteStyle.spaceSM) {
-                // Flip
                 Button {
                     flipCard()
                 } label: {
@@ -138,7 +203,6 @@ struct JoinCardView: View {
                 }
                 .buttonStyle(.plain)
 
-                // Share (front only — matches macOS behavior)
                 Button {
                     renderAndShare()
                 } label: {
@@ -212,16 +276,41 @@ struct JoinCardView: View {
     }
 
     private func renderAndShare() {
-        // Always share the front face — mirrors macOS behavior exactly
-        let front = JoinCardFrontFace(server: activeServer, cardColor: cardColor)
-            .frame(width: UIScreen.main.bounds.width - 64, height: 180)
-        let renderer = ImageRenderer(content: front)
-        renderer.scale = 3.0
-        guard let uiImage = renderer.uiImage else {
+        let cardWidth = UIScreen.main.bounds.width - 64
+        let cardHeight: CGFloat = 180
+
+        let frontRenderer = ImageRenderer(content:
+            JoinCardFrontFace(server: activeServer, cardColor: cardColor, gamertag: settings.xboxGamertag)
+                .frame(width: cardWidth, height: cardHeight)
+        )
+        frontRenderer.scale = 3.0
+
+        let backRenderer = ImageRenderer(content:
+            JoinCardBackFace(server: activeServer, cardColor: cardColor, settings: settings)
+                .frame(width: cardWidth, height: cardHeight)
+        )
+        backRenderer.scale = 3.0
+
+        guard let frontImage = frontRenderer.uiImage,
+              let backImage  = backRenderer.uiImage else {
             showToast("Export failed")
             return
         }
-        shareImage = uiImage
+
+        let gap: CGFloat = 16
+        let combinedSize = CGSize(
+            width: max(frontImage.size.width, backImage.size.width),
+            height: frontImage.size.height + gap + backImage.size.height
+        )
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let combined = UIGraphicsImageRenderer(size: combinedSize, format: format).image { _ in
+            frontImage.draw(at: .zero)
+            backImage.draw(at: CGPoint(x: 0, y: frontImage.size.height + gap))
+        }
+
+        shareImage = combined
         showShareSheet = true
     }
 
@@ -238,16 +327,16 @@ struct JoinCardView: View {
 struct JoinCardFrontFace: View {
     let server: ServerDTO?
     let cardColor: Color
+    let gamertag: String
 
-    private var serverName: String  { server?.name ?? "My Server" }
+    private var serverName: String   { server?.name ?? "My Server" }
     private var serverType: ServerType { server?.resolvedServerType ?? .java }
+    private var isBedrock: Bool      { serverType == .bedrock }
 
-    private var typeBadgeColor: Color {
-        serverType == .bedrock ? Color(red: 0.31, green: 0.78, blue: 0.47) : Color(red: 0.27, green: 0.52, blue: 0.93)
+    private var resolvedGamertag: String? {
+        let trimmed = gamertag.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
-    private var typeBadgeLabel: String { serverType == .bedrock ? "Bedrock" : "Java" }
-    private var portDisplay: String    { String(server?.resolvedGamePort ?? (serverType == .bedrock ? 19132 : 25565)) }
-    private var protocolLabel: String  { serverType == .bedrock ? "UDP" : "TCP" }
 
     var body: some View {
         ZStack {
@@ -274,71 +363,76 @@ struct JoinCardFrontFace: View {
 
             VStack(alignment: .leading, spacing: 0) {
 
-                // Top row: cube icon + type badge
-                HStack(alignment: .center) {
+                // ── Top row: cube icon + branding ─────────────────
+                HStack {
                     Image(systemName: "cube.fill")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.white.opacity(0.85))
-
                     Spacer()
-
-                    Text(typeBadgeLabel.uppercased())
-                        .font(.system(size: 9, weight: .bold))
-                        .tracking(1.2)
-                        .foregroundStyle(typeBadgeColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(typeBadgeColor.opacity(0.18)))
-                        .overlay(Capsule().stroke(typeBadgeColor.opacity(0.45), lineWidth: 0.75))
+                    Text("Hosted with MSC")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.30))
                 }
 
                 Spacer()
 
-                // Server name
+                // ── Server name + subtitle ────────────────────────
                 Text(serverName)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
-                Text("You\u{2019}re invited to join")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
+                Text(isBedrock ? "Bedrock Server" : "Java Server")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.45))
                     .padding(.top, 2)
+
+                Divider()
+                    .background(Color.white.opacity(0.20))
+                    .padding(.vertical, 8)
+
+                // ── Gamertag box ──────────────────────────────────
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(resolvedGamertag.map { "Add \u{201C}\($0)\u{201D} as a friend" } ?? "Set your gamertag in Settings")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Text("The server will appear in your Worlds tab")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
+                )
 
                 Spacer()
 
-                // Port + protocol + branding
-                HStack(spacing: 8) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "network")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.55))
-                        Text("Port \(portDisplay)")
-                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.75))
-
-                    HStack(spacing: 4) {
-                        Circle().fill(typeBadgeColor).frame(width: 5, height: 5)
-                        Text(protocolLabel)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.75))
-
-                    Spacer()
-
-                    Text("Hosted with MSC")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.30))
+                // ── Bottom instruction ────────────────────────────
+                HStack(spacing: 4) {
+                    Image(systemName: "gamecontroller")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.50))
+                    Text("Console: Friends tab \u{2192} Add Friend \u{2192} server appears in Worlds")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.60))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
             .padding(16)
@@ -356,23 +450,19 @@ struct JoinCardFrontFace: View {
 
 struct JoinCardBackFace: View {
     let server: ServerDTO?
+    let cardColor: Color
     let settings: SettingsStore
 
     private var serverName: String { server?.name ?? "My Server" }
     private var serverType: ServerType { server?.resolvedServerType ?? .java }
 
     private var hostAddress: String {
-        // Use the address the macOS app exposes via API.
-        // Fall back to the base URL the user paired with (minus port/path).
         if let addr = server?.hostAddress, !addr.isEmpty { return addr }
-        // Parse from stored base URL as fallback
         if let url = settings.resolvedBaseURL(), let host = url.host { return host }
         return "Not configured"
     }
 
     private var portDisplay: String { String(server?.resolvedGamePort ?? (serverType == .bedrock ? 19132 : 25565)) }
-    private var protocolLabel: String { serverType == .bedrock ? "UDP" : "TCP" }
-    private var protocolColor: Color  { serverType == .bedrock ? Color(red: 0.31, green: 0.78, blue: 0.47) : Color(red: 0.27, green: 0.52, blue: 0.93) }
 
     private var instructionText: String {
         serverType == .bedrock
@@ -383,63 +473,104 @@ struct JoinCardBackFace: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [
-                    Color(red: 0.10, green: 0.12, blue: 0.18),
-                    Color(red: 0.07, green: 0.09, blue: 0.14)
-                ],
+                colors: [cardColor, cardColor.opacity(0.75)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
+            // Subtle grid texture — matches front
+            Canvas { ctx, size in
+                let spacing: CGFloat = 24
+                var x: CGFloat = 0
+                while x < size.width {
+                    var y: CGFloat = 0
+                    while y < size.height {
+                        ctx.fill(Path(CGRect(x: x, y: y, width: spacing - 1, height: spacing - 1)),
+                                 with: .color(.white.opacity(0.03)))
+                        y += spacing
+                    }
+                    x += spacing
+                }
+            }
+
             VStack(alignment: .leading, spacing: 0) {
 
+                // ── Top row: app icon + branding ──────────────────
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CONNECTION DETAILS")
-                            .font(.system(size: 8, weight: .bold))
-                            .tracking(1.5)
-                            .foregroundStyle(.white.opacity(0.35))
-                        Text(serverName)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.90))
-                            .lineLimit(1)
+                    if let uiIcon = UIImage(named: "AppIcon") {
+                        Image(uiImage: uiIcon)
+                            .resizable()
+                            .frame(width: 32, height: 32)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    } else {
+                        Image(systemName: "cube.fill")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(width: 32, height: 32)
                     }
-
                     Spacer()
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "eye.slash")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
-                        Text("Not exported")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.40))
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.white.opacity(0.07)))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.75))
-                }
-
-                Divider()
-                    .background(Color.white.opacity(0.12))
-                    .padding(.vertical, 8)
-
-                HStack(spacing: 8) {
-                    connectionField(label: "ADDRESS", value: hostAddress)
-                    connectionField(label: "PORT", value: portDisplay)
-                    connectionField(label: "PROTOCOL", value: protocolLabel)
+                    Text("Hosted with MSC")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.30))
                 }
 
                 Spacer()
 
+                // ── Server name + subtitle ────────────────────────
+                Text(serverName)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text("DIRECT CONNECT")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(.top, 2)
+
+                Divider()
+                    .background(Color.white.opacity(0.20))
+                    .padding(.vertical, 8)
+
+                // ── Combined address:port field ───────────────────
+                HStack(spacing: 8) {
+                    Image(systemName: "network")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(hostAddress):\(portDisplay)")
+                            .font(.system(size: 19, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                        Text("Enter in the Add Server screen")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
+                )
+
+                Spacer()
+
+                // ── Bottom instruction ────────────────────────────
                 HStack(spacing: 4) {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "desktopcomputer")
                         .font(.system(size: 9))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(.white.opacity(0.50))
                     Text(instructionText)
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(.white.opacity(0.60))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -449,7 +580,7 @@ struct JoinCardBackFace: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
     }
@@ -462,12 +593,12 @@ struct JoinCardBackFace: View {
                 .tracking(1.0)
                 .foregroundStyle(.white.opacity(0.35))
             Text(value)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.90))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)

@@ -389,53 +389,63 @@ struct JoinCardFrontView: View {
 
                 Spacer()
 
-                // ── Server name + type ────────────────────────────
+                // ── Server name + subtitle ────────────────────────
                 Text(serverName)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
                 Text(isBedrock ? "Bedrock Server" : "Java Server")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.50))
-                    .padding(.top, 1)
-
-                Text("You\u{2019}re invited to join")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.60))
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.45))
                     .padding(.top, 2)
+
+                Divider()
+                    .background(Color.white.opacity(0.20))
+                    .padding(.vertical, 8)
+
+                // ── Gamertag box ──────────────────────────────────
+                HStack(spacing: 8) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(xboxGamertag.map { "Add \u{201C}\($0)\u{201D} as a friend" } ?? "Set gamertag in server settings")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Text("The server will appear in your Worlds tab")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, MSC.Spacing.sm)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
+                )
 
                 Spacer()
 
-                // ── Friend instruction (gamertag required) ────────
-                if let tag = xboxGamertag {
-                    HStack(spacing: 8) {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.75))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Add \u{201C}\(tag)\u{201D} as a friend in Minecraft")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white.opacity(0.95))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                            Text("The server will appear in your Worlds tab")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.55))
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal, MSC.Spacing.sm)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                            .fill(Color.white.opacity(0.12))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                            .stroke(Color.white.opacity(0.20), lineWidth: 0.75)
-                    )
+                // ── Bottom instruction ────────────────────────────
+                HStack(spacing: 4) {
+                    Image(systemName: "gamecontroller")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.white.opacity(0.50))
+                    Text("Console: Friends tab \u{2192} Add Friend \u{2192} server appears in Worlds")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.60))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
             .padding(MSC.Spacing.xl)
@@ -503,37 +513,60 @@ struct JoinCardBackView: View {
 
                 Spacer()
 
-                // ── Header ────────────────────────────────────────
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("DIRECT CONNECT")
-                        .font(.system(size: 9, weight: .bold))
-                        .tracking(1.5)
-                        .foregroundStyle(.white.opacity(0.45))
-                    Text(serverName)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.90))
-                        .lineLimit(1)
-                }
+                // ── Server name + subtitle ────────────────────────
+                Text(serverName)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text("DIRECT CONNECT")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(1.5)
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(.top, 2)
 
                 Divider()
                     .background(Color.white.opacity(0.20))
-                    .padding(.vertical, MSC.Spacing.sm)
+                    .padding(.vertical, 8)
 
-                // ── Connection fields ─────────────────────────────
-                HStack(spacing: MSC.Spacing.md) {
-                    connectionField(label: "ADDRESS", value: hostAddress)
-                    connectionField(label: "PORT", value: portDisplay)
+                // ── Combined address:port field ───────────────────
+                HStack(spacing: 8) {
+                    Image(systemName: "network")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(hostAddress):\(portDisplay)")
+                            .font(.system(size: 15, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                        Text("Enter in the Add Server screen")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
                 }
+                .padding(.horizontal, MSC.Spacing.sm)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .fill(Color.white.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
+                )
 
                 Spacer()
 
-                // ── Instruction ───────────────────────────────────
+                // ── Bottom instruction ────────────────────────────
                 HStack(spacing: MSC.Spacing.xs) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 10))
                         .foregroundStyle(.white.opacity(0.50))
                     Text("Multiplayer \u{2192} Add Server \u{2192} Paste address")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.white.opacity(0.60))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
@@ -549,29 +582,5 @@ struct JoinCardBackView: View {
         .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
     }
 
-    @ViewBuilder
-    private func connectionField(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.system(size: 8, weight: .bold))
-                .tracking(1.0)
-                .foregroundStyle(.white.opacity(0.35))
-            Text(value)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .padding(.horizontal, MSC.Spacing.sm)
-        .padding(.vertical, MSC.Spacing.xs)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
-        )
-    }
 }
 

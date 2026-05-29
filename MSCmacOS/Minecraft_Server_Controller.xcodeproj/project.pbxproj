@@ -157,6 +157,9 @@
 		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
 		9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */; };
 		9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */; };
+		9AB1C0042F9A00000000AA04 /* RemoteAPIServer+ComponentRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */; };
+		9AB1C0062F9A00000000BB01 /* HeadlessScriptGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */; };
+		9AB1C0082F9A00000000BB03 /* HeadlessScriptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */; };
 		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
 		9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */; };
 		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
@@ -341,6 +344,9 @@
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
 		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
 		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
+		9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+ComponentRoutes.swift"; sourceTree = "<group>"; };
+		9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptGenerator.swift; sourceTree = "<group>"; };
+		9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptSheet.swift; sourceTree = "<group>"; };
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
 		9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSections.swift; sourceTree = "<group>"; };
 		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
@@ -517,6 +523,9 @@
 				9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */,
 				9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */,
 				9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */,
+				9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */,
+				9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */,
+				9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */,
 				9A56324C2F65AD6C00FB8246 /* RemoteAPIServerDTOs.swift */,
 				9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */,
 				9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */,
@@ -687,6 +696,9 @@
 				9A56327C2F65AD6D00FB8246 /* RemoteAPIServerDTOs.swift in Sources */,
 				9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */,
 				9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */,
+				9AB1C0042F9A00000000AA04 /* RemoteAPIServer+ComponentRoutes.swift in Sources */,
+				9AB1C0062F9A00000000BB01 /* HeadlessScriptGenerator.swift in Sources */,
+				9AB1C0082F9A00000000BB03 /* HeadlessScriptSheet.swift in Sources */,
 				9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */,
 				9A56327D2F65AD6D00FB8246 /* ServerEditorWorldTab.swift in Sources */,
 				9A56327E2F65AD6D00FB8246 /* SplashGateView.swift in Sources */,

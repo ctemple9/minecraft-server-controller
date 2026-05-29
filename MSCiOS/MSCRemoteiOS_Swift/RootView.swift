@@ -10,16 +10,16 @@ import UIKit
 enum NavDestination: String, CaseIterable, Hashable {
     case dashboard
     case console
-    case commands
     case players
+    case health
     case settings
 
     var title: String {
         switch self {
         case .dashboard: return "Dashboard"
         case .console:   return "Console"
-        case .commands:  return "Commands"
         case .players:   return "Players"
+        case .health:    return "Health"
         case .settings:  return "Settings"
         }
     }
@@ -28,8 +28,8 @@ enum NavDestination: String, CaseIterable, Hashable {
         switch self {
         case .dashboard: return "gauge.with.dots.needle.50percent"
         case .console:   return "terminal"
-        case .commands:  return "chevron.right.2"
         case .players:   return "person.2"
+        case .health:    return "cross.case"
         case .settings:  return "gearshape"
         }
     }
@@ -47,6 +47,7 @@ struct RootView: View {
     @State private var statusPollTask: Task<Void, Never>? = nil
     @State private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     @State private var selectedDestination: NavDestination = .dashboard
+    @State private var activeAuthPrompt: BroadcastAuthPromptDTO? = nil
 
     @AppStorage("mscremote.hasSeenQuickGuide") private var hasSeenQuickGuide = false
     @State private var showFirstLaunchGuide = false
@@ -62,12 +63,33 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
-            if horizontalSizeClass == .regular {
-                ipadLayout
-            } else {
-                iphoneLayout
+        ZStack(alignment: .bottom) {
+            Group {
+                if horizontalSizeClass == .regular {
+                    ipadLayout
+                } else {
+                    iphoneLayout
+                }
             }
+
+            // Auth banner sits just above the tab bar / bottom safe area
+            if let prompt = dashboardVM.pendingAuthPrompt, prompt.isPresent {
+                XboxAuthBannerView(prompt: prompt) {
+                    activeAuthPrompt = prompt
+                }
+                .padding(.bottom, horizontalSizeClass == .regular ? 16 : 54)
+                .zIndex(999)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: dashboardVM.pendingAuthPrompt != nil)
+            }
+        }
+        .sheet(item: $activeAuthPrompt, onDismiss: {
+            guard let baseURL = settings.resolvedBaseURL(),
+                  let token = settings.resolvedToken() else { return }
+            Task { await dashboardVM.dismissAuthPrompt(baseURL: baseURL, token: token) }
+        }) { prompt in
+            XboxAuthSheet(prompt: prompt)
+                .environmentObject(settings)
+                .environmentObject(dashboardVM)
         }
         .sheet(isPresented: $showFirstLaunchGuide, onDismiss: {
             hasSeenQuickGuide = true
@@ -227,19 +249,20 @@ struct RootView: View {
     private var ipadDetailView: some View {
         switch selectedDestination {
         case .dashboard:
-            DashboardView()
+            DashboardView(navigateToHealth: { selectedDestination = .health })
                 .environmentObject(dashboardVM)
         case .console:
             ConsoleView()
                 .environmentObject(dashboardVM)
-        case .commands:
-            CommandsView()
-                .environmentObject(dashboardVM)
         case .players:
             PlayersView()
                 .environmentObject(dashboardVM)
+        case .health:
+            HealthView()
+                .environmentObject(dashboardVM)
         case .settings:
             SettingsView()
+                .environmentObject(dashboardVM)
         }
     }
 
@@ -249,37 +272,39 @@ struct RootView: View {
     // regressions on iPhone.
 
     private var iphoneLayout: some View {
-        TabView {
-            DashboardView()
+        TabView(selection: $selectedDestination) {
+            DashboardView(navigateToHealth: { selectedDestination = .health })
                 .environmentObject(dashboardVM)
-                .tabItem {
-                    Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent")
-                }
+                .tabItem { Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent") }
+                .tag(NavDestination.dashboard)
 
             ConsoleView()
                 .environmentObject(dashboardVM)
-                .tabItem {
-                    Label("Console", systemImage: "terminal")
-                }
-
-            CommandsView()
-                .environmentObject(dashboardVM)
-                .tabItem {
-                    Label("Commands", systemImage: "chevron.right.2")
-                }
+                .tabItem { Label("Console", systemImage: "terminal") }
+                .tag(NavDestination.console)
 
             PlayersView()
                 .environmentObject(dashboardVM)
-                .tabItem {
-                    Label("Players", systemImage: "person.2")
-                }
+                .tabItem { Label("Players", systemImage: "person.2") }
+                .tag(NavDestination.players)
+
+            HealthView()
+                .environmentObject(dashboardVM)
+                .tabItem { Label("Health", systemImage: "cross.case") }
+                .tag(NavDestination.health)
 
             SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
+                .environmentObject(dashboardVM)
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(NavDestination.settings)
         }
         .tint(MSCRemoteStyle.accent)
+        .onAppear { applyTabBarTint() }
+        .onChange(of: settings.accentColorHex) { _, _ in applyTabBarTint() }
+    }
+
+    private func applyTabBarTint() {
+        UITabBar.appearance().tintColor = UIColor(MSCRemoteStyle.accent)
     }
 
     // MARK: - Status polling (unchanged from original)

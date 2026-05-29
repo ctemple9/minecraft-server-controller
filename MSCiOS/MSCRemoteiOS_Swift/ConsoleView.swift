@@ -66,18 +66,45 @@ struct ConsoleView: View {
     @State private var showLive: Bool = false
 
     // MARK: Filter state
-    //
-    // All filtering is a single computed property (displayLines) that reads
-    // these @State values directly. SwiftUI re-evaluates it whenever state
-    // changes — no Combine pipeline, no cached array, no .onChange needed.
 
-    @State private var activeSourceChips: Set<String> = []   // "app" | "server"
-    @State private var activeLevelChips: Set<String>  = []   // "INFO" | "WARN" | "ERROR"
+    @State private var activeSourceChips: Set<String> = []
+    @State private var activeLevelChips: Set<String>  = []
     @State private var pluginsOnly: Bool  = false
     @State private var hideAuto:    Bool  = false
     @State private var searchText:  String = ""
     @State private var showSearch:  Bool   = false
     @FocusState private var searchFocused: Bool
+
+    // MARK: Quick send
+
+    private var quickSendChips: [CommandTemplate] {
+        let allCommands = CommandCatalog.defaultGroups.flatMap { $0.commands }
+        let commandByString = Dictionary(uniqueKeysWithValues: allCommands.map { ($0.command, $0) })
+        var seen = Set<String>()
+        var chips: [CommandTemplate] = []
+        for cmd in settings.favoriteCommands {
+            guard chips.count < 5 else { break }
+            if let template = commandByString[cmd], seen.insert(cmd).inserted { chips.append(template) }
+        }
+        for cmd in settings.recentCommands {
+            guard chips.count < 5 else { break }
+            if let template = commandByString[cmd], seen.insert(cmd).inserted { chips.append(template) }
+        }
+        return chips
+    }
+
+    // MARK: Quick command state
+
+    @State private var selectedDifficulty: String = "normal"
+    @State private var selectedGamemode: String = "survival"
+
+    // MARK: Command state
+
+    @State private var commandText: String = ""
+    @State private var showCommandPicker: Bool = false
+    @State private var showDangerConfirm: Bool = false
+    @State private var dangerCommandToConfirm: String = ""
+    @State private var lastSentChip: String? = nil
 
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
     private var resolvedToken:   URL? { nil }   // unused — kept for symmetry
@@ -140,29 +167,326 @@ struct ConsoleView: View {
         NavigationStack {
             ZStack {
                 MSCRemoteStyle.bgBase.ignoresSafeArea()
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        streamControlCard
-                        tailControlCard
-                        consoleOutputCard
-                        footerText
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: MSCRemoteStyle.spaceLG) {
+                            timeWeatherCard
+                            gamemodeCard
+                            if !quickSendChips.isEmpty { quickSendCard }
+                            streamControlCard
+                            tailControlCard
+                            consoleOutputCard
+                        }
+                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                        .padding(.top,    MSCRemoteStyle.spaceMD)
+                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                     }
-                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                    .padding(.top,    MSCRemoteStyle.spaceMD)
-                    .padding(.bottom, MSCRemoteStyle.space2XL)
+                    .refreshable { await fetchTail() }
+
+                    if vm.connectedRole != "guest" {
+                        commandInputBar
+                    }
+                    footerText.padding(.vertical, 6)
                 }
-                .refreshable { await fetchTail() }
             }
             .navigationTitle("Console")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .sheet(isPresented: $showCommandPicker) {
+                CommandPickerSheet(commandText: $commandText)
+                    .environmentObject(vm)
+            }
+            .alert("Confirm Command", isPresented: $showDangerConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Send", role: .destructive) {
+                    Task { await sendCommandString(dangerCommandToConfirm) }
+                }
+            } message: {
+                Text("This command can disrupt the server or players:\n\n\(dangerCommandToConfirm)\n\nAre you sure?")
+            }
             .onDisappear { vm.disconnectConsoleStream(); showLive = false }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 guard isPaired, showLive else { return }
                 Task { vm.disconnectConsoleStream(); await connectStream() }
             }
             .onChange(of: showLive) { _, _ in resetFilters() }
+        }
+    }
+
+    // MARK: - Time & Weather Card
+
+    private var timeWeatherCard: some View {
+        VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceMD) {
+            MSCSectionHeader(title: "Time of Day")
+            HStack(spacing: MSCRemoteStyle.spaceSM) {
+                quickIconButton(title: "Dawn",  icon: "sunrise.fill",       tint: MSCRemoteStyle.cmdGameplay,     bgTint: MSCRemoteStyle.cmdGameplay.opacity(0.12),     command: "/time set 1000")
+                quickIconButton(title: "Dusk",  icon: "sunset.fill",        tint: MSCRemoteStyle.cmdEnvironment,  bgTint: MSCRemoteStyle.cmdEnvironment.opacity(0.12),  command: "/time set 13000")
+                quickIconButton(title: "Night", icon: "moon.stars.fill",    tint: MSCRemoteStyle.cmdPlayer,       bgTint: MSCRemoteStyle.cmdPlayer.opacity(0.12),       command: "/time set 18000")
+            }
+            MSCSectionHeader(title: "Weather")
+            HStack(spacing: MSCRemoteStyle.spaceSM) {
+                quickIconButton(title: "Clear", icon: "sun.max.fill",          tint: MSCRemoteStyle.cmdGameplay,    bgTint: MSCRemoteStyle.cmdGameplay.opacity(0.12),    command: "/weather clear")
+                quickIconButton(title: "Rain",  icon: "cloud.rain.fill",       tint: MSCRemoteStyle.cmdModeration, bgTint: MSCRemoteStyle.cmdModeration.opacity(0.12), command: "/weather rain")
+                quickIconButton(title: "Storm", icon: "cloud.bolt.rain.fill",  tint: MSCRemoteStyle.cmdServer,     bgTint: MSCRemoteStyle.cmdServer.opacity(0.12),     command: "/weather thunder")
+            }
+        }
+        .mscCard()
+    }
+
+    // MARK: - Gamemode Card
+
+    private var gamemodeCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            MSCSectionHeader(title: "Settings")
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+            VStack(spacing: 0) {
+                settingsRow {
+                    Text("Difficulty")
+                        .font(.system(size: 14))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    Spacer()
+                    Picker("Difficulty", selection: $selectedDifficulty) {
+                        Text("Peaceful").tag("peaceful")
+                        Text("Easy").tag("easy")
+                        Text("Normal").tag("normal")
+                        Text("Hard").tag("hard")
+                    }
+                    .pickerStyle(.menu)
+                    .tint(MSCRemoteStyle.accent)
+                    .onChange(of: selectedDifficulty) { _, new in
+                        guard isPaired else { return }
+                        hapticLight()
+                        Task { await sendCommandString("/difficulty \(new)") }
+                    }
+                }
+
+                Divider().background(MSCRemoteStyle.borderSubtle)
+
+                settingsRow {
+                    Text("Gamemode")
+                        .font(.system(size: 14))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    Spacer()
+                    Picker("Gamemode", selection: $selectedGamemode) {
+                        Text("Survival").tag("survival")
+                        Text("Creative").tag("creative")
+                        Text("Adventure").tag("adventure")
+                        Text("Spectator").tag("spectator")
+                    }
+                    .pickerStyle(.menu)
+                    .tint(MSCRemoteStyle.accent)
+                    .onChange(of: selectedGamemode) { _, new in
+                        guard isPaired else { return }
+                        hapticLight()
+                        Task { await sendCommandString("/defaultgamemode \(new)") }
+                    }
+                }
+            }
+        }
+        .mscCard()
+    }
+
+    private func quickIconButton(title: String, icon: String, tint: Color, bgTint: Color, command: String) -> some View {
+        let isSent = lastSentChip == command
+        return Button {
+            guard isPaired else { return }
+            hapticLight()
+            withAnimation(.easeInOut(duration: 0.12)) { lastSentChip = command }
+            Task {
+                await sendCommandString(command)
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                await MainActor.run { withAnimation(.easeInOut(duration: 0.2)) { lastSentChip = nil } }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                    .foregroundStyle(isSent ? MSCRemoteStyle.bgBase : tint)
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isSent ? MSCRemoteStyle.bgBase : MSCRemoteStyle.textPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background(isSent ? tint : bgTint)
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                .strokeBorder(isSent ? tint : tint.opacity(0.25), lineWidth: 1))
+            .animation(.easeInOut(duration: 0.15), value: isSent)
+        }
+        .disabled(!isPaired)
+        .opacity(isPaired ? 1 : 0.45)
+    }
+
+    private func settingsRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: MSCRemoteStyle.spaceSM) { content() }
+            .padding(.vertical, MSCRemoteStyle.spaceSM)
+    }
+
+    // MARK: - Quick Send Card
+
+    private var quickSendCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                MSCSectionHeader(title: "Quick Send")
+                Spacer()
+                Text("★ Star to pin")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+            }
+            .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: MSCRemoteStyle.spaceSM) {
+                    ForEach(quickSendChips) { chip in
+                        quickSendChip(chip)
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
+            }
+        }
+        .mscCard()
+    }
+
+    private func quickSendChip(_ chip: CommandTemplate) -> some View {
+        let isSent = lastSentChip == chip.command
+        return Button {
+            guard isPaired else { return }
+            hapticLight()
+            settings.recordRecent(command: chip.command)
+            if isDangerousCommand(chip.command) {
+                dangerCommandToConfirm = chip.command
+                showDangerConfirm = true
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.12)) { lastSentChip = chip.command }
+            Task {
+                await sendCommandString(chip.command)
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                await MainActor.run { withAnimation(.easeInOut(duration: 0.2)) { lastSentChip = nil } }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(chip.title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isSent ? MSCRemoteStyle.bgBase : (isPaired ? MSCRemoteStyle.textPrimary : MSCRemoteStyle.textTertiary))
+                    .lineLimit(1)
+                Text(chip.command)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(isSent ? MSCRemoteStyle.bgBase.opacity(0.7) : MSCRemoteStyle.textTertiary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, MSCRemoteStyle.spaceMD)
+            .padding(.vertical, MSCRemoteStyle.spaceSM)
+            .background(isSent ? MSCRemoteStyle.success : (isPaired ? MSCRemoteStyle.bgElevated : MSCRemoteStyle.bgElevated.opacity(0.5)))
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                    .strokeBorder(isSent ? MSCRemoteStyle.success : (isPaired ? MSCRemoteStyle.borderMid : MSCRemoteStyle.borderSubtle), lineWidth: 1)
+            )
+            .animation(.easeInOut(duration: 0.15), value: isSent)
+        }
+        .disabled(!isPaired)
+    }
+
+    // MARK: - Command Input Bar
+
+    private var commandInputBar: some View {
+        VStack(spacing: 0) {
+            Divider().background(MSCRemoteStyle.borderMid)
+
+            HStack(spacing: MSCRemoteStyle.spaceSM) {
+                Text(">")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(MSCRemoteStyle.accent)
+
+                TextField("Command…", text: $commandText)
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .submitLabel(.send)
+                    .onSubmit { onSendTapped() }
+
+                Button {
+                    hapticLight()
+                    showCommandPicker = true
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(MSCRemoteStyle.textSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(MSCRemoteStyle.bgElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    onSendTapped()
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(
+                            isPaired && !commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? MSCRemoteStyle.bgBase : MSCRemoteStyle.textTertiary
+                        )
+                        .frame(width: 36, height: 36)
+                        .background(
+                            isPaired && !commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? MSCRemoteStyle.accent : MSCRemoteStyle.bgElevated
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isPaired || commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.horizontal, MSCRemoteStyle.spaceLG)
+            .padding(.vertical, MSCRemoteStyle.spaceMD)
+            .background(MSCRemoteStyle.bgBase)
+        }
+    }
+
+    // MARK: - Command Actions
+
+    private func onSendTapped() {
+        guard isPaired else { return }
+        let cmd = commandText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cmd.isEmpty else { return }
+        hapticLight()
+        if isDangerousCommand(cmd) {
+            dangerCommandToConfirm = cmd
+            showDangerConfirm = true
+            return
+        }
+        Task { await sendCommandString(cmd) }
+    }
+
+    private func sendCommandString(_ cmd: String) async {
+        guard let baseURL = settings.resolvedBaseURL(), let token = settings.resolvedToken() else { return }
+        let trimmed = cmd.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        commandText = ""
+        let ok = await vm.sendCommand(baseURL: baseURL, token: token, command: trimmed)
+        if ok { hapticSuccess() } else { hapticError() }
+    }
+
+    private func isDangerousCommand(_ cmd: String) -> Bool {
+        let s = cmd.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !s.isEmpty else { return false }
+        let parts = s.split(whereSeparator: { $0.isWhitespace })
+        guard let first = parts.first else { return false }
+        let root = String(first)
+        switch root {
+        case "/stop","stop","/reload","reload","/ban","ban","/ban-ip","ban-ip",
+             "/pardon","pardon","/pardon-ip","pardon-ip","/kick","kick","/op","op","/deop","deop":
+            return true
+        case "/whitelist","whitelist":
+            if parts.count >= 2 { let sub = String(parts[1]); if sub == "off" || sub == "remove" { return true } }
+            return false
+        default: return false
         }
     }
 

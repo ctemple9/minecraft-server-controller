@@ -177,5 +177,48 @@ struct PlayersResponse: Codable, Equatable {
     let note: String?
 }
 
+// MARK: - Components
+
+struct ComponentStatusDTO: Codable, Identifiable, Equatable {
+    let name: String
+    let installedBuild: Int?
+    let latestBuild: Int?
+    let installedVersion: String?
+    let latestVersion: String?
+    let isUpToDate: Bool
+
+    var id: String { name }
+}
+
+struct ComponentsStatusDTO: Codable, Equatable {
+    let components: [ComponentStatusDTO]
+    let restartRequiredToApply: Bool
+}
+
+struct ComponentUpdateResultDTO: Codable, Equatable {
+    let success: Bool
+    let message: String
+    let newBuild: Int?
+    let newVersion: String?
+}
+
+// MARK: - Broadcast
+
+struct BroadcastStatusDTO: Codable, Equatable {
+    let xboxBroadcastRunning: Bool
+    let bedrockBroadcastRunning: Bool
+}
+
+struct BroadcastAutoStartDTO: Codable, Equatable {
+    let enabled: Bool
+}
+
+struct BroadcastAuthPromptDTO: Codable, Equatable, Identifiable {
+    var id: String { code ?? "none" }
+    let isPresent: Bool
+    let code: String?
+    let linkURL: String?
+}
+
 
 

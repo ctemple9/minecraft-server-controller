@@ -45,6 +45,7 @@ struct PreferencesRemoteAPISection: View {
     @Binding var remoteAPIExposeOnLAN: Bool
     @Binding var preferredPairingHostInput: String
     @Binding var newSharedAccessLabel: String
+    @Binding var newSharedAccessRole: String
     @Binding var showPairingQR: Bool
     @Binding var pairingLinkForQR: String
     @Binding var showCopiedAlert: Bool
@@ -65,6 +66,7 @@ struct PreferencesRemoteAPISection: View {
     let onBuildPairingLink: (String) -> String
     let onAddSharedAccessEntry: (String) -> Void
     let onRevokeSharedAccessEntry: (String) -> Void
+    let onSetSharedAccessEntryRole: (String, String) -> Void
     let onRegenerateToken: () -> Void
 
     var body: some View {
@@ -137,6 +139,7 @@ struct PreferencesRemoteAPISection: View {
 
                 PreferencesSharedAccessSection(
                     newSharedAccessLabel: $newSharedAccessLabel,
+                    newSharedAccessRole: $newSharedAccessRole,
                     showPairingQR: $showPairingQR,
                     pairingLinkForQR: $pairingLinkForQR,
                     showCopiedAlert: $showCopiedAlert,
@@ -145,7 +148,8 @@ struct PreferencesRemoteAPISection: View {
                     onCopyToClipboard: onCopyToClipboard,
                     onBuildPairingLink: onBuildPairingLink,
                     onAddSharedAccessEntry: onAddSharedAccessEntry,
-                    onRevokeSharedAccessEntry: onRevokeSharedAccessEntry
+                    onRevokeSharedAccessEntry: onRevokeSharedAccessEntry,
+                    onSetRole: onSetSharedAccessEntryRole
                 )
             }
             .id(actionsAnchorID)
@@ -159,7 +163,7 @@ struct PreferencesRemoteAPISection: View {
                     Text("Pairing link format: mscremote://pair?base=<baseURL>&token=<token>")
                         .font(MSC.Typography.monoSmall)
                         .foregroundStyle(MSC.Colors.tertiary)
-                    Text("Shared access tokens are full control. Revoke removes that token immediately (next request returns 401).")
+                    Text("Admin tokens have full control. Guest tokens allow view-only access and start/stop only — no commands, no config changes. Shared access tokens can be individually set to Admin or Guest and revoked at any time.")
                         .font(.caption2)
                         .foregroundStyle(MSC.Colors.tertiary)
                 }
@@ -295,6 +299,7 @@ private struct PreferencesPairingActionsRow: View {
 
 private struct PreferencesSharedAccessSection: View {
     @Binding var newSharedAccessLabel: String
+    @Binding var newSharedAccessRole: String
     @Binding var showPairingQR: Bool
     @Binding var pairingLinkForQR: String
     @Binding var showCopiedAlert: Bool
@@ -305,6 +310,7 @@ private struct PreferencesSharedAccessSection: View {
     let onBuildPairingLink: (String) -> String
     let onAddSharedAccessEntry: (String) -> Void
     let onRevokeSharedAccessEntry: (String) -> Void
+    let onSetRole: (String, String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
@@ -312,15 +318,22 @@ private struct PreferencesSharedAccessSection: View {
                 VStack(alignment: .leading, spacing: MSC.Spacing.xxs) {
                     Text("Shared access")
                         .font(MSC.Typography.cardTitle)
-                    Text("Add a friend or device label, share the pairing link or QR, and revoke anytime.")
+                    Text("Add a label, choose a role, share the pairing link or QR, and revoke anytime.")
                         .font(.caption2)
                         .foregroundStyle(MSC.Colors.tertiary)
                 }
                 Spacer()
+                Picker("", selection: $newSharedAccessRole) {
+                    Text("Admin").tag("admin")
+                    Text("Guest").tag("guest")
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 110)
+                .controlSize(.small)
                 TextField("Label (e.g. Josh's iPhone)", text: $newSharedAccessLabel)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
-                    .frame(width: 190)
+                    .frame(width: 170)
                 Button("Add") {
                     onAddSharedAccessEntry(newSharedAccessLabel)
                 }
@@ -365,7 +378,8 @@ private struct PreferencesSharedAccessSection: View {
                             copiedMessage: $copiedMessage,
                             onCopyToClipboard: onCopyToClipboard,
                             onBuildPairingLink: onBuildPairingLink,
-                            onRevokeSharedAccessEntry: onRevokeSharedAccessEntry
+                            onRevokeSharedAccessEntry: onRevokeSharedAccessEntry,
+                            onSetRole: onSetRole
                         )
                     }
                 }
@@ -388,10 +402,36 @@ private struct PreferencesSharedAccessRow: View {
     let onCopyToClipboard: (String) -> Void
     let onBuildPairingLink: (String) -> String
     let onRevokeSharedAccessEntry: (String) -> Void
+    let onSetRole: (String, String) -> Void
+
+    @State private var roleDraft: String
+
+    init(
+        entry: RemoteAPISharedAccessEntry,
+        showPairingQR: Binding<Bool>,
+        pairingLinkForQR: Binding<String>,
+        showCopiedAlert: Binding<Bool>,
+        copiedMessage: Binding<String>,
+        onCopyToClipboard: @escaping (String) -> Void,
+        onBuildPairingLink: @escaping (String) -> String,
+        onRevokeSharedAccessEntry: @escaping (String) -> Void,
+        onSetRole: @escaping (String, String) -> Void
+    ) {
+        self.entry = entry
+        self._showPairingQR = showPairingQR
+        self._pairingLinkForQR = pairingLinkForQR
+        self._showCopiedAlert = showCopiedAlert
+        self._copiedMessage = copiedMessage
+        self.onCopyToClipboard = onCopyToClipboard
+        self.onBuildPairingLink = onBuildPairingLink
+        self.onRevokeSharedAccessEntry = onRevokeSharedAccessEntry
+        self.onSetRole = onSetRole
+        self._roleDraft = State(initialValue: entry.role)
+    }
 
     var body: some View {
         HStack(spacing: MSC.Spacing.sm) {
-            Image(systemName: "iphone")
+            Image(systemName: entry.role == "guest" ? "eyes" : "iphone")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
@@ -403,6 +443,16 @@ private struct PreferencesSharedAccessRow: View {
             Spacer()
 
             HStack(spacing: MSC.Spacing.xs) {
+                Picker("", selection: $roleDraft) {
+                    Text("Admin").tag("admin")
+                    Text("Guest").tag("guest")
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 110)
+                .onChange(of: roleDraft) { _, newRole in
+                    onSetRole(entry.id, newRole)
+                }
+
                 Button("Copy Link") {
                     let link = onBuildPairingLink(entry.token)
                     onCopyToClipboard(link)

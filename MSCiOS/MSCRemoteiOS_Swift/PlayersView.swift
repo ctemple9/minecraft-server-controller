@@ -38,15 +38,17 @@ struct PlayersView: View {
             ZStack {
                 MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        playerCountCard
-                        playerListCard
-                        footerText
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: MSCRemoteStyle.spaceLG) {
+                            playerCountCard
+                            playerListCard
+                        }
+                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                        .padding(.top, MSCRemoteStyle.spaceMD)
+                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                     }
-                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                    .padding(.top, MSCRemoteStyle.spaceMD)
-                    .padding(.bottom, MSCRemoteStyle.space2XL)
+                    footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
                 }
             }
             .navigationTitle("Players")

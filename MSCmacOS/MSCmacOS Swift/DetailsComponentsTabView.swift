@@ -1186,6 +1186,11 @@ private struct ComponentStatus {
     }
 
     private static func isVersionNewer(_ a: String, than b: String) -> Bool {
+        // If one side is a bare build number, compare build numbers directly
+        let aBuild = buildNumber(a)
+        let bBuild = buildNumber(b)
+        if let ab = aBuild, let bb = bBuild { return ab > bb }
+
         let aParts = a.split(separator: " ").first.map(String.init) ?? a
         let bParts = b.split(separator: " ").first.map(String.init) ?? b
         let aComponents = aParts.split(separator: ".").compactMap { Int($0) }
@@ -1197,23 +1202,32 @@ private struct ComponentStatus {
             if av > bv { return true }
             if av < bv { return false }
         }
-        if let ab = parseBuild(a), let bb = parseBuild(b) {
-            return ab > bb
-        }
         return false
     }
 
-    private static func parseBuild(_ s: String) -> Int? {
-        let lower = s.lowercased()
+    /// Returns a build number from either a bare integer string ("1126") or
+    /// a string containing "build NNN" ("2.10.0 (build 1155)").
+    private static func buildNumber(_ s: String) -> Int? {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Bare integer — treat the whole string as a build number
+        if let n = Int(trimmed) { return n }
+        // "build NNN" anywhere in the string
+        let lower = trimmed.lowercased()
         guard let range = lower.range(of: "build") else { return nil }
         let after  = lower[range.upperBound...]
-        let digits = after.filter { $0.isNumber }
-        return Int(digits)
+        let digits = after.filter { $0.isNumber || $0 == " " }
+            .trimmingCharacters(in: .whitespaces)
+            .prefix(while: { $0.isNumber })
+        return Int(String(digits))
     }
+
+    // Keep parseBuild as an alias for backward compat
+    private static func parseBuild(_ s: String) -> Int? { buildNumber(s) }
 
     private static func versionsMatch(_ a: String, _ b: String) -> Bool {
         if a == b { return true }
-        if let ba = parseBuild(a), let bb = parseBuild(b) { return ba == bb }
+        // Both sides resolve to a build number → compare those
+        if let ba = buildNumber(a), let bb = buildNumber(b) { return ba == bb }
         return false
     }
 }

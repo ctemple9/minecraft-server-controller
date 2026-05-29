@@ -71,6 +71,18 @@ final class RemoteAPIClient {
         self.wsSession = URLSession(configuration: wsConfig)
     }
 
+    // MARK: - Role / identity
+
+    struct MeResponse: Decodable {
+        let role: String
+    }
+
+    /// Returns "admin" or "guest" based on which token was used.
+    func getMe() async throws -> String {
+        let response = try await get(path: "/me", query: [:], as: MeResponse.self)
+        return response.role
+    }
+
     // MARK: - Read-only endpoints
 
     func getStatus() async throws -> RemoteAPIStatus {
@@ -124,6 +136,59 @@ final class RemoteAPIClient {
         return try await post(path: "/command", body: CommandRequest(command: trimmed), as: CommandResult.self)
     }
 
+    // MARK: - Components
+
+    func getComponents() async throws -> ComponentsStatusDTO {
+        try await get(path: "/components", query: [:], as: ComponentsStatusDTO.self)
+    }
+
+    func updateComponent(_ component: String) async throws -> ComponentUpdateResultDTO {
+        try await post(path: "/components/update",
+                       body: ComponentUpdateRequest(component: component),
+                       as: ComponentUpdateResultDTO.self)
+    }
+
+    // MARK: - Broadcast
+
+    func getBroadcastStatus() async throws -> BroadcastStatusDTO {
+        try await get(path: "/broadcast/status", query: [:], as: BroadcastStatusDTO.self)
+    }
+
+    func restartBroadcast() async throws -> SimpleResult {
+        try await post(path: "/broadcast/restart", body: EmptyBody(), as: SimpleResult.self)
+    }
+
+    func updateBroadcastCredentials(email: String, password: String, gamertag: String) async throws -> SimpleResult {
+        try await post(path: "/broadcast/credentials",
+                       body: BroadcastCredentialsRequest(email: email, password: password, gamertag: gamertag),
+                       as: SimpleResult.self)
+    }
+
+    func getBroadcastAutoStart() async throws -> BroadcastAutoStartDTO {
+        try await get(path: "/broadcast/autostart", query: [:], as: BroadcastAutoStartDTO.self)
+    }
+
+    func setBroadcastAutoStart(enabled: Bool) async throws -> SimpleResult {
+        struct Body: Encodable { let enabled: Bool }
+        return try await post(path: "/broadcast/autostart", body: Body(enabled: enabled), as: SimpleResult.self)
+    }
+
+    func startBroadcast() async throws -> SimpleResult {
+        try await post(path: "/broadcast/start", body: EmptyBody(), as: SimpleResult.self)
+    }
+
+    func stopBroadcast() async throws -> SimpleResult {
+        try await post(path: "/broadcast/stop", body: EmptyBody(), as: SimpleResult.self)
+    }
+
+    func getAuthPrompt() async throws -> BroadcastAuthPromptDTO {
+        try await get(path: "/broadcast/auth-prompt", query: [:], as: BroadcastAuthPromptDTO.self)
+    }
+
+    func dismissAuthPrompt() async throws {
+        _ = try await post(path: "/broadcast/auth-prompt/dismiss", body: EmptyBody(), as: SimpleResult.self)
+    }
+
     // MARK: - WebSocket
 
     func makeConsoleStreamTask() throws -> URLSessionWebSocketTask {
@@ -143,6 +208,16 @@ final class RemoteAPIClient {
 
     private struct CommandRequest: Encodable {
         let command: String
+    }
+
+    private struct ComponentUpdateRequest: Encodable {
+        let component: String
+    }
+
+    private struct BroadcastCredentialsRequest: Encodable {
+        let email: String
+        let password: String
+        let gamertag: String
     }
 
     private func makeHTTPURL(path: String, query: [String: String]) throws -> URL {

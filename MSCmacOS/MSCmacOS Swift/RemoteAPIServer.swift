@@ -58,7 +58,7 @@ final class RemoteAPIServer {
     private let postRateLimitMax: Int = 10
     private let postRateLimitWindowSeconds: TimeInterval = 5.0
 
-    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server"]
+    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/components/update"]
 
     // Console ring buffer (kept on `queue`)
     var consoleBuffer: [ConsoleLineDTO] = []
@@ -67,8 +67,15 @@ final class RemoteAPIServer {
     private let port: UInt16
     private var listenOnAllInterfaces: Bool
 
+    // MARK: - Token roles
+
+    enum TokenRole {
+        case admin
+        case guest
+    }
+
     // Providers can change (Preferences updates), so these must be mutable.
-    var tokenProvider: () -> Set<String>
+    var tokenProvider: () -> [String: TokenRole]
     var serversProvider: () -> [Server]
     var statusProvider: () -> RemoteAPIStatus
     var performanceProvider: () -> PerformanceSnapshotDTO
@@ -82,12 +89,23 @@ final class RemoteAPIServer {
     var sessionLogProvider: () -> SessionLogResponseDTO
     var configServersProvider: () -> [ConfigServer]
     var serverConnectionInfoProvider: (String) -> ServerConnectionInfoDTO?
+    var componentsProvider: () async -> ComponentsStatusDTO
+    var updateComponentProvider: (String, @escaping (ComponentUpdateResultDTO) -> Void) -> Void
+    var broadcastStatusProvider: () -> BroadcastStatusDTO
+    var restartBroadcastProvider: () -> Void
+    var startBroadcastProvider: () -> Void
+    var stopBroadcastProvider: () -> Void
+    var updateBroadcastCredentialsProvider: (BroadcastCredentialsDTO) -> Bool
+    var authPromptProvider: () -> BroadcastAuthPromptDTO
+    var dismissAuthPromptProvider: () -> Void
+    var broadcastAutoStartProvider: () -> BroadcastAutoStartDTO
+    var setBroadcastAutoStartProvider: (Bool) -> Void
     private var logger: (String) -> Void
 
     init(
         port: UInt16,
         listenOnAllInterfaces: Bool,
-        tokenProvider: @escaping () -> Set<String>,
+        tokenProvider: @escaping () -> [String: TokenRole],
         serversProvider: @escaping () -> [Server],
         statusProvider: @escaping () -> RemoteAPIStatus,
         performanceProvider: @escaping () -> PerformanceSnapshotDTO,
@@ -100,6 +118,17 @@ final class RemoteAPIServer {
         sessionLogProvider: @escaping () -> SessionLogResponseDTO,
         configServersProvider: @escaping () -> [ConfigServer],
         serverConnectionInfoProvider: @escaping (String) -> ServerConnectionInfoDTO?,
+        componentsProvider: @escaping () async -> ComponentsStatusDTO,
+        updateComponentProvider: @escaping (String, @escaping (ComponentUpdateResultDTO) -> Void) -> Void,
+        broadcastStatusProvider: @escaping () -> BroadcastStatusDTO,
+        restartBroadcastProvider: @escaping () -> Void,
+        startBroadcastProvider: @escaping () -> Void,
+        stopBroadcastProvider: @escaping () -> Void,
+        updateBroadcastCredentialsProvider: @escaping (BroadcastCredentialsDTO) -> Bool,
+        authPromptProvider: @escaping () -> BroadcastAuthPromptDTO,
+        dismissAuthPromptProvider: @escaping () -> Void,
+        broadcastAutoStartProvider: @escaping () -> BroadcastAutoStartDTO,
+        setBroadcastAutoStartProvider: @escaping (Bool) -> Void,
         logger: @escaping (String) -> Void
     ) {
         self.port = port
@@ -117,11 +146,22 @@ final class RemoteAPIServer {
         self.sessionLogProvider = sessionLogProvider
         self.configServersProvider = configServersProvider
         self.serverConnectionInfoProvider = serverConnectionInfoProvider
+        self.componentsProvider = componentsProvider
+        self.updateComponentProvider = updateComponentProvider
+        self.broadcastStatusProvider = broadcastStatusProvider
+        self.restartBroadcastProvider = restartBroadcastProvider
+        self.startBroadcastProvider = startBroadcastProvider
+        self.stopBroadcastProvider = stopBroadcastProvider
+        self.updateBroadcastCredentialsProvider = updateBroadcastCredentialsProvider
+        self.authPromptProvider = authPromptProvider
+        self.dismissAuthPromptProvider = dismissAuthPromptProvider
+        self.broadcastAutoStartProvider = broadcastAutoStartProvider
+        self.setBroadcastAutoStartProvider = setBroadcastAutoStartProvider
         self.logger = logger
     }
 
     func updateProviders(
-        tokenProvider: @escaping () -> Set<String>,
+        tokenProvider: @escaping () -> [String: TokenRole],
         serversProvider: @escaping () -> [Server],
         statusProvider: @escaping () -> RemoteAPIStatus,
         performanceProvider: @escaping () -> PerformanceSnapshotDTO,
@@ -134,6 +174,17 @@ final class RemoteAPIServer {
         sessionLogProvider: @escaping () -> SessionLogResponseDTO,
         configServersProvider: @escaping () -> [ConfigServer],
         serverConnectionInfoProvider: @escaping (String) -> ServerConnectionInfoDTO?,
+        componentsProvider: @escaping () async -> ComponentsStatusDTO,
+        updateComponentProvider: @escaping (String, @escaping (ComponentUpdateResultDTO) -> Void) -> Void,
+        broadcastStatusProvider: @escaping () -> BroadcastStatusDTO,
+        restartBroadcastProvider: @escaping () -> Void,
+        startBroadcastProvider: @escaping () -> Void,
+        stopBroadcastProvider: @escaping () -> Void,
+        updateBroadcastCredentialsProvider: @escaping (BroadcastCredentialsDTO) -> Bool,
+        authPromptProvider: @escaping () -> BroadcastAuthPromptDTO,
+        dismissAuthPromptProvider: @escaping () -> Void,
+        broadcastAutoStartProvider: @escaping () -> BroadcastAutoStartDTO,
+        setBroadcastAutoStartProvider: @escaping (Bool) -> Void,
         logger: @escaping (String) -> Void
     ) {
         queue.async { [weak self] in
@@ -151,9 +202,19 @@ final class RemoteAPIServer {
             self.sessionLogProvider = sessionLogProvider
             self.configServersProvider = configServersProvider
             self.serverConnectionInfoProvider = serverConnectionInfoProvider
+            self.componentsProvider = componentsProvider
+            self.updateComponentProvider = updateComponentProvider
+            self.broadcastStatusProvider = broadcastStatusProvider
+            self.restartBroadcastProvider = restartBroadcastProvider
+            self.startBroadcastProvider = startBroadcastProvider
+            self.stopBroadcastProvider = stopBroadcastProvider
+            self.updateBroadcastCredentialsProvider = updateBroadcastCredentialsProvider
+            self.authPromptProvider = authPromptProvider
+            self.dismissAuthPromptProvider = dismissAuthPromptProvider
+            self.broadcastAutoStartProvider = broadcastAutoStartProvider
+            self.setBroadcastAutoStartProvider = setBroadcastAutoStartProvider
             self.logger = logger
         }
-
     }
 
     /// Updates whether the server binds to localhost only or all interfaces (LAN/VPN).

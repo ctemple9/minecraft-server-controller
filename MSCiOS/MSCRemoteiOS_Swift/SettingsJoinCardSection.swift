@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsJoinCardSection: View {
+    @EnvironmentObject private var settings: SettingsStore
     @Binding var showJoinCard: Bool
     let saveAction: () -> Void
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsPairingCard: View {
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var vm: DashboardViewModel
 
     let isPaired: Bool
     let isFirstRun: Bool
@@ -176,31 +177,50 @@ struct SettingsPairingCard: View {
     }
 
     private var pairedStatusPill: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(isPaired ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
-                .frame(width: 6, height: 6)
-                .shadow(color: isPaired ? MSCRemoteStyle.success.opacity(0.7) : .clear, radius: 3)
-            Text(isPaired ? "Paired" : "Not paired")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(isPaired ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
-                .kerning(0.3)
-        }
-        .padding(.horizontal, MSCRemoteStyle.spaceSM)
-        .padding(.vertical, 5)
-        .background(
-            isPaired
-                ? MSCRemoteStyle.success.opacity(0.10)
-                : MSCRemoteStyle.bgElevated
-        )
-        .clipShape(Capsule())
-        .overlay(
-            Capsule().strokeBorder(
-                isPaired ? MSCRemoteStyle.success.opacity(0.25) : MSCRemoteStyle.borderSubtle,
-                lineWidth: 1
+        HStack(spacing: MSCRemoteStyle.spaceSM) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(isPaired ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: isPaired ? MSCRemoteStyle.success.opacity(0.7) : .clear, radius: 3)
+                Text(isPaired ? "Paired" : "Not paired")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(isPaired ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                    .kerning(0.3)
+            }
+            .padding(.horizontal, MSCRemoteStyle.spaceSM)
+            .padding(.vertical, 5)
+            .background(
+                isPaired
+                    ? MSCRemoteStyle.success.opacity(0.10)
+                    : MSCRemoteStyle.bgElevated
             )
-        )
-        .animation(.easeInOut(duration: 0.2), value: isPaired)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().strokeBorder(
+                    isPaired ? MSCRemoteStyle.success.opacity(0.25) : MSCRemoteStyle.borderSubtle,
+                    lineWidth: 1
+                )
+            )
+            .animation(.easeInOut(duration: 0.2), value: isPaired)
+
+            if let role = vm.connectedRole, isPaired {
+                Text(role == "guest" ? "Guest" : "Admin")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(role == "guest" ? MSCRemoteStyle.warning : MSCRemoteStyle.accent)
+                    .padding(.horizontal, MSCRemoteStyle.spaceSM)
+                    .padding(.vertical, 5)
+                    .background((role == "guest" ? MSCRemoteStyle.warning : MSCRemoteStyle.accent).opacity(0.10))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().strokeBorder(
+                            (role == "guest" ? MSCRemoteStyle.warning : MSCRemoteStyle.accent).opacity(0.25),
+                            lineWidth: 1
+                        )
+                    )
+                    .animation(.easeInOut(duration: 0.2), value: vm.connectedRole)
+            }
+        }
     }
 
     private func quickPairButton(title: String, icon: String, action: @escaping () -> Void) -> some View {

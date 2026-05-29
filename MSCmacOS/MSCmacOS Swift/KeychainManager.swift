@@ -20,8 +20,11 @@ final class KeychainManager {
 
     // MARK: - Service identifiers
 
-    /// Keychain service name for the Remote API owner token.
+    /// Keychain service name for the Remote API owner (admin) token.
     private static let remoteAPITokenService = "com.camerontemple.minecraftservercontroller.remoteapitoken"
+
+    /// Keychain service name for the Remote API guest token.
+    private static let remoteAPIGuestTokenService = "com.camerontemple.minecraftservercontroller.remoteapiguesttoken"
 
     /// Keychain service name for per-server Xbox Broadcast alt-account passwords.
     private static let xboxBroadcastPasswordService = "com.camerontemple.minecraftservercontroller.xboxbroadcast.altpassword"
@@ -29,19 +32,37 @@ final class KeychainManager {
     /// Fixed account name for the Remote API token (there is only one owner token).
     private static let remoteAPITokenAccount = "owner"
 
-    // MARK: - Remote API Token
+    /// Fixed account name for the Remote API guest token.
+    private static let remoteAPIGuestTokenAccount = "guest"
+
+    // MARK: - Remote API Admin Token
 
     func readRemoteAPIToken() -> String? {
         return read(service: Self.remoteAPITokenService, account: Self.remoteAPITokenAccount)
     }
 
-    /// Writes the token to Keychain. Passing `nil` deletes the existing entry.
+    /// Writes the admin token to Keychain. Passing `nil` deletes the existing entry.
     @discardableResult
     func writeRemoteAPIToken(_ token: String?) -> Bool {
         guard let token, !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return delete(service: Self.remoteAPITokenService, account: Self.remoteAPITokenAccount)
         }
         return write(value: token, service: Self.remoteAPITokenService, account: Self.remoteAPITokenAccount)
+    }
+
+    // MARK: - Remote API Guest Token
+
+    func readRemoteAPIGuestToken() -> String? {
+        return read(service: Self.remoteAPIGuestTokenService, account: Self.remoteAPIGuestTokenAccount)
+    }
+
+    /// Writes the guest token to Keychain. Passing `nil` deletes the existing entry.
+    @discardableResult
+    func writeRemoteAPIGuestToken(_ token: String?) -> Bool {
+        guard let token, !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return delete(service: Self.remoteAPIGuestTokenService, account: Self.remoteAPIGuestTokenAccount)
+        }
+        return write(value: token, service: Self.remoteAPIGuestTokenService, account: Self.remoteAPIGuestTokenAccount)
     }
 
     // MARK: - Xbox Broadcast Alt Password
@@ -69,6 +90,10 @@ final class KeychainManager {
         var allSucceeded = true
 
         if !delete(service: Self.remoteAPITokenService, account: Self.remoteAPITokenAccount) {
+            allSucceeded = false
+        }
+
+        if !delete(service: Self.remoteAPIGuestTokenService, account: Self.remoteAPIGuestTokenAccount) {
             allSucceeded = false
         }
 

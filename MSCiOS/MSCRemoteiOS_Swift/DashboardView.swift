@@ -2,6 +2,8 @@ import SwiftUI
 import Combine
 
 struct DashboardView: View {
+    var navigateToHealth: (() -> Void)? = nil
+
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -63,92 +65,19 @@ struct DashboardView: View {
             ZStack {
                 MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        if isIPad {
-                            LazyVGrid(
-                                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                                spacing: MSCRemoteStyle.spaceLG
-                            ) {
-                                DashboardStatusCard(
-                                    isRunning: isRunning,
-                                    isPaired: isPaired,
-                                    activeServerNameText: activeServerNameText,
-                                    refreshAction: { Task { await refreshAll() } }
-                                )
-
-                                DashboardServerCard(
-                                    servers: vm.servers,
-                                    activeServerId: vm.status?.activeServerId ?? selectedServerId,
-                                    activeServerNameText: activeServerNameText,
-                                    activeServerType: activeServerType,
-                                    isPaired: isPaired,
-                                    isRunning: isRunning,
-                                    selectedServerId: $selectedServerId,
-                                    startAction: { Task { await startServer() } },
-                                    stopAction: { Task { await stopServer() } }
-                                )
-                            }
-                        } else {
-                            DashboardStatusCard(
-                                isRunning: isRunning,
-                                isPaired: isPaired,
-                                activeServerNameText: activeServerNameText,
-                                refreshAction: { Task { await refreshAll() } }
-                            )
-
-                            DashboardServerCard(
-                                servers: vm.servers,
-                                activeServerId: vm.status?.activeServerId ?? selectedServerId,
-                                activeServerNameText: activeServerNameText,
-                                activeServerType: activeServerType,
-                                isPaired: isPaired,
-                                isRunning: isRunning,
-                                selectedServerId: $selectedServerId,
-                                startAction: { Task { await startServer() } },
-                                stopAction: { Task { await stopServer() } }
-                            )
-                        }
-
-                        DashboardPlayersCard(
-                            players: vm.players?.players ?? [],
-                            isRunning: isRunning
-                        )
-
-                        DashboardPerformanceCard(
-                            activeServerType: activeServerType,
-                            performanceLatest: vm.performanceLatest,
-                            performanceHistory: vm.performanceHistory,
-                            performanceErrorMessage: vm.performanceErrorMessage,
-                            errorMessage: vm.errorMessage,
-                            isRunning: isRunning,
-                            now: now,
-                            metricColumnCount: metricColumnCount,
-                            perfAgeLabel: perfAgeLabel
-                        )
-
-                        DashboardChartsCard(
-                            performanceHistory: vm.performanceHistory,
-                            showRAMLine: $showRAMLine,
-                            isIPad: isIPad
-                        )
-
-                        if settings.showJoinCard {
-                            JoinCardView()
-                        }
-                        if let err = vm.errorMessage, !err.isEmpty {
-                            errorBanner(err)
-                        }
-                        footerText
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        scrollContent
+                            .padding(.horizontal, horizontalPadding)
+                            .padding(.top, MSCRemoteStyle.spaceMD)
+                            .padding(.bottom, MSCRemoteStyle.spaceLG)
+                            .frame(maxWidth: isIPad ? MSCRemoteStyle.contentMaxWidth : .infinity)
+                            .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, MSCRemoteStyle.spaceMD)
-                    .padding(.bottom, MSCRemoteStyle.space2XL)
-                    .frame(maxWidth: isIPad ? MSCRemoteStyle.contentMaxWidth : .infinity)
                     .frame(maxWidth: .infinity)
+                    .refreshable { await refreshAll() }
+                    footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
                 }
-                .frame(maxWidth: .infinity)
-                .refreshable { await refreshAll() }
             }
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
@@ -202,6 +131,83 @@ struct DashboardView: View {
             .onChange(of: vm.servers) { _, _ in syncSelectionFromStatusOrFirst() }
             .onChange(of: vm.status?.activeServerId) { _, _ in syncSelectionFromStatusOrFirst() }
             .onChange(of: selectedServerId) { _, newValue in handleServerSelectionChanged(to: newValue) }
+        }
+    }
+
+    @ViewBuilder
+    private var scrollContent: some View {
+        VStack(spacing: MSCRemoteStyle.spaceLG) {
+            if isIPad {
+                LazyVGrid(
+                    columns: [GridItem(.flexible()), GridItem(.flexible())],
+                    spacing: MSCRemoteStyle.spaceLG
+                ) {
+                    DashboardStatusCard(
+                        isRunning: isRunning,
+                        isPaired: isPaired,
+                        activeServerNameText: activeServerNameText,
+                        refreshAction: { Task { await refreshAll() } }
+                    )
+                    DashboardServerCard(
+                        servers: vm.servers,
+                        activeServerId: vm.status?.activeServerId ?? selectedServerId,
+                        activeServerNameText: activeServerNameText,
+                        activeServerType: activeServerType,
+                        isPaired: isPaired,
+                        isRunning: isRunning,
+                        selectedServerId: $selectedServerId,
+                        startAction: { Task { await startServer() } },
+                        stopAction: { Task { await stopServer() } }
+                    )
+                }
+            } else {
+                DashboardStatusCard(
+                    isRunning: isRunning,
+                    isPaired: isPaired,
+                    activeServerNameText: activeServerNameText,
+                    refreshAction: { Task { await refreshAll() } }
+                )
+                DashboardServerCard(
+                    servers: vm.servers,
+                    activeServerId: vm.status?.activeServerId ?? selectedServerId,
+                    activeServerNameText: activeServerNameText,
+                    activeServerType: activeServerType,
+                    isPaired: isPaired,
+                    isRunning: isRunning,
+                    selectedServerId: $selectedServerId,
+                    startAction: { Task { await startServer() } },
+                    stopAction: { Task { await stopServer() } }
+                )
+            }
+
+            DashboardPlayersCard(players: vm.players?.players ?? [], isRunning: isRunning)
+
+            DashboardPerformanceCard(
+                activeServerType: activeServerType,
+                performanceLatest: vm.performanceLatest,
+                performanceHistory: vm.performanceHistory,
+                performanceErrorMessage: vm.performanceErrorMessage,
+                errorMessage: vm.errorMessage,
+                isRunning: isRunning,
+                now: now,
+                metricColumnCount: metricColumnCount,
+                perfAgeLabel: perfAgeLabel
+            )
+
+            DashboardChartsCard(
+                performanceHistory: vm.performanceHistory,
+                showRAMLine: $showRAMLine,
+                isIPad: isIPad
+            )
+
+            ComponentsStatusStripView(
+                componentsStatus: vm.componentsStatus,
+                broadcastStatus: vm.broadcastStatus,
+                onTap: { navigateToHealth?() }
+            )
+
+            if settings.showJoinCard { JoinCardView() }
+            if let err = vm.errorMessage, !err.isEmpty { errorBanner(err) }
         }
     }
 
@@ -272,6 +278,7 @@ struct DashboardView: View {
     }
     private func handleServerSelectionChanged(to newServerId: String) {
         guard !suppressServerSelectionPrompt, isPaired, !newServerId.isEmpty else { return }
+        guard vm.connectedRole != "guest" else { revertSelectionToActive(); return }
         let activeId = vm.status?.activeServerId ?? ""
         guard newServerId != activeId else { return }
         pendingActiveServerId = newServerId

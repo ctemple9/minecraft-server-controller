@@ -80,7 +80,7 @@ struct QuickStartView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
-        .frame(minWidth: 520, minHeight: 600)
+        .frame(minWidth: 520, minHeight: 500)
     }
 
     // MARK: - Server Type Toggle Button

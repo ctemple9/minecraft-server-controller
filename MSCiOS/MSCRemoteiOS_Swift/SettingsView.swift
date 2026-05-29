@@ -30,43 +30,46 @@ struct SettingsView: View {
             ZStack {
                 MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        SettingsPairingCard(
-                            isPaired: isPaired,
-                            isFirstRun: isFirstRun,
-                            hasToken: hasToken,
-                            safetyWarning: safetyWarning,
-                            saveConfirmed: saveConfirmed,
-                            showQRScanner: $showQRScanner,
-                            showTailscaleHelp: $showTailscaleHelp,
-                            saveAction: savePairing,
-                            clearTokenAction: clearToken,
-                            clearBaseURLAction: clearBaseURLAction,
-                            pastePairingAction: pastePairingLinkFromClipboard
-                        )
+                VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: MSCRemoteStyle.spaceLG) {
+                            SettingsPairingCard(
+                                isPaired: isPaired,
+                                isFirstRun: isFirstRun,
+                                hasToken: hasToken,
+                                safetyWarning: safetyWarning,
+                                saveConfirmed: saveConfirmed,
+                                showQRScanner: $showQRScanner,
+                                showTailscaleHelp: $showTailscaleHelp,
+                                saveAction: savePairing,
+                                clearTokenAction: clearToken,
+                                clearBaseURLAction: clearBaseURLAction,
+                                pastePairingAction: pastePairingLinkFromClipboard
+                            )
 
-                        SettingsConnectionTestSection(
-                            testIsRunning: testIsRunning,
-                            lastTestResult: settings.lastTestResult,
-                            lastTestWasSuccess: settings.lastTestWasSuccess,
-                            testAction: runConnectionTest
-                        )
+                            SettingsConnectionTestSection(
+                                testIsRunning: testIsRunning,
+                                lastTestResult: settings.lastTestResult,
+                                lastTestWasSuccess: settings.lastTestWasSuccess,
+                                testAction: runConnectionTest
+                            )
 
-                        SettingsNotesSection()
+                            SettingsNotesSection()
 
-                        notificationsCard
+                            notificationsCard
 
-                        SettingsJoinCardSection(
-                            showJoinCard: $settings.showJoinCard,
-                            saveAction: settings.saveJoinCardPreferences
-                        )
+                            SettingsJoinCardSection(
+                                showJoinCard: $settings.showJoinCard,
+                                saveAction: settings.saveJoinCardPreferences
+                            )
 
-                        footerText
+                            accentColorCard
+                        }
+                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                        .padding(.top, MSCRemoteStyle.spaceMD)
+                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                     }
-                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                    .padding(.top, MSCRemoteStyle.spaceMD)
-                    .padding(.bottom, MSCRemoteStyle.space2XL)
+                    footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
                 }
             }
             .navigationTitle("Settings")
@@ -195,6 +198,86 @@ struct SettingsView: View {
                     settings.saveNotificationPreferences()
                 }
         }
+    }
+
+    private var accentColorCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            MSCSectionHeader(title: "App Accent Colour")
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+            Text("Tints buttons, tabs, and highlights throughout the app.")
+                .font(.system(size: 12))
+                .foregroundStyle(MSCRemoteStyle.textTertiary)
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+            let columns = Array(repeating: GridItem(.flexible(), spacing: MSCRemoteStyle.spaceSM), count: 4)
+            let isCustom = !SettingsStore.accentPresets.map(\.hex).contains(settings.accentColorHex)
+            LazyVGrid(columns: columns, spacing: MSCRemoteStyle.spaceSM) {
+                ForEach(SettingsStore.accentPresets, id: \.hex) { preset in
+                    let isSelected = settings.accentColorHex == preset.hex
+                    Button {
+                        settings.setAccentColor(preset.hex)
+                    } label: {
+                        accentSwatch(color: Color(hex: preset.hex), name: preset.name, isSelected: isSelected)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Custom colour picker slot
+                let customColor = isCustom ? Color(hex: settings.accentColorHex) : Color.white
+                ColorPicker(selection: Binding(
+                    get: { isCustom ? Color(hex: settings.accentColorHex) : Color.white },
+                    set: { color in
+                        if let hex = color.toHex() { settings.setAccentColor(hex) }
+                    }
+                ), supportsOpacity: false) { EmptyView() }
+                .labelsHidden()
+                .overlay {
+                    accentSwatch(
+                        color: isCustom ? customColor : Color(white: 0.4),
+                        name: "Custom",
+                        isSelected: isCustom,
+                        icon: isCustom ? nil : "eyedropper"
+                    )
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+        .mscCard()
+    }
+
+    @ViewBuilder
+    private func accentSwatch(color: Color, name: String, isSelected: Bool, icon: String? = nil) -> some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: 36, height: 36)
+                if isSelected {
+                    Circle()
+                        .strokeBorder(.white, lineWidth: 2.5)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                } else if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            Text(name)
+                .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? color : MSCRemoteStyle.textTertiary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, MSCRemoteStyle.spaceSM)
+        .background(isSelected ? color.opacity(0.1) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                .strokeBorder(isSelected ? color.opacity(0.4) : Color.clear, lineWidth: 1)
+        )
     }
 
     private var footerText: some View {

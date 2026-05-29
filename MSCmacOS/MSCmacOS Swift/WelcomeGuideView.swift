@@ -172,7 +172,7 @@ struct WelcomeGuideView: View {
                 }
             }
         }
-        .frame(minWidth: 960, idealWidth: 1020, minHeight: 600, idealHeight: 700)
+        .frame(minWidth: 820, idealWidth: 1020, minHeight: 520, idealHeight: 700)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

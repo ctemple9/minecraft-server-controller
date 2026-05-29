@@ -90,11 +90,24 @@ extension RemoteAPIServer {
 
     // MARK: - Responses
 
-    func respond(to request: Request, clientFD: Int32) -> Bool {
-        let rawTokens = tokenProvider()
-        let allowedTokens: Set<String> = Set(rawTokens.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
-        let authHeader = request.headers["authorization"] ?? ""
+    // Routes that require admin role — guests get 403 on these.
+    private static let adminOnlyPOSTPaths: Set<String> = [
+        "/command", "/active-server", "/components/update",
+        "/broadcast/credentials", "/broadcast/start", "/broadcast/stop",
+        "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss"
+    ]
 
+    func respond(to request: Request, clientFD: Int32) -> Bool {
+        let tokenMap = tokenProvider()
+        let normalizedMap: [String: TokenRole] = Dictionary(
+            uniqueKeysWithValues: tokenMap.compactMap { (k, v) -> (String, TokenRole)? in
+                let trimmed = k.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return nil }
+                return (trimmed, v)
+            }
+        )
+
+        let authHeader = request.headers["authorization"] ?? ""
         let trimmedAuth = authHeader.trimmingCharacters(in: .whitespacesAndNewlines)
         let lower = trimmedAuth.lowercased()
         let presentedToken: String?
@@ -104,7 +117,8 @@ extension RemoteAPIServer {
             presentedToken = nil
         }
 
-        guard let presentedToken, !presentedToken.isEmpty, allowedTokens.contains(presentedToken) else {
+        guard let presentedToken, !presentedToken.isEmpty,
+              let requestRole = normalizedMap[presentedToken] else {
             sendJSON(
                 statusCode: 401,
                 reason: "Unauthorized",
@@ -112,6 +126,21 @@ extension RemoteAPIServer {
                 clientFD: clientFD
             )
             return true
+        }
+
+        // Guest tokens may not use admin-only routes.
+        if case .guest = requestRole {
+            let method = request.method.uppercased()
+            let path = request.path
+            if method == "POST", Self.adminOnlyPOSTPaths.contains(path) {
+                sendJSON(
+                    statusCode: 403,
+                    reason: "Forbidden",
+                    jsonObject: ["error": "forbidden"],
+                    clientFD: clientFD
+                )
+                return true
+            }
         }
 
         let method = request.method.uppercased()
@@ -351,11 +380,71 @@ extension RemoteAPIServer {
             sendJSON(statusCode: 200, reason: "OK", encodable: lines, clientFD: clientFD)
             return true
 
+        // Components status
+        case ("GET", "/components"):
+            handleGetComponents(clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Component update
+        case ("POST", "/components/update"):
+            handleUpdateComponent(body: request.body, clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        case ("GET", "/broadcast/autostart"):
+            handleGetBroadcastAutoStart(clientFD: clientFD)
+            return true
+
+        case ("POST", "/broadcast/autostart"):
+            handleSetBroadcastAutoStart(body: request.body, clientFD: clientFD)
+            return true
+
+        // Broadcast auth prompt
+        case ("GET", "/broadcast/auth-prompt"):
+            handleGetAuthPrompt(clientFD: clientFD)
+            return true
+
+        case ("POST", "/broadcast/auth-prompt/dismiss"):
+            handleDismissAuthPrompt(clientFD: clientFD)
+            return true
+
+        // Broadcast status
+        case ("GET", "/broadcast/status"):
+            handleGetBroadcastStatus(clientFD: clientFD)
+            return true
+
+        case ("POST", "/broadcast/start"):
+            handleStartBroadcast(clientFD: clientFD)
+            return true
+
+        case ("POST", "/broadcast/stop"):
+            handleStopBroadcast(clientFD: clientFD)
+            return true
+
+        // Broadcast restart
+        case ("POST", "/broadcast/restart"):
+            handleRestartBroadcast(clientFD: clientFD)
+            return true
+
+        // Broadcast credentials
+        case ("POST", "/broadcast/credentials"):
+            handleUpdateBroadcastCredentials(body: request.body, clientFD: clientFD)
+            return true
+
+        // Token role info
+        case ("GET", "/me"):
+            let roleString = (requestRole == .admin) ? "admin" : "guest"
+            sendJSON(statusCode: 200, reason: "OK", jsonObject: ["role": roleString], clientFD: clientFD)
+            return true
+
         default:
             let knownPaths: Set<String> = [
                 "/servers", "/status", "/performance", "/players", "/allowlist", "/session-log",
                 "/active-server", "/start", "/stop", "/command",
-                "/console/tail", "/console/stream"
+                "/console/tail", "/console/stream",
+                "/components", "/components/update",
+                "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart", "/broadcast/credentials",
+                "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
+                "/broadcast/autostart", "/me"
             ]
             if knownPaths.contains(path) {
                 sendJSON(

@@ -42,14 +42,16 @@ struct QuickGuideView: View {
                         .mscCard(padding: 0)
                         .padding(.horizontal, MSCRemoteStyle.spaceLG)
                         .padding(.top, MSCRemoteStyle.spaceLG)
-
-                        Text("TempleTech · MSC REMOTE")
-                            .font(.system(size: 10, weight: .regular, design: .monospaced))
-                            .foregroundStyle(MSCRemoteStyle.textTertiary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, MSCRemoteStyle.spaceLG)
-                            .padding(.bottom, MSCRemoteStyle.space2XL)
+                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                     }
+
+                    // ── Footer — pinned above home indicator ──
+                    Text("TempleTech · MSC REMOTE")
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, MSCRemoteStyle.spaceMD)
+                        .padding(.bottom, MSCRemoteStyle.spaceSM)
                 }
             }
             .navigationTitle("")
@@ -75,11 +77,11 @@ struct QuickGuideView: View {
 private struct GuideHeroHeader: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Gradient background (Minecraft-ish deep teal-to-dark)
+            // Gradient background — tinted by accent colour
             LinearGradient(
                 colors: [
-                    Color(hex: "#1A2E22"),
-                    Color(hex: "#0D1A14"),
+                    MSCRemoteStyle.accent.opacity(0.25),
+                    MSCRemoteStyle.accent.opacity(0.08),
                     MSCRemoteStyle.bgBase
                 ],
                 startPoint: .top,

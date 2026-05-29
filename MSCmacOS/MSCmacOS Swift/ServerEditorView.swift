@@ -95,6 +95,9 @@ struct ServerEditorView: View {
     @State var showSaveHUD: Bool = false
     @State var isShowingCrossPlatformGuide: Bool = false
 
+    // General tab
+    @State var showHeadlessScriptSheet: Bool = false
+
     // Danger zone
     @State var showDeleteServerConfirm = false
 
@@ -660,7 +663,7 @@ struct ServerEditorView: View {
             editorFooter
         }
         .frame(minWidth: 980, idealWidth: 980, maxWidth: 980,
-               minHeight: 820, idealHeight: 820, maxHeight: 820)
+               minHeight: 680, idealHeight: 820)
         .overlay(alignment: .top) {
             if showSaveHUD {
                 SaveHUDBanner(text: "Settings saved")

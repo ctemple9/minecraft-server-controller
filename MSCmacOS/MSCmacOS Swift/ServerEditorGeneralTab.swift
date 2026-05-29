@@ -93,6 +93,32 @@ var generalTab: some View {
                 .font(.system(size: 12))
         }
 
+        SESection(icon: "terminal.fill", title: "Headless / Script", color: .purple) {
+            VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                Text("Get a shell script to run this server from Terminal without the app — useful for running headlessly on a Mac mini, inside screen or tmux, or on a schedule.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    showHeadlessScriptSheet = true
+                } label: {
+                    HStack(spacing: MSC.Spacing.sm) {
+                        Image(systemName: "doc.badge.gearshape")
+                        Text("Generate Start Script…")
+                    }
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .disabled(data.serverDir.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .sheet(isPresented: $showHeadlessScriptSheet) {
+            if let cfg = editingConfigServer {
+                HeadlessScriptSheet(config: cfg, isPresented: $showHeadlessScriptSheet)
+                    .environmentObject(viewModel)
+            }
+        }
+
         if mode == .edit, let _ = editingConfigServer {
             SESection(icon: "exclamationmark.octagon.fill", title: "Danger Zone", color: .red) {
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {

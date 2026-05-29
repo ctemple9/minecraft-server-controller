@@ -280,18 +280,19 @@ final class AppViewModel: ObservableObject {
             let cfg = self.configManager.config
 
             let port = UInt16(max(1024, min(65535, cfg.remoteAPIPort)))
-            let tokenProvider: () -> Set<String> = { [weak self] in
-                guard let self else { return [] }
+            let tokenProvider: () -> [String: RemoteAPIServer.TokenRole] = { [weak self] in
+                guard let self else { return [:] }
                 let cfg2 = self.configManager.config
-                var tokens: [String] = []
+                var map: [String: RemoteAPIServer.TokenRole] = [:]
                 if let ownerToken = KeychainManager.shared.readRemoteAPIToken() {
-                    tokens.append(ownerToken)
+                    let t = ownerToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { map[t] = .admin }
                 }
-                tokens.append(contentsOf: cfg2.remoteAPISharedAccess.map { $0.token })
-                let normalized = tokens
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-                return Set(normalized)
+                for entry in cfg2.remoteAPISharedAccess {
+                    let t = entry.token.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { map[t] = (entry.role == "guest") ? .guest : .admin }
+                }
+                return map
             }
 
             let serversProvider: () -> [Server] = { [weak self] in
@@ -462,6 +463,260 @@ final class AppViewModel: ObservableObject {
                 Task { @MainActor in self.logAppMessage(msg) }
             }
 
+            // MARK: Component providers
+
+            let componentsProvider: () async -> RemoteAPIServer.ComponentsStatusDTO = { [weak self] in
+                guard let self else {
+                    return RemoteAPIServer.ComponentsStatusDTO(components: [], restartRequiredToApply: false)
+                }
+                let (activeDir, isRunning, effectivePaperURL): (String?, Bool, URL?) = await MainActor.run {
+                    let cfg = self.configManager.config
+                    let activeServer = cfg.servers.first(where: { $0.id == cfg.activeServerId })
+                    return (activeServer?.serverDir, self.isServerRunning, activeServer.flatMap { self.effectivePaperJarURL(for: $0) })
+                }
+                guard let dir = activeDir else {
+                    return RemoteAPIServer.ComponentsStatusDTO(components: [], restartRequiredToApply: false)
+                }
+                let dirURL = URL(fileURLWithPath: dir, isDirectory: true)
+                let pluginsURL = dirURL.appendingPathComponent("plugins", isDirectory: true)
+                let hasPlugins = FileManager.default.fileExists(atPath: pluginsURL.path)
+
+                // Resolve installed Paper version: sidecar → filename parse → jar present
+                var paperInstalled: PaperJarVersion? = nil
+                let paperJarURL: URL? = effectivePaperURL
+                if effectivePaperURL != nil {
+                    if let sidecar = PaperVersionSidecarManager.read(fromServerDirectory: dirURL) {
+                        paperInstalled = PaperJarVersion(mcVersion: sidecar.mcVersion, build: sidecar.build)
+                    } else if let url = effectivePaperURL {
+                        paperInstalled = ComponentVersionParsing.parsePaperJarFilename(url.lastPathComponent)
+                    }
+                }
+
+                // Scan plugins/ for Geyser and Floodgate
+                var geyserBuild: Int? = nil
+                var geyserJarURL: URL? = nil
+                var floodgateBuild: Int? = nil
+                var floodgateJarURL: URL? = nil
+                if hasPlugins, let pluginFiles = try? FileManager.default.contentsOfDirectory(atPath: pluginsURL.path) {
+                    for file in pluginFiles where file.hasSuffix(".jar") {
+                        let lower = file.lowercased()
+                        if lower.contains("geyser") && geyserBuild == nil {
+                            geyserBuild = ComponentVersionParsing.parseTrailingBuildNumber(fromJarFilename: file)
+                            geyserJarURL = pluginsURL.appendingPathComponent(file)
+                        } else if lower.contains("floodgate") && floodgateBuild == nil {
+                            floodgateBuild = ComponentVersionParsing.parseTrailingBuildNumber(fromJarFilename: file)
+                            floodgateJarURL = pluginsURL.appendingPathComponent(file)
+                        }
+                    }
+                }
+
+                // Fetch latest versions concurrently
+                async let latestPaper = try? PaperDownloader.fetchLatestMetadata()
+                async let latestGeyser = hasPlugins ? (try? PluginDownloader.fetchLatestGeyserBuildInfo()) : nil
+                async let latestFloodgate = hasPlugins ? (try? PluginDownloader.fetchLatestFloodgateBuildInfo()) : nil
+
+                let (pMeta, gMeta, fMeta) = await (latestPaper, latestGeyser, latestFloodgate)
+
+                var components: [RemoteAPIServer.ComponentStatusDTO] = []
+
+                // Paper
+                let paperLatestBuild = pMeta.map { $0.build }
+                let paperLatestVer = pMeta.map { $0.version }
+                let paperUpToDate: Bool
+                if let inst = paperInstalled?.build, let latest = paperLatestBuild {
+                    paperUpToDate = inst >= latest
+                } else {
+                    paperUpToDate = paperInstalled == nil && paperLatestBuild == nil
+                }
+                if paperJarURL != nil || paperLatestBuild != nil {
+                    components.append(RemoteAPIServer.ComponentStatusDTO(
+                        name: "Paper",
+                        installedBuild: paperInstalled?.build,
+                        latestBuild: paperLatestBuild,
+                        installedVersion: paperInstalled?.mcVersion,
+                        latestVersion: paperLatestVer,
+                        isUpToDate: paperUpToDate
+                    ))
+                }
+
+                // Geyser
+                if hasPlugins {
+                    let gLatest = gMeta?.build
+                    let gLatestVer = gMeta?.version
+                    let gUpToDate: Bool
+                    if let inst = geyserBuild, let latest = gLatest { gUpToDate = inst >= latest }
+                    else { gUpToDate = geyserBuild == nil && gLatest == nil }
+                    components.append(RemoteAPIServer.ComponentStatusDTO(
+                        name: "Geyser",
+                        installedBuild: geyserBuild,
+                        latestBuild: gLatest,
+                        installedVersion: nil,
+                        latestVersion: gLatestVer,
+                        isUpToDate: gUpToDate
+                    ))
+                }
+
+                // Floodgate
+                if hasPlugins {
+                    let fLatest = fMeta?.build
+                    let fLatestVer = fMeta?.version
+                    let fUpToDate: Bool
+                    if let inst = floodgateBuild, let latest = fLatest { fUpToDate = inst >= latest }
+                    else { fUpToDate = floodgateBuild == nil && fLatest == nil }
+                    components.append(RemoteAPIServer.ComponentStatusDTO(
+                        name: "Floodgate",
+                        installedBuild: floodgateBuild,
+                        latestBuild: fLatest,
+                        installedVersion: nil,
+                        latestVersion: fLatestVer,
+                        isUpToDate: fUpToDate
+                    ))
+                }
+
+                return RemoteAPIServer.ComponentsStatusDTO(
+                    components: components,
+                    restartRequiredToApply: isRunning
+                )
+            }
+
+            let updateComponentProvider: (String, @escaping (RemoteAPIServer.ComponentUpdateResultDTO) -> Void) -> Void = { [weak self] component, completion in
+                guard let self else {
+                    completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "Internal error.", newBuild: nil, newVersion: nil))
+                    return
+                }
+                let configManager = self.configManager
+                let appViewModel = self
+                Task {
+                    let (activeDir, comp, paperJarURL): (String?, String, URL?) = await MainActor.run {
+                        let cfg = configManager.config
+                        let activeServer = cfg.servers.first(where: { $0.id == cfg.activeServerId })
+                        return (activeServer?.serverDir, component, activeServer.flatMap { appViewModel.effectivePaperJarURL(for: $0) })
+                    }
+                    guard let dir = activeDir else {
+                        completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "No active server.", newBuild: nil, newVersion: nil))
+                        return
+                    }
+                    let dirURL = URL(fileURLWithPath: dir, isDirectory: true)
+                    let pluginsURL = dirURL.appendingPathComponent("plugins", isDirectory: true)
+                    do {
+                        let result: RemoteAPIServer.ComponentUpdateResultDTO
+                        switch comp {
+                        case "paper":
+                            guard let jarURL = paperJarURL else {
+                                completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "No Paper JAR found in server directory.", newBuild: nil, newVersion: nil))
+                                return
+                            }
+                            let r = try await PaperDownloader.downloadLatestPaper(to: jarURL)
+                            PaperVersionSidecarManager.write(mcVersion: r.version, build: r.build, toServerDirectory: dirURL)
+                            result = RemoteAPIServer.ComponentUpdateResultDTO(success: true, message: "Paper updated to \(r.version) build \(r.build).", newBuild: r.build, newVersion: r.version)
+
+                        case "geyser":
+                            let pluginFiles = (try? FileManager.default.contentsOfDirectory(atPath: pluginsURL.path)) ?? []
+                            guard let existing = pluginFiles.first(where: { $0.lowercased().contains("geyser") && $0.hasSuffix(".jar") }) else {
+                                completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "No Geyser JAR found in plugins/.", newBuild: nil, newVersion: nil))
+                                return
+                            }
+                            let tempDest = pluginsURL.appendingPathComponent(existing)
+                            let r = try await PluginDownloader.downloadLatestGeyser(to: tempDest)
+                            let newGeyserName = renamedJar(existing, newBuild: r.build)
+                            if newGeyserName != existing {
+                                try? FileManager.default.moveItem(at: tempDest, to: pluginsURL.appendingPathComponent(newGeyserName))
+                            }
+                            result = RemoteAPIServer.ComponentUpdateResultDTO(success: true, message: "Geyser updated to build \(r.build).", newBuild: r.build, newVersion: r.version)
+
+                        case "floodgate":
+                            let pluginFiles = (try? FileManager.default.contentsOfDirectory(atPath: pluginsURL.path)) ?? []
+                            guard let existing = pluginFiles.first(where: { $0.lowercased().contains("floodgate") && $0.hasSuffix(".jar") }) else {
+                                completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "No Floodgate JAR found in plugins/.", newBuild: nil, newVersion: nil))
+                                return
+                            }
+                            let tempDest2 = pluginsURL.appendingPathComponent(existing)
+                            let r = try await PluginDownloader.downloadLatestFloodgate(to: tempDest2)
+                            let newFloodgateName = renamedJar(existing, newBuild: r.build)
+                            if newFloodgateName != existing {
+                                try? FileManager.default.moveItem(at: tempDest2, to: pluginsURL.appendingPathComponent(newFloodgateName))
+                            }
+                            result = RemoteAPIServer.ComponentUpdateResultDTO(success: true, message: "Floodgate updated to build \(r.build).", newBuild: r.build, newVersion: r.version)
+
+                        default:
+                            result = RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: "Unknown component.", newBuild: nil, newVersion: nil)
+                        }
+                        completion(result)
+                    } catch {
+                        completion(RemoteAPIServer.ComponentUpdateResultDTO(success: false, message: error.localizedDescription, newBuild: nil, newVersion: nil))
+                    }
+                }
+            }
+
+            // MARK: Broadcast providers
+
+            let broadcastStatusProvider: () -> RemoteAPIServer.BroadcastStatusDTO = { [weak self] in
+                guard let self else { return RemoteAPIServer.BroadcastStatusDTO(xboxBroadcastRunning: false, bedrockBroadcastRunning: false) }
+                let resolve = { RemoteAPIServer.BroadcastStatusDTO(xboxBroadcastRunning: self.isXboxBroadcastRunning, bedrockBroadcastRunning: self.isBedrockBroadcastRunning) }
+                if Thread.isMainThread { return resolve() }
+                return DispatchQueue.main.sync { resolve() }
+            }
+
+            let restartBroadcastProvider: () -> Void = { [weak self] in
+                DispatchQueue.main.async {
+                    self?.stopXboxBroadcast()
+                    self?.startXboxBroadcast()
+                }
+            }
+
+            let startBroadcastProvider: () -> Void = { [weak self] in
+                DispatchQueue.main.async { self?.startXboxBroadcast() }
+            }
+
+            let stopBroadcastProvider: () -> Void = { [weak self] in
+                DispatchQueue.main.async { self?.stopXboxBroadcast() }
+            }
+
+            let updateBroadcastCredentialsProvider: (RemoteAPIServer.BroadcastCredentialsDTO) -> Bool = { [weak self] creds in
+                guard let self else { return false }
+                let serverId: String? = DispatchQueue.main.sync { self.configManager.config.activeServerId }
+                guard let serverId else { return false }
+                DispatchQueue.main.async {
+                    self.updateBroadcastProfile(
+                        for: serverId,
+                        enabled: true,
+                        ipMode: .auto,
+                        altEmail: creds.email,
+                        altGamertag: creds.gamertag,
+                        altPassword: creds.password,
+                        altAvatarPath: ""
+                    )
+                }
+                return true
+            }
+
+            let authPromptProvider: () -> RemoteAPIServer.BroadcastAuthPromptDTO = { [weak self] in
+                guard let self else { return RemoteAPIServer.BroadcastAuthPromptDTO(isPresent: false, code: nil, linkURL: nil) }
+                let prompt: BroadcastAuthPrompt? = Thread.isMainThread
+                    ? self.pendingBroadcastAuthPrompt
+                    : DispatchQueue.main.sync { self.pendingBroadcastAuthPrompt }
+                guard let prompt else {
+                    return RemoteAPIServer.BroadcastAuthPromptDTO(isPresent: false, code: nil, linkURL: nil)
+                }
+                return RemoteAPIServer.BroadcastAuthPromptDTO(isPresent: true, code: prompt.code, linkURL: prompt.linkURL.absoluteString)
+            }
+
+            let dismissAuthPromptProvider: () -> Void = { [weak self] in
+                DispatchQueue.main.async { self?.pendingBroadcastAuthPrompt = nil }
+            }
+
+            let broadcastAutoStartProvider: () -> RemoteAPIServer.BroadcastAutoStartDTO = { [weak self] in
+                guard let self else { return RemoteAPIServer.BroadcastAutoStartDTO(enabled: false) }
+                let enabled: Bool = Thread.isMainThread
+                    ? self.selectedServerXboxBroadcastEnabled
+                    : DispatchQueue.main.sync { self.selectedServerXboxBroadcastEnabled }
+                return RemoteAPIServer.BroadcastAutoStartDTO(enabled: enabled)
+            }
+
+            let setBroadcastAutoStartProvider: (Bool) -> Void = { [weak self] enabled in
+                DispatchQueue.main.async { self?.selectedServerXboxBroadcastEnabled = enabled }
+            }
+
             if let shared = AppViewModel.sharedRemoteAPIServer {
                 shared.updateProviders(
                     tokenProvider: tokenProvider,
@@ -477,6 +732,17 @@ final class AppViewModel: ObservableObject {
                     sessionLogProvider: sessionLogProvider,
                     configServersProvider: configServersProvider,
                     serverConnectionInfoProvider: serverConnectionInfoProvider,
+                    componentsProvider: componentsProvider,
+                    updateComponentProvider: updateComponentProvider,
+                    broadcastStatusProvider: broadcastStatusProvider,
+                    restartBroadcastProvider: restartBroadcastProvider,
+                    startBroadcastProvider: startBroadcastProvider,
+                    stopBroadcastProvider: stopBroadcastProvider,
+                    updateBroadcastCredentialsProvider: updateBroadcastCredentialsProvider,
+                    authPromptProvider: authPromptProvider,
+                    dismissAuthPromptProvider: dismissAuthPromptProvider,
+                    broadcastAutoStartProvider: broadcastAutoStartProvider,
+                    setBroadcastAutoStartProvider: setBroadcastAutoStartProvider,
                     logger: logger
                 )
                 shared.setListenOnAllInterfaces(cfg.remoteAPIExposeOnLAN)
@@ -501,6 +767,17 @@ final class AppViewModel: ObservableObject {
                 sessionLogProvider: sessionLogProvider,
                 configServersProvider: configServersProvider,
                 serverConnectionInfoProvider: serverConnectionInfoProvider,
+                componentsProvider: componentsProvider,
+                updateComponentProvider: updateComponentProvider,
+                broadcastStatusProvider: broadcastStatusProvider,
+                restartBroadcastProvider: restartBroadcastProvider,
+                startBroadcastProvider: startBroadcastProvider,
+                stopBroadcastProvider: stopBroadcastProvider,
+                updateBroadcastCredentialsProvider: updateBroadcastCredentialsProvider,
+                authPromptProvider: authPromptProvider,
+                dismissAuthPromptProvider: dismissAuthPromptProvider,
+                broadcastAutoStartProvider: broadcastAutoStartProvider,
+                setBroadcastAutoStartProvider: setBroadcastAutoStartProvider,
                 logger: logger
             )
             AppViewModel.sharedRemoteAPIServer = api
@@ -778,4 +1055,19 @@ final class AppViewModel: ObservableObject {
         console.clearEntries()
         remoteAPIServer?.clearConsoleBuffer()
     }
+}
+
+/// Returns a JAR filename with the trailing build number replaced by `newBuild`.
+/// e.g. "Geyser-spigot-1126.jar" + 1155 → "Geyser-spigot-1155.jar"
+/// If the filename doesn't end with a numeric build suffix, returns it unchanged.
+private func renamedJar(_ filename: String, newBuild: Int) -> String {
+    let base = (filename as NSString).deletingPathExtension   // "Geyser-spigot-1126"
+    let ext  = (filename as NSString).pathExtension           // "jar"
+    var parts = base.split(separator: "-", omittingEmptySubsequences: false).map(String.init)
+    if let last = parts.last, Int(last) != nil {
+        parts[parts.count - 1] = "\(newBuild)"
+    } else {
+        parts.append("\(newBuild)")
+    }
+    return parts.joined(separator: "-") + "." + ext
 }

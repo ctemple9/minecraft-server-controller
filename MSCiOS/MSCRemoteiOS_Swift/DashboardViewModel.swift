@@ -29,6 +29,14 @@ final class DashboardViewModel: ObservableObject {
     @Published var lastUpdated: Date? = nil
     @Published var isStreamingConsole: Bool = false
 
+    @Published var componentsStatus: ComponentsStatusDTO? = nil
+    @Published var broadcastStatus: BroadcastStatusDTO? = nil
+    @Published var pendingAuthPrompt: BroadcastAuthPromptDTO? = nil
+    @Published var broadcastAutoStart: Bool? = nil
+
+    /// "admin" or "guest", nil = not yet determined or not connected.
+    @Published var connectedRole: String? = nil
+
     var notifications: NotificationManager = .shared
 
     // MARK: - Internal state (do not access from views)
@@ -50,6 +58,7 @@ final class DashboardViewModel: ObservableObject {
         clientBaseURL = baseURL
         clientToken = token
         client = nil
+        connectedRole = nil
     }
 
     func requireClient() throws -> RemoteAPIClient {
@@ -89,6 +98,13 @@ final class DashboardViewModel: ObservableObject {
         }
 
         await fetchPerformanceSnapshot(baseURL: baseURL, token: token)
+        await fetchComponentsAndBroadcast(baseURL: baseURL, token: token)
+
+        if connectedRole == nil {
+            if let c = try? requireClient() {
+                connectedRole = try? await c.getMe()
+            }
+        }
 
         isLoading = false
 
@@ -111,17 +127,23 @@ final class DashboardViewModel: ObservableObject {
 
             async let s1 = client.getStatus()
             async let s2 = client.getPlayers()
+            async let s3auth = try? client.getAuthPrompt()
+            async let s3broad = try? client.getBroadcastStatus()
 
             if servers.isEmpty {
                 async let s3 = client.getServers()
-                let (fetchedStatus, fetchedPlayers, fetchedServers) = try await (s1, s2, s3)
+                let (fetchedStatus, fetchedPlayers, fetchedServers, auth, broad) = try await (s1, s2, s3, s3auth, s3broad)
                 status = fetchedStatus
                 players = fetchedPlayers
                 servers = fetchedServers
+                broadcastStatus = broad
+                if let auth, auth.isPresent { pendingAuthPrompt = auth } else { pendingAuthPrompt = nil }
             } else {
-                let (fetchedStatus, fetchedPlayers) = try await (s1, s2)
+                let (fetchedStatus, fetchedPlayers, auth, broad) = try await (s1, s2, s3auth, s3broad)
                 status = fetchedStatus
                 players = fetchedPlayers
+                broadcastStatus = broad
+                if let auth, auth.isPresent { pendingAuthPrompt = auth } else { pendingAuthPrompt = nil }
             }
 
             lastUpdated = Date()
@@ -180,5 +202,25 @@ final class DashboardViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    @MainActor func fetchComponentsAndBroadcast(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return }
+        async let c = try? client.getComponents()
+        async let b = try? client.getBroadcastStatus()
+        async let a = try? client.getAuthPrompt()
+        async let s = try? client.getBroadcastAutoStart()
+        let (comp, broad, auth, autoStart) = await (c, b, a, s)
+        componentsStatus = comp
+        broadcastStatus = broad
+        broadcastAutoStart = autoStart?.enabled
+        if let auth, auth.isPresent { pendingAuthPrompt = auth } else { pendingAuthPrompt = nil }
+    }
+
+    func dismissAuthPrompt(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        _ = try? await requireClient().dismissAuthPrompt()
+        pendingAuthPrompt = nil
     }
 }

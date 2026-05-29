@@ -1,4 +1,10 @@
 import SwiftUI
+import UIKit
+
+// Updated by SettingsStore when the user changes accent color.
+// nonisolated(unsafe) because it is written on MainActor and read from view bodies on MainActor too,
+// but the static nature means Swift can't verify that — the runtime access pattern is safe.
+nonisolated(unsafe) var _mscAccentHex: String = "#3EB489"
 
 // MARK: - MSC Remote Design System
 // Single source of truth for all visual constants.
@@ -11,11 +17,11 @@ enum MSCRemoteStyle {
     static let borderSubtle  = Color.white.opacity(0.07)
     static let borderMid     = Color.white.opacity(0.14)
 
-    // MARK: Accent — jade green, used sparingly
-    static let accent        = Color(hex: "#3EB489")
-    static let accentDim     = Color(hex: "#3EB489").opacity(0.15)
+    // MARK: Accent — user-configurable tint colour
+    static var accent:    Color { Color(hex: _mscAccentHex) }
+    static var accentDim: Color { Color(hex: _mscAccentHex).opacity(0.15) }
 
-    // MARK: Semantic
+    // MARK: Semantic (fixed — not affected by accent choice)
     static let success       = Color(hex: "#3EB489")
     static let danger        = Color(hex: "#E05C5C")
     static let warning       = Color(hex: "#E8A838")
@@ -63,6 +69,14 @@ enum MSCRemoteStyle {
 }
 
 extension Color {
+    func toHex() -> String? {
+        guard let components = UIColor(self).cgColor.components, components.count >= 3 else { return nil }
+        let r = Int(components[0] * 255)
+        let g = Int(components[1] * 255)
+        let b = Int(components[2] * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0

@@ -151,7 +151,7 @@ struct CreateServerView: View {
             }
         }
         .padding(MSC.Spacing.xl)
-        .frame(minWidth: 480, minHeight: 660)
+        .frame(minWidth: 480, minHeight: 540)
         .overlay {
             OnboardingOverlayView(
                 ownedSteps: [.serverName, .serverType, .serverSettings, .firstWorld, .createButton]

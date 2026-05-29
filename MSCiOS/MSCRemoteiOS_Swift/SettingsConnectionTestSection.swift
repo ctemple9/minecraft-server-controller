@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsConnectionTestSection: View {
+    @EnvironmentObject private var settings: SettingsStore
     let testIsRunning: Bool
     let lastTestResult: String?
     let lastTestWasSuccess: Bool
@@ -34,30 +35,28 @@ struct SettingsConnectionTestSection: View {
             .disabled(testIsRunning)
 
             if let msg = lastTestResult {
+                let resultColor = lastTestWasSuccess ? MSCRemoteStyle.accent : MSCRemoteStyle.danger
                 HStack(alignment: .top, spacing: MSCRemoteStyle.spaceSM) {
                     Image(systemName: lastTestWasSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .font(.system(size: 13))
-                        .foregroundStyle(lastTestWasSuccess ? MSCRemoteStyle.success : MSCRemoteStyle.danger)
+                        .foregroundStyle(resultColor)
                         .padding(.top, 1)
 
                     Text(msg)
                         .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(lastTestWasSuccess ? MSCRemoteStyle.success : MSCRemoteStyle.danger)
+                        .foregroundStyle(resultColor)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
                 }
-                .padding(.top, MSCRemoteStyle.spaceMD)
                 .padding(MSCRemoteStyle.spaceMD)
-                .background(
-                    (lastTestWasSuccess ? MSCRemoteStyle.success : MSCRemoteStyle.danger).opacity(0.08)
-                )
+                .frame(maxWidth: .infinity)
+                .background(resultColor.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
-                        .strokeBorder(
-                            (lastTestWasSuccess ? MSCRemoteStyle.success : MSCRemoteStyle.danger).opacity(0.2),
-                            lineWidth: 1
-                        )
+                        .strokeBorder(resultColor.opacity(0.2), lineWidth: 1)
                 )
                 .padding(.top, MSCRemoteStyle.spaceMD)
             }

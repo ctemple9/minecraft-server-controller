@@ -9,7 +9,19 @@ final class SettingsStore: ObservableObject {
         static let recentCommands   = "msc_remote_recent_commands"
         static let showJoinCard     = "msc_remote_show_join_card"
         static let joinCardColorHex = "msc_remote_join_card_color"
+        static let xboxGamertag     = "msc_remote_xbox_gamertag"
+        static let accentColorHex   = "msc_remote_accent_color"
     }
+
+    static let accentPresets: [(name: String, hex: String)] = [
+        ("Jade",    "#3EB489"),
+        ("Sky",     "#4A9EDB"),
+        ("Violet",  "#9B6FD4"),
+        ("Amber",   "#E8A838"),
+        ("Coral",   "#E05C5C"),
+        ("Rose",    "#D4578A"),
+        ("Cyan",    "#3EC8C8"),
+    ]
 
     enum NotificationKeys {
         static let serverWentOffline = "msc_notify_server_offline"
@@ -36,9 +48,13 @@ final class SettingsStore: ObservableObject {
     @Published var notifyServerCameOnline: Bool
     @Published var notifyPlayerJoined: Bool
 
-    // Join card visibility and color, persisted to UserDefaults.
+    // Join card visibility, color, and Xbox gamertag, persisted to UserDefaults.
     @Published var showJoinCard: Bool
     @Published var joinCardColorHex: String
+    @Published var xboxGamertag: String
+
+    // Accent colour tint — drives MSCRemoteStyle.accent app-wide.
+    @Published var accentColorHex: String
 
     // MARK: - Init
 
@@ -62,9 +78,20 @@ final class SettingsStore: ObservableObject {
 
         self.showJoinCard     = UserDefaults.standard.object(forKey: Keys.showJoinCard)     as? Bool   ?? false
         self.joinCardColorHex = UserDefaults.standard.string(forKey: Keys.joinCardColorHex) ?? "#2E6633"
+        self.xboxGamertag     = UserDefaults.standard.string(forKey: Keys.xboxGamertag)     ?? ""
+
+        let savedAccent = UserDefaults.standard.string(forKey: Keys.accentColorHex) ?? "#3EB489"
+        self.accentColorHex = savedAccent
+        _mscAccentHex = savedAccent
 
         UserDefaults.standard.set(normFav, forKey: Keys.favoriteCommands)
         UserDefaults.standard.set(normRec, forKey: Keys.recentCommands)
+    }
+
+    func setAccentColor(_ hex: String) {
+        accentColorHex = hex
+        _mscAccentHex = hex
+        UserDefaults.standard.set(hex, forKey: Keys.accentColorHex)
     }
 
     // MARK: - Notification preference persistence
@@ -81,6 +108,7 @@ final class SettingsStore: ObservableObject {
     func saveJoinCardPreferences() {
         UserDefaults.standard.set(showJoinCard,     forKey: Keys.showJoinCard)
         UserDefaults.standard.set(joinCardColorHex, forKey: Keys.joinCardColorHex)
+        UserDefaults.standard.set(xboxGamertag,     forKey: Keys.xboxGamertag)
     }
 
     // MARK: - Save / token management
