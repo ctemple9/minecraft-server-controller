@@ -6,7 +6,7 @@ struct DashboardPerformanceCard: View {
 
         var color: Color {
             switch self {
-            case .good:    return MSCRemoteStyle.success
+            case .good:    return MSCRemoteStyle.accent
             case .warning: return MSCRemoteStyle.warning
             case .bad:     return MSCRemoteStyle.danger
             case .neutral: return MSCRemoteStyle.textTertiary

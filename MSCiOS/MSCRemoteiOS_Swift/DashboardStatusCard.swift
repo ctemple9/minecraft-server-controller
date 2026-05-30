@@ -4,7 +4,21 @@ struct DashboardStatusCard: View {
     let isRunning: Bool
     let isPaired: Bool
     let activeServerNameText: String
+    let serverStartedAt: Date?
+    let now: Date
     let refreshAction: () -> Void
+
+    private var uptimeString: String? {
+        guard isRunning, let start = serverStartedAt else { return nil }
+        let secs = Int(now.timeIntervalSince(start))
+        guard secs >= 0 else { return nil }
+        let h = secs / 3600
+        let m = (secs % 3600) / 60
+        let s = secs % 60
+        if h > 0 { return String(format: "%dh %02dm %02ds", h, m, s) }
+        if m > 0 { return String(format: "%dm %02ds", m, s) }
+        return String(format: "%ds", s)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -24,6 +38,17 @@ struct DashboardStatusCard: View {
                         .font(.system(.title3, design: .rounded).weight(.semibold))
                         .foregroundStyle(isPaired ? MSCRemoteStyle.textPrimary : MSCRemoteStyle.textSecondary)
                         .lineLimit(1)
+
+                    if let uptime = uptimeString {
+                        HStack(spacing: 5) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 10))
+                                .foregroundStyle(MSCRemoteStyle.textTertiary)
+                            Text(uptime)
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        }
+                    }
                 }
                 Spacer()
                 Button(action: refreshAction) {
@@ -47,7 +72,10 @@ struct DashboardStatusCard: View {
                 .padding(.top, MSCRemoteStyle.spaceMD)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            Spacer(minLength: 0)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .mscCard()
     }
 }

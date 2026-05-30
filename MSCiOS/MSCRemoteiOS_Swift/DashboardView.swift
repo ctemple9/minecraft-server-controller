@@ -19,6 +19,7 @@ struct DashboardView: View {
 
     @State private var showRAMLine: Bool = false
     @State private var now: Date = Date()
+    @State private var serverStartedAt: Date? = nil
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var isIPad: Bool { horizontalSizeClass == .regular }
@@ -131,6 +132,13 @@ struct DashboardView: View {
             .onChange(of: vm.servers) { _, _ in syncSelectionFromStatusOrFirst() }
             .onChange(of: vm.status?.activeServerId) { _, _ in syncSelectionFromStatusOrFirst() }
             .onChange(of: selectedServerId) { _, newValue in handleServerSelectionChanged(to: newValue) }
+            .onChange(of: vm.status?.running) { _, running in
+                if running == true, serverStartedAt == nil {
+                    serverStartedAt = Date()
+                } else if running == false {
+                    serverStartedAt = nil
+                }
+            }
         }
     }
 
@@ -138,16 +146,16 @@ struct DashboardView: View {
     private var scrollContent: some View {
         VStack(spacing: MSCRemoteStyle.spaceLG) {
             if isIPad {
-                LazyVGrid(
-                    columns: [GridItem(.flexible()), GridItem(.flexible())],
-                    spacing: MSCRemoteStyle.spaceLG
-                ) {
+                HStack(alignment: .top, spacing: MSCRemoteStyle.spaceLG) {
                     DashboardStatusCard(
                         isRunning: isRunning,
                         isPaired: isPaired,
                         activeServerNameText: activeServerNameText,
+                        serverStartedAt: serverStartedAt,
+                        now: now,
                         refreshAction: { Task { await refreshAll() } }
                     )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     DashboardServerCard(
                         servers: vm.servers,
                         activeServerId: vm.status?.activeServerId ?? selectedServerId,
@@ -159,12 +167,16 @@ struct DashboardView: View {
                         startAction: { Task { await startServer() } },
                         stopAction: { Task { await stopServer() } }
                     )
+                    .frame(maxWidth: .infinity)
                 }
+                .fixedSize(horizontal: false, vertical: true)
             } else {
                 DashboardStatusCard(
                     isRunning: isRunning,
                     isPaired: isPaired,
                     activeServerNameText: activeServerNameText,
+                    serverStartedAt: serverStartedAt,
+                    now: now,
                     refreshAction: { Task { await refreshAll() } }
                 )
                 DashboardServerCard(

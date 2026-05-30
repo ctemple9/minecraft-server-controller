@@ -53,7 +53,6 @@
 		9A56329C2F65AD6D00FB8246 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632632F65AD6C00FB8246 /* ServerSettingsView.swift */; };
 		9A56329D2F65AD6D00FB8246 /* ServerFilesTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */; };
 		9A56329E2F65AD6D00FB8246 /* OverviewAlertBannersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632312F65AD6C00FB8246 /* OverviewAlertBannersView.swift */; };
-		9AF0000B2F65AD6D00FB8246 /* BedrockBroadcastManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */; };
 		9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */; };
 		9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */; };
 		9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632222F65AD6C00FB8246 /* GeyserConfigManager.swift */; };
@@ -107,11 +106,6 @@
 		9A5632D62F65AD6D00FB8246 /* ServerEditorGeneralTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632572F65AD6C00FB8246 /* ServerEditorGeneralTab.swift */; };
 		9A5632D72F65AD6D00FB8246 /* TemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326B2F65AD6C00FB8246 /* TemplateView.swift */; };
 		9A5632D82F65AD6D00FB8246 /* PluginDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */; };
-		9A563310AABBCCDD00FB8246 /* PluginSourceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */; };
-		9A563312AABBCCDD00FB8246 /* PluginNameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */; };
-		9A563314AABBCCDD00FB8246 /* HangarAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563315AABBCCDD00FB8246 /* HangarAPI.swift */; };
-		9A563316AABBCCDD00FB8246 /* ModrinthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */; };
-		9A563318AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */; };
 		9A5632D92F65AD6D00FB8246 /* PlayerAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */; };
 		9A5632DA2F65AD6D00FB8246 /* ManageServersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322A2F65AD6C00FB8246 /* ManageServersView.swift */; };
 		9A5632DB2F65AD6D00FB8246 /* AppViewModel+BedrockProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */; };
@@ -155,11 +149,13 @@
 		9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */; };
 		9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */; };
 		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
+		9A563310AABBCCDD00FB8246 /* PluginSourceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */; };
+		9A563312AABBCCDD00FB8246 /* PluginNameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */; };
+		9A563314AABBCCDD00FB8246 /* HangarAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563315AABBCCDD00FB8246 /* HangarAPI.swift */; };
+		9A563316AABBCCDD00FB8246 /* ModrinthAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */; };
+		9A563318AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */; };
 		9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */; };
 		9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */; };
-		9AB1C0042F9A00000000AA04 /* RemoteAPIServer+ComponentRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */; };
-		9AB1C0062F9A00000000BB01 /* HeadlessScriptGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */; };
-		9AB1C0082F9A00000000BB03 /* HeadlessScriptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */; };
 		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
 		9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */; };
 		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
@@ -172,6 +168,9 @@
 		9AAF276A2F6A2B0100F752CA /* RouterPortForwardGuideReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */; };
 		9AAF276E2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */; };
 		9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */; };
+		9AB1C0042F9A00000000AA04 /* RemoteAPIServer+ComponentRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */; };
+		9AB1C0062F9A00000000BB01 /* HeadlessScriptGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */; };
+		9AB1C0082F9A00000000BB03 /* HeadlessScriptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */; };
 		9AC4CEAF2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */; };
 		9AC4CEB12F69F331002B5564 /* RouterPortForwardGuideComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */; };
 		9AC4CEB52F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB42F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift */; };
@@ -179,6 +178,7 @@
 		9AC4CEB92F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB82F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift */; };
 		9AC4CEBC2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */; };
 		9ADA84802F6CC8B50079CA9B /* CreateWorldSlotSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */; };
+		9AF0000B2F65AD6D00FB8246 /* BedrockBroadcastManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -231,7 +231,6 @@
 		9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupsView.swift; sourceTree = "<group>"; };
 		9A5632002F65AD6C00FB8246 /* BannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BannerView.swift; sourceTree = "<group>"; };
-		9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBroadcastManager.swift; sourceTree = "<group>"; };
 		9A5632032F65AD6C00FB8246 /* BedrockPropertiesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPropertiesManager.swift; sourceTree = "<group>"; };
 		9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockServerBackend.swift; sourceTree = "<group>"; };
 		9A5632052F65AD6C00FB8246 /* BedrockVersionFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockVersionFetcher.swift; sourceTree = "<group>"; };
@@ -291,11 +290,6 @@
 		9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
 		9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSessionTimelineView.swift; sourceTree = "<group>"; };
 		9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDownloader.swift; sourceTree = "<group>"; };
-		9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginSourceDetector.swift; sourceTree = "<group>"; };
-		9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginNameParser.swift; sourceTree = "<group>"; };
-		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
-		9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthAPI.swift; sourceTree = "<group>"; };
-		9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PluginManagement.swift"; sourceTree = "<group>"; };
 		9A5632442F65AD6C00FB8246 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrerequisitesView.swift; sourceTree = "<group>"; };
 		9A5632462F65AD6C00FB8246 /* MSCStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCStyles.swift; sourceTree = "<group>"; };
@@ -342,11 +336,13 @@
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
 		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
+		9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginSourceDetector.swift; sourceTree = "<group>"; };
+		9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginNameParser.swift; sourceTree = "<group>"; };
+		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
+		9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthAPI.swift; sourceTree = "<group>"; };
+		9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PluginManagement.swift"; sourceTree = "<group>"; };
 		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
 		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
-		9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+ComponentRoutes.swift"; sourceTree = "<group>"; };
-		9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptGenerator.swift; sourceTree = "<group>"; };
-		9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptSheet.swift; sourceTree = "<group>"; };
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
 		9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSections.swift; sourceTree = "<group>"; };
 		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
@@ -359,6 +355,9 @@
 		9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideReader.swift; sourceTree = "<group>"; };
 		9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideTroubleshootingScreen.swift; sourceTree = "<group>"; };
 		9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+JavaProcessCleanup.swift"; sourceTree = "<group>"; };
+		9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+ComponentRoutes.swift"; sourceTree = "<group>"; };
+		9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptGenerator.swift; sourceTree = "<group>"; };
+		9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptSheet.swift; sourceTree = "<group>"; };
 		9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Minecraft Server Controller.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideMatcher.swift; sourceTree = "<group>"; };
 		9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideComposer.swift; sourceTree = "<group>"; };
@@ -368,6 +367,7 @@
 		9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideMaintenance.swift; sourceTree = "<group>"; };
 		9AC4CEBE2F69FAAB002B5564 /* RouterPortForwardGuideMaintenance.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RouterPortForwardGuideMaintenance.md; sourceTree = "<group>"; };
 		9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateWorldSlotSheet.swift; sourceTree = "<group>"; };
+		9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBroadcastManager.swift; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -1002,7 +1002,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1016,7 +1016,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1041,7 +1041,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1055,7 +1055,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

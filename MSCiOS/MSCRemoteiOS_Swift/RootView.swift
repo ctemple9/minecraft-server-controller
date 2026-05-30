@@ -48,6 +48,7 @@ struct RootView: View {
     @State private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     @State private var selectedDestination: NavDestination = .dashboard
     @State private var activeAuthPrompt: BroadcastAuthPromptDTO? = nil
+    @State private var ipadSidebarVisible: Bool = true
 
     @AppStorage("mscremote.hasSeenQuickGuide") private var hasSeenQuickGuide = false
     @State private var showFirstLaunchGuide = false
@@ -135,13 +136,31 @@ struct RootView: View {
     // a server control app where the content is the focus.
 
     private var ipadLayout: some View {
-        NavigationSplitView(columnVisibility: .constant(.all)) {
-            ipadSidebar
-        } detail: {
-            ipadDetailView
+        HStack(spacing: 0) {
+            if ipadSidebarVisible {
+                ipadSidebar
+                    .transition(.move(edge: .leading))
+            }
+            ZStack(alignment: .topLeading) {
+                ipadDetailView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        ipadSidebarVisible.toggle()
+                    }
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 18))
+                        .foregroundStyle(MSCRemoteStyle.textSecondary)
+                        .padding(10)
+                }
+                .padding(.top, 28)
+                .padding(.leading, 16)
+            }
         }
-        .navigationSplitViewStyle(.prominentDetail)
         .tint(MSCRemoteStyle.accent)
+        .ignoresSafeArea()
     }
 
     // MARK: - Sidebar
@@ -160,33 +179,32 @@ struct RootView: View {
                 // Note: List(_:id:selection:) is macOS-only.
                 // On iOS we use a plain List with ForEach + Button rows,
                 // tracking selection manually via @State.
-                List {
-                    ForEach(NavDestination.allCases, id: \.self) { destination in
-                        Button {
-                            selectedDestination = destination
-                        } label: {
-                            sidebarRow(destination)
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(NavDestination.allCases, id: \.self) { destination in
+                            Button {
+                                selectedDestination = destination
+                            } label: {
+                                sidebarRow(destination)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .fill(selectedDestination == destination
+                                                  ? MSCRemoteStyle.accent.opacity(0.12)
+                                                  : Color.clear)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .listRowBackground(
-                            selectedDestination == destination
-                                ? MSCRemoteStyle.accent.opacity(0.12)
-                                : Color.clear
-                        )
-                        .listRowSeparator(.hidden)
                     }
+                    .padding(.horizontal, 12)
                 }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 52)
 
                 Spacer()
 
                 sidebarFooter
             }
         }
-        .navigationBarHidden(true)
-        .frame(minWidth: 220, idealWidth: 240, maxWidth: 260)
+        .frame(width: 240)
         .background(MSCRemoteStyle.bgBase)
     }
 
