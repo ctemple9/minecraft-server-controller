@@ -47,10 +47,10 @@
 		9A2FC23E2F67D1C900D79E50 /* SettingsNotesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2312F67D1C900D79E50 /* SettingsNotesSection.swift */; };
 		9A2FC23F2F67D1C900D79E50 /* SettingsJoinCardSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2302F67D1C900D79E50 /* SettingsJoinCardSection.swift */; };
 		9A2FC2402F67D1C900D79E50 /* DashboardStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC22B2F67D1C900D79E50 /* DashboardStatusCard.swift */; };
-		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
 		9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0002F9A00000000AA01 /* HealthView.swift */; };
 		9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */; };
 		9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */; };
+		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -96,10 +96,10 @@
 		9A2FC2322F67D1C900D79E50 /* SettingsPairingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPairingCard.swift; sourceTree = "<group>"; };
 		9A2FC2332F67D1C900D79E50 /* TailscaleHelpSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleHelpSheet.swift; sourceTree = "<group>"; };
 		9A8F436A2EF4B5D6001A9355 /* MSCRemoteiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MSCRemoteiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9AB1C0002F9A00000000AA01 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsStatusStripView.swift; sourceTree = "<group>"; };
 		9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxAuthBanner.swift; sourceTree = "<group>"; };
+		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -429,7 +429,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -466,7 +466,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

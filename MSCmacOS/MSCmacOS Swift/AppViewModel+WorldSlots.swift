@@ -418,8 +418,10 @@ extension AppViewModel {
             let fm = FileManager.default
             let slotDir = WorldSlotManager.slotDirectory(slot: slot, serverDir: cfgServer.serverDir)
             let destZip = WorldSlotManager.zipURL(forSlot: slot, serverDir: cfgServer.serverDir)
+            let serverDirURL = URL(fileURLWithPath: cfgServer.serverDir, isDirectory: true)
 
-            let restoreFailureMessage: String? = await Task.detached(priority: .userInitiated) { () -> String? in
+            // PHASE 1: Swap the slot's world.zip with the backup (existing logic)
+            let zipSwapError: String? = await Task.detached(priority: .userInitiated) { () -> String? in
                 let tempZip = slotDir.appendingPathComponent("world.restore.tmp.zip")
 
                 do {
@@ -449,20 +451,81 @@ extension AppViewModel {
                 }
             }.value
 
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.isWorldSlotsLoading = false
-
-                if let message = restoreFailureMessage {
+            if let message = zipSwapError {
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    self.isWorldSlotsLoading = false
                     self.logAppMessage("[WorldSlots] Failed to restore backup \"\(backup.filename)\" into slot \"\(slot.name)\": \(message)")
                     self.showError(
                         title: "Restore Failed",
                         message: "Could not restore this backup into \"\(slot.name)\": \(message)"
                     )
+                }
+                return
+            }
+
+            // PHASE 2: If this slot is currently active, also replace the live world folders
+            let activeSlotID = WorldSlotManager.resolvedActiveSlotID(forServerDir: cfgServer.serverDir)
+            let isActiveSlot = (activeSlotID == slot.id)
+            var liveReplaceError: String? = nil
+
+            if isActiveSlot {
+                // Safety backup before clobbering the live world
+                let backupOK = await self.backupWorld(for: cfgServer)
+                if !backupOK {
+                    liveReplaceError = "Pre-restore backup failed; the live world was not replaced."
                 } else {
-                    self.logAppMessage("[WorldSlots] Restored backup \"\(backup.filename)\" into slot \"\(slot.name)\".")
+                    // Delete live world folders and unzip the restored zip in their place
+                    liveReplaceError = await Task.detached(priority: .userInitiated) { () -> String? in
+                        do {
+                            let currentFolders = WorldSlotManager.worldFolderNames(for: cfgServer)
+                            for name in currentFolders {
+                                let url = serverDirURL.appendingPathComponent(name, isDirectory: true)
+                                if fm.fileExists(atPath: url.path) {
+                                    try fm.removeItem(at: url)
+                                }
+                            }
+                        } catch {
+                            return "Failed to remove current world folders: \(error.localizedDescription)"
+                        }
+
+                        let process = Process()
+                        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+                        process.arguments = ["-o", destZip.path, "-d", serverDirURL.path]
+                        do {
+                            try process.run()
+                            process.waitUntilExit()
+                        } catch {
+                            return "Failed to launch unzip: \(error.localizedDescription)"
+                        }
+                        guard process.terminationStatus == 0 else {
+                            return "unzip failed with status \(process.terminationStatus)."
+                        }
+                        return nil
+                    }.value
+                }
+            }
+
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.isWorldSlotsLoading = false
+
+                if let err = liveReplaceError {
+                    // Zip was updated successfully but live replacement failed — recoverable
+                    // (user can re-activate the slot to push the restored zip live)
+                    self.logAppMessage("[WorldSlots] Restored backup \"\(backup.filename)\" into slot \"\(slot.name)\" but live world replacement failed: \(err)")
+                    self.showError(
+                        title: "Partial Restore",
+                        message: "The slot's saved world was updated, but the live world could not be replaced: \(err)\n\nYou can re-activate the slot to apply the restore manually."
+                    )
                     self.loadWorldSlotsForSelectedServer()
                     self.loadBackupsForSelectedServer()
+                } else {
+                    let liveSuffix = isActiveSlot ? " and refreshed the live world." : "."
+                    self.logAppMessage("[WorldSlots] Restored backup \"\(backup.filename)\" into slot \"\(slot.name)\"\(liveSuffix)")
+                    self.loadWorldSlotsForSelectedServer()
+                    self.loadBackupsForSelectedServer()
+                    if isActiveSlot { self.refreshWorldSize() }
                 }
             }
         }
