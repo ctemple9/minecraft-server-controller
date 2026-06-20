@@ -12,34 +12,51 @@ var settingsTab: some View {
                 message: "MOTD, max players, difficulty, online mode, and more are available after the server is created. Save, then reopen Edit Server."
             )
         } else if let cfg = editingConfigServer {
-            SESection(icon: "gearshape.fill", title: "Server Properties", color: .blue) {
-                ServerSettingsView(
-                    isPresented: .constant(false),
-                    configServer: cfg,
-                    initialModel: javaSettingsDraft?.model ?? viewModel.loadServerPropertiesModel(for: cfg),
-                    initialBedrockModel: bedrockSettingsDraft?.model ?? viewModel.bedrockPropertiesModel(for: cfg),
-                    initialBedrockPortText: javaSettingsDraft?.bedrockPortText,
-                    initialBedrockPortV6Text: bedrockSettingsDraft?.bedrockPortV6Text,
-                    isInline: true,
-                    onJavaDraftChange: { updatedDraft in
-                        javaSettingsDraft = updatedDraft
-                    },
-                    onBedrockDraftChange: { updatedDraft in
-                        bedrockSettingsDraft = updatedDraft
-                    }
-                )
-            }
+            // ── Server Properties ──────────────────────────────────────
+            // ServerSettingsView renders its own section headers internally;
+            // we drop the SESection wrapper and let it fill the content area directly.
+            ServerSettingsView(
+                isPresented: .constant(false),
+                configServer: cfg,
+                initialModel: javaSettingsDraft?.model ?? viewModel.loadServerPropertiesModel(for: cfg),
+                initialBedrockModel: bedrockSettingsDraft?.model ?? viewModel.bedrockPropertiesModel(for: cfg),
+                initialBedrockPortText: javaSettingsDraft?.bedrockPortText,
+                initialBedrockPortV6Text: bedrockSettingsDraft?.bedrockPortV6Text,
+                isInline: true,
+                onJavaDraftChange: { updatedDraft in
+                    javaSettingsDraft = updatedDraft
+                },
+                onBedrockDraftChange: { updatedDraft in
+                    bedrockSettingsDraft = updatedDraft
+                }
+            )
+            .contextualHelpAnchor(settingsGeneralAnchorID)
 
-            SESection(icon: "bell.badge.fill", title: "Notifications", color: .orange) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Choose which events deliver a macOS notification for this server.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    notifToggleRow(label: "Server started", isOn: $notifOnStart) { _ in saveNotifPrefs(for: cfg) }
-                    notifToggleRow(label: "Server stopped", isOn: $notifOnStop)  { _ in saveNotifPrefs(for: cfg) }
-                    notifToggleRow(label: "Player joined",  isOn: $notifOnJoin)  { _ in saveNotifPrefs(for: cfg) }
-                    notifToggleRow(label: "Player left",    isOn: $notifOnLeave) { _ in saveNotifPrefs(for: cfg) }
+            // ── Notifications ──────────────────────────────────────────
+            SEBlockHeader(title: "Notifications")
+            SEBlock {
+                SERow(label: "Server started") {
+                    Toggle("", isOn: $notifOnStart)
+                        .labelsHidden()
+                        .onChange(of: notifOnStart) { _, _ in saveNotifPrefs(for: cfg) }
+                }
+                Divider().padding(.leading, MSC.Spacing.md - 1)
+                SERow(label: "Server stopped") {
+                    Toggle("", isOn: $notifOnStop)
+                        .labelsHidden()
+                        .onChange(of: notifOnStop) { _, _ in saveNotifPrefs(for: cfg) }
+                }
+                Divider().padding(.leading, MSC.Spacing.md - 1)
+                SERow(label: "Player joined") {
+                    Toggle("", isOn: $notifOnJoin)
+                        .labelsHidden()
+                        .onChange(of: notifOnJoin) { _, _ in saveNotifPrefs(for: cfg) }
+                }
+                Divider().padding(.leading, MSC.Spacing.md - 1)
+                SERow(label: "Player left") {
+                    Toggle("", isOn: $notifOnLeave)
+                        .labelsHidden()
+                        .onChange(of: notifOnLeave) { _, _ in saveNotifPrefs(for: cfg) }
                 }
             }
             .contextualHelpAnchor(settingsNotificationsAnchorID)

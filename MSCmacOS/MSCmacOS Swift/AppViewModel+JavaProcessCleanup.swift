@@ -26,6 +26,51 @@ extension AppViewModel {
         case failed(message: String)
     }
 
+    // Called from AppViewModel.init() — scans for orphaned Java processes from a prior
+    // crash and publishes the count so the UI can show a warning banner.
+    // PIDs to exclude are captured synchronously on the main actor here, then the
+    // blocking ps call runs in a Task.detached so the main thread is never stalled.
+    func checkForOrphansOnStartup() {
+        let excluded: Set<pid_t> = [
+            pid_t(ProcessInfo.processInfo.processIdentifier),
+            javaBackend.processID,
+            broadcastManager.processID
+        ].compactMap { $0 }.reduce(into: Set()) { $0.insert($1) }
+
+        Task.detached { [weak self] in
+            let count = (try? JavaProcessScanner.scan(excludedPIDs: excluded).count) ?? 0
+            await MainActor.run { self?.orphanedJavaProcessCount = count }
+        }
+    }
+
+    // Called from applicationWillTerminate — synchronously force-kills all running
+    // server processes so they don't outlive the app on a normal quit.
+    func forceTerminateAllRunningProcesses() {
+        if isServerRunning {
+            activeBackend?.terminate()
+        }
+        if let matches = try? findKillableJavaServerProcesses() {
+            for match in matches {
+                Darwin.kill(match.pid, SIGKILL)
+            }
+        }
+    }
+
+    // Called by PreferencesProcessCleanupSection. Captures excluded PIDs on the
+    // main actor synchronously, then does the blocking ps scan in Task.detached.
+    func scanOrphansInBackground(completion: @escaping @MainActor (Int) -> Void) {
+        let excluded: Set<pid_t> = [
+            pid_t(ProcessInfo.processInfo.processIdentifier),
+            javaBackend.processID,
+            broadcastManager.processID
+        ].compactMap { $0 }.reduce(into: Set()) { $0.insert($1) }
+
+        Task.detached {
+            let count = (try? JavaProcessScanner.scan(excludedPIDs: excluded).count) ?? 0
+            await MainActor.run { completion(count) }
+        }
+    }
+
     func killJavaServerProcesses() {
         switch killJavaServerProcessesInternal() {
         case .gracefullyStoppedCurrentServer:
@@ -87,60 +132,21 @@ extension AppViewModel {
         return .failed(message: failureMessages.joined(separator: "\n"))
     }
 
-    private func findKillableJavaServerProcesses() throws -> [JavaServerProcessMatch] {
-        let process = Process()
-        let outputPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-axo", "pid=,command="]
-        process.standardOutput = outputPipe
-        process.standardError = Pipe()
+    func findKillableJavaServerProcesses() throws -> [JavaServerProcessMatch] {
+        let excludedPIDs: Set<pid_t> = [
+            pid_t(ProcessInfo.processInfo.processIdentifier),
+            javaBackend.processID,
+            broadcastManager.processID
+        ].compactMap { $0 }.reduce(into: Set()) { $0.insert($1) }
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            throw NSError(
-                domain: "MinecraftServerController.JavaProcessCleanup",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Could not inspect running processes: \(error.localizedDescription)"]
-            )
-        }
-
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-        let currentAppPID = ProcessInfo.processInfo.processIdentifier
-        let managedJavaPID = javaBackend.processID
-        let excludedPIDs: Set<pid_t> = [currentAppPID, managedJavaPID, broadcastManager.processID]
-            .compactMap { $0 }
-            .reduce(into: Set<pid_t>()) { $0.insert($1) }
-
-        return output
-            .split(whereSeparator: \.isNewline)
-            .compactMap { parseJavaServerProcessLine(String($0), excludedPIDs: excludedPIDs) }
-    }
-
-    private func parseJavaServerProcessLine(_ line: String, excludedPIDs: Set<pid_t>) -> JavaServerProcessMatch? {
-        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        let scanner = Scanner(string: trimmed)
-        guard let pidInt = scanner.scanInt() else { return nil }
-        let pid = pid_t(pidInt)
-        guard !excludedPIDs.contains(pid) else { return nil }
-
-        let commandStart = trimmed.index(trimmed.startIndex, offsetBy: scanner.currentIndex.utf16Offset(in: trimmed))
-        let command = String(trimmed[commandStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !command.isEmpty else { return nil }
-
-        let lower = command.lowercased()
-        guard lower.contains("java") else { return nil }
-        guard lower.contains("-jar") else { return nil }
-        guard lower.contains("--nogui") || lower.contains("paper") || lower.contains("purpur") || lower.contains("spigot") else {
-            return nil
-        }
-        guard !lower.contains("mcxboxbroadcast") else { return nil }
-
-        let isCurrentManagedServer = javaBackend.processID == pid
-        return JavaServerProcessMatch(pid: pid, command: command, isCurrentManagedServer: isCurrentManagedServer)
+        return try JavaProcessScanner.scan(excludedPIDs: excludedPIDs)
+            .map { entry in
+                JavaServerProcessMatch(
+                    pid: entry.pid,
+                    command: entry.command,
+                    isCurrentManagedServer: javaBackend.processID == entry.pid
+                )
+            }
     }
 }
+

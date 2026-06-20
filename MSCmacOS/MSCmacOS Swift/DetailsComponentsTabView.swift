@@ -2,8 +2,8 @@
 //  DetailsComponentsTabView.swift
 //  MinecraftServerController
 //
-//  Components management surface for Paper, plugins, broadcast helpers, and
-//  Bedrock runtime tooling.
+//  Unified component list — Paper, plugins, and broadcast in one clean block.
+//  Each component is a row: toggle/spacer · icon · name+version · status chip · actions.
 //
 
 import SwiftUI
@@ -19,45 +19,15 @@ struct DetailsComponentsTabView: View {
     }
 
     var body: some View {
-        componentsContent
-    }
-
-    // MARK: - Scroll container
-
-    private var componentsContent: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-
                 if isBedrock {
-                    BedrockComponentsToolbarCard()
-                } else {
-                    ComponentsToolbarCard()
-                }
-
-                if !isBedrock {
-                    ComponentSectionCard(title: "Core Server", icon: "shippingbox.fill") {
-                        PaperComponentCard(onReveal: revealPaperJarInFinder)
-                    }
-
-                    PluginsSectionCard()
-
-                    ComponentSectionCard(title: "Broadcast", icon: "gamecontroller.fill") {
-                        componentCard(
-                            title: "MCXboxBroadcast",
-                            icon: "antenna.radiowaves.left.and.right",
-                            local: viewModel.componentsSnapshot.broadcast.local,
-                            template: nil,
-                            online: viewModel.componentsSnapshot.broadcast.online,
-                            isDownloading: false,
-                            onDownloadLatest: { viewModel.downloadOrUpdateXboxBroadcastJar() },
-                            onReveal: revealBroadcastJarInFinder
-                        )
-                    }
-                }
-
-                if isBedrock {
+                    bedrockToolbar
                     BedrockRuntimeSectionCard()
                     bedrockBroadcastCard
+                } else {
+                    javaToolbar
+                    javaComponentList
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -65,12 +35,153 @@ struct DetailsComponentsTabView: View {
         }
     }
 
-    // MARK: - Bedrock broadcast card (Docker container)
+    // MARK: - Java toolbar
+
+    private var javaToolbar: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            Text("Components")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(MSC.Colors.tertiary)
+
+            if let err = viewModel.componentsOnlineErrorMessage, !err.isEmpty {
+                Divider().frame(height: 12).opacity(0.5)
+                Label(err, systemImage: "exclamationmark.triangle.fill")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.warning)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                viewModel.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+            } label: {
+                Label("Refresh local", systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+
+            Button {
+                viewModel.checkComponentsOnline()
+            } label: {
+                if viewModel.isCheckingComponentsOnline {
+                    HStack(spacing: 4) {
+                        ProgressView().controlSize(.mini)
+                        Text("Checking\u{2026}")
+                    }
+                } else {
+                    Label("Check online", systemImage: "cloud.fill")
+                }
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            .disabled(viewModel.isCheckingComponentsOnline)
+        }
+    }
+
+    // MARK: - Bedrock toolbar
+
+    private var bedrockToolbar: some View {
+        HStack {
+            Text("Components")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(MSC.Colors.tertiary)
+            Spacer()
+        }
+    }
+
+    // MARK: - Java component list (unified block)
+
+    private var javaComponentList: some View {
+        SEBlock {
+            // ── Paper ──────────────────────────────────────────────────────
+            PaperListRow(onReveal: revealPaperJarInFinder)
+
+            rowDivider
+
+            // ── Plugins ────────────────────────────────────────────────────
+            pluginRows
+
+            rowDivider
+
+            // ── Broadcast ──────────────────────────────────────────────────
+            BroadcastListRow()
+
+            rowDivider
+
+            // ── Plugin folder footer ───────────────────────────────────────
+            pluginFooter
+        }
+        .task { viewModel.refreshDiscoveredPlugins() }
+    }
+
+    private var pluginFooter: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            Button { revealPluginsFolder() } label: {
+                Label("Reveal plugins folder", systemImage: "folder")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            Spacer()
+            Button { viewModel.addPluginFromFilePicker() } label: {
+                Label("Add Plugin", systemImage: "plus")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm)
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .padding(.leading, 52)
+            .opacity(0.55)
+    }
+
+    // MARK: - Plugin rows (inside the block)
+
+    @ViewBuilder
+    private var pluginRows: some View {
+        if viewModel.discoveredPlugins.isEmpty {
+            HStack(spacing: MSC.Spacing.sm) {
+                Spacer().frame(width: 52)
+                Text("No plugins installed.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                Spacer()
+            }
+            .padding(.horizontal, MSC.Spacing.md)
+            .padding(.vertical, MSC.Spacing.sm + 1)
+        } else {
+            ForEach(Array(viewModel.discoveredPlugins.enumerated()), id: \.element.id) { idx, entry in
+                if idx > 0 {
+                    Divider()
+                        .padding(.leading, 52)
+                        .opacity(0.55)
+                }
+                PluginListRow(entry: entry)
+            }
+        }
+    }
+
+    private func revealPluginsFolder() {
+        guard let cfg = viewModel.selectedServerConfig else { return }
+        let pluginsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            .appendingPathComponent("plugins", isDirectory: true)
+        try? FileManager.default.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
+        viewModel.revealInFinder(url: pluginsDir)
+    }
+
+    // MARK: - Bedrock broadcast card (unchanged)
 
     @ViewBuilder private var bedrockBroadcastCard: some View {
-        ComponentSectionCard(title: "Broadcast", icon: "gamecontroller.fill") {
+        SEBlock {
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-
                 HStack(spacing: MSC.Spacing.sm) {
                     Label("MCXboxBroadcast Standalone", systemImage: "antenna.radiowaves.left.and.right")
                         .font(MSC.Typography.cardTitle)
@@ -109,9 +220,7 @@ struct DetailsComponentsTabView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: MSC.Spacing.sm) {
-                    Button("Pull Latest") {
-                        viewModel.pullBedrockBroadcastImage()
-                    }
+                    Button("Pull Latest") { viewModel.pullBedrockBroadcastImage() }
                     Button("Open Data Folder") {
                         if let server = viewModel.selectedServer,
                            let cfg = viewModel.configServer(for: server) {
@@ -123,281 +232,345 @@ struct DetailsComponentsTabView: View {
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
             }
+            .padding(MSC.Spacing.md)
         }
     }
+}
 
-    // MARK: - Generic component card row (Broadcast)
+// MARK: - Paper List Row
 
-    private func componentCard(
-        title: String,
-        icon: String,
-        local: String?,
-        template: String?,
-        online: String?,
-        isDownloading: Bool,
-        onDownloadLatest: (() -> Void)?,
-        onReveal: @escaping () -> Void
-    ) -> some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+private struct PaperListRow: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let onReveal: () -> Void
 
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // ── Header row ────────────────────────────────────────────
             HStack(spacing: MSC.Spacing.sm) {
-                Label(title, systemImage: icon)
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.primary)
-                Spacer()
-                ComponentStatusPill(local: local, template: template, online: online)
-            }
-
-            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                ComponentVersionRow(label: "Local",  value: local  ?? "Missing", missing: local == nil)
-                if let template {
-                    ComponentVersionRow(label: "Template", value: template)
-                }
-                ComponentVersionRow(label: "Online", value: online ?? "\u{2014}")
-            }
-            .padding(.horizontal, MSC.Spacing.xs)
-
-            HStack(spacing: MSC.Spacing.sm) {
-                if let onDownloadLatest {
-                    Button {
-                        onDownloadLatest()
-                    } label: {
-                        if isDownloading {
-                            HStack(spacing: 4) {
-                                ProgressView().controlSize(.mini)
-                                Text("Downloading\u{2026}")
-                            }
-                        } else {
-                            Label("Download Latest", systemImage: "arrow.down.circle.fill")
-                        }
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
+                // Non-interactive "always on" indicator — Paper is the core JAR, it can't be disabled
+                Toggle("", isOn: .constant(true))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
                     .controlSize(.mini)
-                    .disabled(viewModel.isServerRunning || isDownloading)
+                    .frame(width: 32)
+                    .allowsHitTesting(false)
+                    .saturation(0)
+                    .opacity(0.28)
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "shippingbox.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
                 }
 
-                Button {
-                    onReveal()
-                } label: {
-                    Label("Reveal", systemImage: "folder")
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("Paper")
+                            .font(.system(size: 12.5, weight: .semibold))
+                        componentBadge("Server JAR", color: .accentColor)
+                    }
+                    Text(viewModel.componentsSnapshot.paper.local ?? "Not installed")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(viewModel.componentsSnapshot.paper.local == nil ? MSC.Colors.error : MSC.Colors.caption)
+                }
+
+                Spacer()
+
+                ComponentStatusPill(
+                    local: viewModel.componentsSnapshot.paper.local,
+                    template: nil,
+                    online: viewModel.componentsSnapshot.paper.online
+                )
+
+                Button { onReveal() } label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12))
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
                 .controlSize(.mini)
 
-                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .animation(.easeInOut(duration: 0.18), value: isExpanded)
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
+            }
+            .padding(.horizontal, MSC.Spacing.md)
+            .padding(.vertical, MSC.Spacing.sm + 1)
+
+            // ── Expansion ─────────────────────────────────────────────
+            if isExpanded {
+                Divider().opacity(0.5)
+
+                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                    trackSelector
+
+                    if viewModel.includeExperimentalPaperBuilds {
+                        HStack(alignment: .top, spacing: MSC.Spacing.xs) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(MSC.Colors.warning)
+                                .padding(.top, 1)
+                            Text("Experimental builds are required for console cross-play on the latest Minecraft version. Not recommended for stable play.")
+                                .font(MSC.Typography.caption)
+                                .foregroundStyle(MSC.Colors.warning)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    versionListContent
+
+                    HStack(spacing: MSC.Spacing.sm) {
+                        Button {
+                            viewModel.downloadAndApplySelectedPaperVersion()
+                        } label: {
+                            if viewModel.isDownloadingAndApplyingPaper {
+                                HStack(spacing: 4) {
+                                    ProgressView().controlSize(.mini)
+                                    Text("Downloading\u{2026}")
+                                }
+                            } else {
+                                Label("Download selected", systemImage: "arrow.down.circle.fill")
+                            }
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.mini)
+                        .disabled(
+                            viewModel.isServerRunning ||
+                            viewModel.isDownloadingAndApplyingPaper ||
+                            viewModel.selectedPaperVersionOption == nil
+                        )
+
+                        Button { onReveal() } label: {
+                            Label("Reveal", systemImage: "folder")
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.mini)
+
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.vertical, MSC.Spacing.md)
+                .transition(.opacity)
             }
         }
-        .padding(.vertical, MSC.Spacing.xxs)
     }
-}
 
-// MARK: - Plugins Section Card
-
-private struct PluginsSectionCard: View {
-    @EnvironmentObject var viewModel: AppViewModel
-
-    var body: some View {
-        ComponentSectionCard(
-            title: "Plugins",
-            icon: "puzzlepiece.extension.fill",
-            count: viewModel.discoveredPlugins.isEmpty ? nil : viewModel.discoveredPlugins.count,
-            headerTrailing: {
-                HStack(spacing: MSC.Spacing.xs) {
-                    Button {
-                        revealPluginsFolder()
-                    } label: {
-                        Label("Reveal", systemImage: "folder")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.mini)
-
-                    Button {
-                        viewModel.addPluginFromFilePicker()
-                    } label: {
-                        Label("Add Plugin", systemImage: "plus")
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.mini)
-                }
+    private var trackSelector: some View {
+        HStack(spacing: 2) {
+            trackSegment("Stable",       isSelected: !viewModel.includeExperimentalPaperBuilds) {
+                viewModel.switchPaperTrack(includeExperimental: false)
             }
-        ) {
-            if viewModel.discoveredPlugins.isEmpty {
-                Text("No plugins found. Click Add Plugin to install one.")
+            trackSegment("Experimental", isSelected:  viewModel.includeExperimentalPaperBuilds) {
+                viewModel.switchPaperTrack(includeExperimental: true)
+            }
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: MSC.Radius.sm + 2, style: .continuous)
+                .fill(MSC.Colors.tierAtmosphere)
+        )
+    }
+
+    @ViewBuilder
+    private func trackSegment(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                .padding(.horizontal, MSC.Spacing.sm)
+                .padding(.vertical, MSC.Spacing.xxs + 1)
+                .background(
+                    Group {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                                .fill(MSC.Colors.tierContent)
+                        }
+                    }
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var versionListContent: some View {
+        if viewModel.isCheckingComponentsOnline && viewModel.availablePaperVersions.isEmpty {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text("Fetching available versions\u{2026}")
                     .font(MSC.Typography.caption)
                     .foregroundStyle(MSC.Colors.tertiary)
-                    .padding(.vertical, MSC.Spacing.xs)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.discoveredPlugins.enumerated()), id: \.element.id) { idx, entry in
-                        if idx > 0 { ComponentRowDivider() }
-                        PluginRowView(entry: entry)
+            }
+        } else if viewModel.availablePaperVersions.isEmpty {
+            Text("Click Check online above to see available versions.")
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.tertiary)
+        } else {
+            VStack(spacing: 2) {
+                ForEach(viewModel.availablePaperVersions) { option in
+                    PaperVersionRow(
+                        option: option,
+                        isSelected: viewModel.selectedPaperVersionOption == option,
+                        isCurrent: option.displayString == viewModel.componentsSnapshot.paper.local
+                    ) {
+                        viewModel.selectedPaperVersionOption = option
                     }
                 }
             }
         }
-        .task {
-            viewModel.refreshDiscoveredPlugins()
-        }
-    }
-
-    private func revealPluginsFolder() {
-        guard let cfg = viewModel.selectedServerConfig else { return }
-        let pluginsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
-            .appendingPathComponent("plugins", isDirectory: true)
-        try? FileManager.default.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
-        viewModel.revealInFinder(url: pluginsDir)
     }
 }
 
-// MARK: - Plugin Row
+// MARK: - Plugin List Row
 
-private struct PluginRowView: View {
+private struct PluginListRow: View {
     @EnvironmentObject var viewModel: AppViewModel
     let entry: PluginEntry
 
-    @State private var isShowingSourcePopover: Bool = false
-    @State private var isShowingDownloadConfirm: Bool = false
+    @State private var isShowingSourcePopover = false
+    @State private var isShowingDownloadConfirm = false
 
     private var isDownloading: Bool { viewModel.downloadingPlugins.contains(entry.jarStem) }
+
     private var hasUpdate: Bool {
         guard let online = entry.onlineVersion, !online.isEmpty, online != "(direct)" else { return false }
-        if let local = entry.parsedVersion ?? entry.localVersion {
-            return online != local
-        }
+        if let local = entry.parsedVersion ?? entry.localVersion { return online != local }
         return false
     }
 
+    private var localVersion: String? { entry.parsedVersion ?? entry.localVersion }
+
+    private var canDownload: Bool {
+        switch entry.tier {
+        case .managed:     return true
+        case .userSourced: return entry.sourceConfig != nil
+        case .unmanaged:   return false
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-            // Top row: icon + name + badges + Enable/Disable
-            HStack(spacing: MSC.Spacing.sm) {
-                Image(systemName: pluginIcon)
-                    .font(.system(size: 13))
-                    .foregroundStyle(MSC.Colors.tertiary)
-                    .frame(width: 16)
+        HStack(spacing: MSC.Spacing.sm) {
+            // Enable/Disable toggle
+            Toggle("", isOn: Binding(
+                get: { entry.isEnabled },
+                set: { _ in viewModel.togglePlugin(jarStem: entry.jarStem) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .frame(width: 32)
 
-                Text(entry.displayName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(entry.isEnabled ? Color.primary : Color.secondary)
-
-                // Tier badge
-                switch entry.tier {
-                case .managed:
-                    PluginTierBadge(label: "Managed", icon: "sparkles", color: MSC.Colors.info)
-                case .userSourced:
-                    if let source = entry.sourceConfig {
-                        PluginTierBadge(label: source.type.displayName,
-                                        icon: source.type.symbolName,
-                                        color: sourceBadgeColor(source.type))
-                    }
-                case .unmanaged:
-                    EmptyView()
-                }
-
-                // Update / status pill
-                if entry.tier != .unmanaged {
-                    if hasUpdate {
-                        ComponentStatusPill(
-                            local: entry.parsedVersion ?? entry.localVersion,
-                            template: entry.templateVersion,
-                            online: entry.onlineVersion
-                        )
-                    } else if entry.onlineVersion != nil {
-                        ComponentStatusPill(
-                            local: entry.parsedVersion ?? entry.localVersion,
-                            template: entry.templateVersion,
-                            online: entry.onlineVersion
-                        )
-                    }
-                }
-
-                Spacer()
-
-                // Enable / Disable button
-                Button {
-                    viewModel.togglePlugin(jarStem: entry.jarStem)
-                } label: {
-                    Text(entry.isEnabled ? "Disable" : "Enable")
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(iconColor.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: iconName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(iconColor)
             }
 
-            // Extended row: version info + action buttons (only for managed/user-sourced)
-            if entry.tier != .unmanaged || entry.parsedVersion != nil {
-                HStack(alignment: .center) {
-                    // Version info
-                    HStack(spacing: MSC.Spacing.md) {
-                        if let local = entry.parsedVersion ?? entry.localVersion {
-                            versionPair(label: "Local", value: local)
+            // Name + badges + version
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(entry.displayName)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(entry.isEnabled ? Color.primary : Color.secondary)
+
+                    switch entry.tier {
+                    case .managed:
+                        PluginTierBadge(label: "Managed", icon: "sparkles", color: MSC.Colors.info)
+                    case .userSourced:
+                        if let source = entry.sourceConfig {
+                            PluginTierBadge(
+                                label: source.type.displayName,
+                                icon: source.type.symbolName,
+                                color: sourceBadgeColor(source.type)
+                            )
                         }
-                        if let template = entry.templateVersion {
-                            versionPair(label: "Template", value: template)
-                        }
-                        if let online = entry.onlineVersion, online != "(direct)" {
-                            versionPair(label: "Online", value: online, highlight: hasUpdate)
+                    case .unmanaged:
+                        EmptyView()
+                    }
+                }
+
+                HStack(spacing: 4) {
+                    if let local = localVersion {
+                        Text(local)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(MSC.Colors.caption)
+                    }
+                    if hasUpdate, let online = entry.onlineVersion, online != "(direct)" {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                        Text(online)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(MSC.Colors.warning)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Status chip (only for tracked plugins with online data)
+            if entry.isCheckingOnline {
+                ProgressView().controlSize(.mini)
+            } else if entry.tier != .unmanaged, entry.onlineVersion != nil {
+                ComponentStatusPill(
+                    local: localVersion,
+                    template: entry.templateVersion,
+                    online: entry.onlineVersion
+                )
+            }
+
+            // Action buttons
+            HStack(spacing: 4) {
+                if canDownload {
+                    Button { isShowingDownloadConfirm = true } label: {
+                        if isDownloading {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(hasUpdate ? MSC.Colors.warning : Color.accentColor.opacity(0.65))
                         }
                     }
-                    .padding(.leading, 24)  // indent to align under name
-
-                    Spacer()
-
-                    // Action buttons
-                    HStack(spacing: 4) {
-                        // Download button (managed always; user-sourced as soon as source is linked)
-                        if canDownload {
-                            Button {
-                                isShowingDownloadConfirm = true
-                            } label: {
-                                if isDownloading {
-                                    ProgressView().controlSize(.mini)
-                                } else {
-                                    Image(systemName: "arrow.down.circle.fill")
-                                }
-                            }
-                            .buttonStyle(MSCSecondaryButtonStyle())
-                            .controlSize(.mini)
-                            .disabled(viewModel.isServerRunning || isDownloading || (entry.tier == .userSourced && entry.onlineDownloadURL == nil && !entry.isCheckingOnline))
-                            .confirmationDialog(
-                                "Download latest version of \(entry.displayName)?",
-                                isPresented: $isShowingDownloadConfirm,
-                                titleVisibility: .visible
-                            ) {
-                                Button("Download Latest") { triggerDownload() }
-                                Button("Cancel", role: .cancel) { }
-                            } message: {
-                                if let version = entry.onlineVersion {
-                                    Text("This will download version \(version) and replace the current JAR.")
-                                } else {
-                                    Text("This will download and replace the current JAR.")
-                                }
-                            }
-                        }
-
-                        // Source link button (shown for all non-managed plugins)
-                        if entry.tier != .managed {
-                            Button {
-                                isShowingSourcePopover = true
-                            } label: {
-                                Image(systemName: entry.sourceConfig != nil ? "link.badge.plus" : "link")
-                            }
-                            .buttonStyle(MSCSecondaryButtonStyle())
-                            .controlSize(.mini)
-                            .popover(isPresented: $isShowingSourcePopover, arrowEdge: .bottom) {
-                                PluginSourcePopover(entry: entry, isPresented: $isShowingSourcePopover)
-                                    .environmentObject(viewModel)
-                            }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
+                    .disabled(
+                        viewModel.isServerRunning || isDownloading ||
+                        (entry.tier == .userSourced && entry.onlineDownloadURL == nil && !entry.isCheckingOnline)
+                    )
+                    .confirmationDialog(
+                        "Download latest version of \(entry.displayName)?",
+                        isPresented: $isShowingDownloadConfirm,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Download Latest") { triggerDownload() }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        if let v = entry.onlineVersion {
+                            Text("This will download version \(v) and replace the current JAR.")
+                        } else {
+                            Text("This will download and replace the current JAR.")
                         }
                     }
                 }
-            } else {
-                // Unmanaged with no version: just show source button
-                HStack {
-                    Spacer()
-                    Button {
-                        isShowingSourcePopover = true
-                    } label: {
-                        Image(systemName: "link")
+
+                if entry.tier != .managed {
+                    Button { isShowingSourcePopover = true } label: {
+                        Image(systemName: entry.sourceConfig != nil ? "link.badge.plus" : "link")
                     }
                     .buttonStyle(MSCSecondaryButtonStyle())
                     .controlSize(.mini)
@@ -408,47 +581,33 @@ private struct PluginRowView: View {
                 }
             }
         }
-        .padding(.vertical, MSC.Spacing.xxs)
-        .opacity(entry.isEnabled ? 1.0 : 0.38)
-
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .opacity(entry.isEnabled ? 1.0 : 0.42)
     }
 
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func versionPair(label: String, value: String, highlight: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(label)
-                .font(MSC.Typography.caption)
-                .foregroundStyle(MSC.Colors.tertiary)
-            Text(value)
-                .font(MSC.Typography.caption)
-                .foregroundStyle(highlight ? MSC.Colors.warning : MSC.Colors.caption)
+    private var iconName: String {
+        switch entry.tier {
+        case .managed:     return entry.jarStem.lowercased().contains("geyser") ? "water.waves" : "lock.open.fill"
+        case .userSourced: return "puzzlepiece.extension"
+        case .unmanaged:   return "puzzlepiece"
         }
     }
 
-    private var pluginIcon: String {
+    private var iconColor: Color {
         switch entry.tier {
-        case .managed:    return entry.jarStem.lowercased().contains("geyser") ? "water.waves" : "lock.open.fill"
-        case .userSourced: return "puzzlepiece.extension"
-        case .unmanaged:  return "puzzlepiece"
+        case .managed:     return entry.jarStem.lowercased().contains("geyser") ? .blue : .orange
+        case .userSourced: return .secondary
+        case .unmanaged:   return MSC.Colors.tertiary
         }
     }
 
     private func sourceBadgeColor(_ type: PluginSourceType) -> Color {
         switch type {
-        case .github:   return Color(red: 0.55, green: 0.58, blue: 0.62) // GitHub grey
-        case .modrinth: return Color(red: 0.11, green: 0.85, blue: 0.42) // Modrinth green
+        case .github:   return Color(red: 0.55, green: 0.58, blue: 0.62)
+        case .modrinth: return Color(red: 0.11, green: 0.85, blue: 0.42)
         case .hangar:   return MSC.Colors.info
         case .direct:   return MSC.Colors.tertiary
-        }
-    }
-
-    private var canDownload: Bool {
-        switch entry.tier {
-        case .managed:      return true
-        case .userSourced:  return entry.sourceConfig != nil
-        case .unmanaged:    return false
         }
     }
 
@@ -466,10 +625,104 @@ private struct PluginRowView: View {
             break
         }
     }
-
 }
 
-// MARK: - Plugin Source Popover
+// MARK: - Broadcast List Row
+
+private struct BroadcastListRow: View {
+    @EnvironmentObject var viewModel: AppViewModel
+
+    private var hasUpdate: Bool {
+        guard let online = viewModel.componentsSnapshot.broadcast.online,
+              let local  = viewModel.componentsSnapshot.broadcast.local,
+              !online.isEmpty else { return false }
+        return online != local
+    }
+
+    var body: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            // Enable/Disable toggle — mirrors Edit Server › Broadcast › Enable
+            Toggle("", isOn: $viewModel.selectedServerXboxBroadcastEnabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .frame(width: 32)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color.purple.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.purple)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text("MCXboxBroadcast")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(viewModel.selectedServerXboxBroadcastEnabled ? Color.primary : Color.secondary)
+                    componentBadge("Broadcast", color: .purple)
+                }
+                HStack(spacing: 4) {
+                    if let local = viewModel.componentsSnapshot.broadcast.local {
+                        Text(local)
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(MSC.Colors.caption)
+                    }
+                    if hasUpdate, let online = viewModel.componentsSnapshot.broadcast.online {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                        Text(online)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(MSC.Colors.warning)
+                    }
+                }
+            }
+
+            Spacer()
+
+            ComponentStatusPill(
+                local: viewModel.componentsSnapshot.broadcast.local,
+                template: nil,
+                online: viewModel.componentsSnapshot.broadcast.online
+            )
+
+            Button { viewModel.downloadOrUpdateXboxBroadcastJar() } label: {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(hasUpdate ? MSC.Colors.warning : Color.accentColor.opacity(0.65))
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            .disabled(viewModel.isServerRunning)
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .opacity(viewModel.selectedServerXboxBroadcastEnabled ? 1.0 : 0.42)
+    }
+}
+
+// MARK: - Shared badge helper
+
+private func componentBadge(_ label: String, color: Color) -> some View {
+    Text(label)
+        .font(.system(size: 9.5, weight: .medium))
+        .foregroundStyle(color)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(color.opacity(0.10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(color.opacity(0.22), lineWidth: 0.5)
+                )
+        )
+}
+
+// MARK: - Plugin Source Popover (unchanged)
 
 private struct PluginSourcePopover: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -525,7 +778,6 @@ private struct PluginSourcePopover: View {
             Divider().opacity(0.5)
 
             HStack(spacing: MSC.Spacing.sm) {
-                // Remove source option
                 if entry.sourceConfig != nil {
                     Button("Remove Source") {
                         viewModel.removePluginSource(jarStem: entry.jarStem)
@@ -538,11 +790,9 @@ private struct PluginSourcePopover: View {
 
                 Spacer()
 
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.mini)
 
                 Button("Confirm") {
                     let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -565,7 +815,7 @@ private struct PluginSourcePopover: View {
     }
 }
 
-// MARK: - Plugin Tier Badge
+// MARK: - Plugin Tier Badge (unchanged)
 
 private struct PluginTierBadge: View {
     let label: String
@@ -589,181 +839,6 @@ private struct PluginTierBadge: View {
     }
 }
 
-// MARK: - Paper Component Card (unchanged)
-
-private struct PaperComponentCard: View {
-    @EnvironmentObject var viewModel: AppViewModel
-    let onReveal: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-
-            // Header
-            HStack(spacing: MSC.Spacing.sm) {
-                Label("Paper", systemImage: "doc.zipper")
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.primary)
-                Spacer()
-                ComponentStatusPill(
-                    local: viewModel.componentsSnapshot.paper.local,
-                    template: nil,
-                    online: viewModel.componentsSnapshot.paper.online
-                )
-            }
-
-            // Local version row
-            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                ComponentVersionRow(
-                    label: "Local",
-                    value: viewModel.componentsSnapshot.paper.local ?? "Missing",
-                    missing: viewModel.componentsSnapshot.paper.local == nil
-                )
-            }
-            .padding(.horizontal, MSC.Spacing.xs)
-
-            Divider().opacity(0.5)
-
-            // Track selector
-            HStack(spacing: MSC.Spacing.sm) {
-                trackSelector
-                Spacer()
-            }
-
-            // Experimental warning
-            if viewModel.includeExperimentalPaperBuilds {
-                HStack(alignment: .top, spacing: MSC.Spacing.xs) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(MSC.Colors.warning)
-                        .padding(.top, 1)
-                    Text("Experimental builds are required for console crossplay on the latest Minecraft version. Not recommended for stable play.")
-                        .font(MSC.Typography.caption)
-                        .foregroundStyle(MSC.Colors.warning)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.horizontal, MSC.Spacing.xs)
-            }
-
-            // Version list
-            versionListContent
-
-            // Action buttons
-            HStack(spacing: MSC.Spacing.sm) {
-                Button {
-                    viewModel.downloadAndApplySelectedPaperVersion()
-                } label: {
-                    if viewModel.isDownloadingAndApplyingPaper {
-                        HStack(spacing: 4) {
-                            ProgressView().controlSize(.mini)
-                            Text("Downloading\u{2026}")
-                        }
-                    } else {
-                        Label("Download Selected", systemImage: "arrow.down.circle.fill")
-                    }
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
-                .disabled(
-                    viewModel.isServerRunning ||
-                    viewModel.isDownloadingAndApplyingPaper ||
-                    viewModel.selectedPaperVersionOption == nil
-                )
-
-                Button { onReveal() } label: {
-                    Label("Reveal", systemImage: "folder")
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
-
-                Spacer()
-            }
-        }
-        .padding(.vertical, MSC.Spacing.xxs)
-    }
-
-    // MARK: - Track selector
-
-    private var trackSelector: some View {
-        HStack(spacing: 2) {
-            trackSegment(
-                "Stable",
-                isSelected: !viewModel.includeExperimentalPaperBuilds
-            ) {
-                viewModel.switchPaperTrack(includeExperimental: false)
-            }
-            trackSegment(
-                "Experimental",
-                isSelected: viewModel.includeExperimentalPaperBuilds
-            ) {
-                viewModel.switchPaperTrack(includeExperimental: true)
-            }
-        }
-        .padding(2)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.sm + 2, style: .continuous)
-                .fill(MSC.Colors.tierAtmosphere)
-        )
-    }
-
-    @ViewBuilder
-    private func trackSegment(
-        _ title: String,
-        isSelected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                .padding(.horizontal, MSC.Spacing.sm)
-                .padding(.vertical, MSC.Spacing.xxs + 1)
-                .background(
-                    Group {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                                .fill(MSC.Colors.tierContent)
-                        }
-                    }
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Version list
-
-    @ViewBuilder
-    private var versionListContent: some View {
-        if viewModel.isCheckingComponentsOnline && viewModel.availablePaperVersions.isEmpty {
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.mini)
-                Text("Fetching available versions\u{2026}")
-                    .font(MSC.Typography.caption)
-                    .foregroundStyle(MSC.Colors.tertiary)
-            }
-            .padding(.horizontal, MSC.Spacing.xs)
-            .padding(.vertical, MSC.Spacing.xxs)
-        } else if viewModel.availablePaperVersions.isEmpty {
-            Text("Click Check Online above to see available versions.")
-                .font(MSC.Typography.caption)
-                .foregroundStyle(MSC.Colors.tertiary)
-                .padding(.horizontal, MSC.Spacing.xs)
-                .padding(.vertical, MSC.Spacing.xxs)
-        } else {
-            VStack(spacing: 2) {
-                ForEach(viewModel.availablePaperVersions) { option in
-                    PaperVersionRow(
-                        option: option,
-                        isSelected: viewModel.selectedPaperVersionOption == option,
-                        isCurrent: option.displayString == viewModel.componentsSnapshot.paper.local
-                    ) {
-                        viewModel.selectedPaperVersionOption = option
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Paper Version Row (unchanged)
 
 private struct PaperVersionRow: View {
@@ -775,8 +850,6 @@ private struct PaperVersionRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: MSC.Spacing.sm) {
-
-                // Radio indicator
                 ZStack {
                     Circle()
                         .strokeBorder(
@@ -791,7 +864,6 @@ private struct PaperVersionRow: View {
                     }
                 }
 
-                // Version + build
                 HStack(spacing: 4) {
                     Text(option.version)
                         .font(.system(size: 12, weight: .medium))
@@ -862,75 +934,113 @@ private struct PaperVersionRow: View {
     }
 }
 
-// MARK: - Toolbar Card (Java)
+// MARK: - Component Status Pill (unchanged)
 
-private struct ComponentsToolbarCard: View {
-    @EnvironmentObject var viewModel: AppViewModel
+private struct ComponentStatusPill: View {
+    let local: String?
+    let template: String?
+    let online: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-            HStack {
-                Label("Components", systemImage: "cpu")
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button {
-                    viewModel.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
-                } label: {
-                    Label("Refresh Local", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
-
-                Button {
-                    viewModel.checkComponentsOnline()
-                } label: {
-                    if viewModel.isCheckingComponentsOnline {
-                        HStack(spacing: 4) {
-                            ProgressView().controlSize(.mini)
-                            Text("Checking\u{2026}")
-                        }
-                    } else {
-                        Label("Check Online", systemImage: "cloud.fill")
-                    }
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
-                .disabled(viewModel.isCheckingComponentsOnline)
-            }
-
-            if let err = viewModel.componentsOnlineErrorMessage, !err.isEmpty {
-                Divider()
-                Label(err, systemImage: "exclamationmark.triangle.fill")
-                    .font(MSC.Typography.caption)
-                    .foregroundStyle(MSC.Colors.warning)
-            }
-        }
-        .padding(MSC.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
-                .fill(MSC.Colors.tierContent)
-        )
+        let status = ComponentStatus.derive(local: local, template: template, online: online)
+        Label(status.label, systemImage: status.symbol)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(status.color)
+            .padding(.horizontal, MSC.Spacing.sm)
+            .padding(.vertical, MSC.Spacing.xxs + 1)
+            .background(Capsule().fill(status.color.opacity(0.12)))
+            .overlay(Capsule().stroke(status.color.opacity(0.25), lineWidth: 0.75))
     }
 }
 
-// MARK: - Toolbar Card (Bedrock)
+// MARK: - Component Status Model (unchanged)
 
-private struct BedrockComponentsToolbarCard: View {
+private struct ComponentStatus {
+    let label: String
+    let symbol: String
+    let color: Color
+
+    static func derive(local: String?, template: String?, online: String?) -> ComponentStatus {
+        if local == nil {
+            return ComponentStatus(label: "Missing",           symbol: "xmark.circle.fill",            color: MSC.Colors.error)
+        }
+        if let t = template, let l = local, !versionsMatch(t, l) {
+            return ComponentStatus(label: "Template mismatch", symbol: "exclamationmark.triangle.fill", color: .yellow)
+        }
+        if let o = online, let l = local, !versionsMatch(o, l) {
+            if isVersionNewer(o, than: l) {
+                return ComponentStatus(label: "Update available", symbol: "arrow.down.circle.fill", color: MSC.Colors.warning)
+            }
+        }
+        return ComponentStatus(label: "Up to date", symbol: "checkmark.circle.fill", color: MSC.Colors.success)
+    }
+
+    private static func isVersionNewer(_ a: String, than b: String) -> Bool {
+        let aBuild = buildNumber(a)
+        let bBuild = buildNumber(b)
+        if let ab = aBuild, let bb = bBuild { return ab > bb }
+        let aParts = a.split(separator: " ").first.map(String.init) ?? a
+        let bParts = b.split(separator: " ").first.map(String.init) ?? b
+        let aComponents = aParts.split(separator: ".").compactMap { Int($0) }
+        let bComponents = bParts.split(separator: ".").compactMap { Int($0) }
+        let count = max(aComponents.count, bComponents.count)
+        for i in 0..<count {
+            let av = i < aComponents.count ? aComponents[i] : 0
+            let bv = i < bComponents.count ? bComponents[i] : 0
+            if av > bv { return true }
+            if av < bv { return false }
+        }
+        return false
+    }
+
+    private static func buildNumber(_ s: String) -> Int? {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let n = Int(trimmed) { return n }
+        let lower = trimmed.lowercased()
+        guard let range = lower.range(of: "build") else { return nil }
+        let after  = lower[range.upperBound...]
+        let digits = after.filter { $0.isNumber || $0 == " " }
+            .trimmingCharacters(in: .whitespaces)
+            .prefix(while: { $0.isNumber })
+        return Int(String(digits))
+    }
+
+    private static func versionsMatch(_ a: String, _ b: String) -> Bool {
+        if a == b { return true }
+        if let ba = buildNumber(a), let bb = buildNumber(b) { return ba == bb }
+        return false
+    }
+}
+
+// MARK: - Row Divider (unchanged)
+
+private struct ComponentRowDivider: View {
     var body: some View {
-        HStack {
-            Label("Components", systemImage: "cpu")
-                .font(MSC.Typography.cardTitle)
-                .foregroundStyle(.secondary)
+        Divider()
+            .padding(.vertical, MSC.Spacing.xs)
+            .opacity(0.5)
+    }
+}
+
+// MARK: - Component Version Row (kept for Bedrock)
+
+private struct ComponentVersionRow: View {
+    let label: String
+    let value: String
+    var missing: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: MSC.Spacing.sm) {
+            Text(label)
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.tertiary)
+                .frame(width: 60, alignment: .leading)
+            Text(value)
+                .font(MSC.Typography.caption)
+                .foregroundStyle(missing ? MSC.Colors.error : MSC.Colors.caption)
+                .textSelection(.enabled)
             Spacer()
         }
-        .padding(MSC.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
-                .fill(MSC.Colors.tierContent)
-        )
     }
 }
 
@@ -952,9 +1062,8 @@ private struct BedrockRuntimeSectionCard: View {
     }
 
     var body: some View {
-        ComponentSectionCard(title: "Bedrock Dedicated Server", icon: "shippingbox.fill") {
+        SEBlock {
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-
                 HStack(spacing: MSC.Spacing.sm) {
                     Label("Docker Image", systemImage: "shippingbox")
                         .font(MSC.Typography.cardTitle)
@@ -969,14 +1078,8 @@ private struct BedrockRuntimeSectionCard: View {
 
                 VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
                     ComponentVersionRow(label: "Image",  value: imageName)
-                    ComponentVersionRow(
-                        label: "Pinned",
-                        value: pinnedVersion == "LATEST" ? "Latest (auto)" : pinnedVersion
-                    )
-                    ComponentVersionRow(
-                        label: "Running",
-                        value: viewModel.bedrockRunningVersion ?? "\u{2014}"
-                    )
+                    ComponentVersionRow(label: "Pinned", value: pinnedVersion == "LATEST" ? "Latest (auto)" : pinnedVersion)
+                    ComponentVersionRow(label: "Running", value: viewModel.bedrockRunningVersion ?? "\u{2014}")
                 }
                 .padding(.horizontal, MSC.Spacing.xs)
 
@@ -1000,14 +1103,12 @@ private struct BedrockRuntimeSectionCard: View {
                     .buttonStyle(MSCSecondaryButtonStyle())
                     .controlSize(.mini)
                     .disabled(viewModel.isServerRunning || viewModel.isUpdatingBedrockImage)
-
                     Spacer()
                 }
             }
+            .padding(MSC.Spacing.md)
         }
-        .onAppear {
-            viewModel.fetchBedrockVersionsIfNeeded()
-        }
+        .onAppear { viewModel.fetchBedrockVersionsIfNeeded() }
     }
 }
 
@@ -1050,7 +1151,6 @@ private struct BedrockVersionPickerRow: View {
                 .disabled(viewModel.isServerRunning || viewModel.isUpdatingBedrockImage)
                 .frame(maxWidth: 200, alignment: .leading)
             }
-
             Spacer()
         }
     }
@@ -1071,173 +1171,5 @@ private struct BedrockStatusPill: View {
             .padding(.vertical, MSC.Spacing.xxs + 1)
             .background(Capsule().fill(color.opacity(0.12)))
             .overlay(Capsule().stroke(color.opacity(0.25), lineWidth: 0.75))
-    }
-}
-
-// MARK: - Section Card Shell (updated to support optional count)
-
-private struct ComponentSectionCard<Content: View, Trailing: View>: View {
-    let title: String
-    let icon: String
-    var count: Int? = nil
-    @ViewBuilder let headerTrailing: () -> Trailing
-    @ViewBuilder let content: () -> Content
-
-    init(
-        title: String,
-        icon: String,
-        count: Int? = nil,
-        @ViewBuilder headerTrailing: @escaping () -> Trailing = { EmptyView() },
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.title = title
-        self.icon = icon
-        self.count = count
-        self.headerTrailing = headerTrailing
-        self.content = content
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            HStack {
-                Label(title, systemImage: icon)
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.secondary)
-                if let count {
-                    Text("\(count) installed")
-                        .font(.system(size: 10))
-                        .foregroundStyle(MSC.Colors.tertiary)
-                }
-                Spacer()
-                headerTrailing()
-            }
-            Divider()
-            content()
-        }
-        .padding(MSC.Spacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
-                .fill(MSC.Colors.tierContent)
-        )
-    }
-}
-
-// MARK: - Version Row (unchanged)
-
-private struct ComponentVersionRow: View {
-    let label: String
-    let value: String
-    var missing: Bool = false
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: MSC.Spacing.sm) {
-            Text(label)
-                .font(MSC.Typography.caption)
-                .foregroundStyle(MSC.Colors.tertiary)
-                .frame(width: 60, alignment: .leading)
-            Text(value)
-                .font(MSC.Typography.caption)
-                .foregroundStyle(missing ? MSC.Colors.error : MSC.Colors.caption)
-                .textSelection(.enabled)
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Status Pill (unchanged)
-
-private struct ComponentStatusPill: View {
-    let local: String?
-    let template: String?
-    let online: String?
-
-    var body: some View {
-        let status = ComponentStatus.derive(local: local, template: template, online: online)
-        Label(status.label, systemImage: status.symbol)
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(status.color)
-            .padding(.horizontal, MSC.Spacing.sm)
-            .padding(.vertical, MSC.Spacing.xxs + 1)
-            .background(Capsule().fill(status.color.opacity(0.12)))
-            .overlay(Capsule().stroke(status.color.opacity(0.25), lineWidth: 0.75))
-    }
-}
-
-// MARK: - Component Status Model (unchanged)
-
-private struct ComponentStatus {
-    let label: String
-    let symbol: String
-    let color: Color
-
-    static func derive(local: String?, template: String?, online: String?) -> ComponentStatus {
-        if local == nil {
-            return ComponentStatus(label: "Missing",           symbol: "xmark.circle.fill",            color: MSC.Colors.error)
-        }
-        if let t = template, let l = local, !versionsMatch(t, l) {
-            return ComponentStatus(label: "Template mismatch", symbol: "exclamationmark.triangle.fill", color: .yellow)
-        }
-        if let o = online, let l = local, !versionsMatch(o, l) {
-            if isVersionNewer(o, than: l) {
-                return ComponentStatus(label: "Update available", symbol: "arrow.down.circle.fill", color: MSC.Colors.warning)
-            }
-        }
-        return ComponentStatus(label: "Up to date",            symbol: "checkmark.circle.fill",         color: MSC.Colors.success)
-    }
-
-    private static func isVersionNewer(_ a: String, than b: String) -> Bool {
-        // If one side is a bare build number, compare build numbers directly
-        let aBuild = buildNumber(a)
-        let bBuild = buildNumber(b)
-        if let ab = aBuild, let bb = bBuild { return ab > bb }
-
-        let aParts = a.split(separator: " ").first.map(String.init) ?? a
-        let bParts = b.split(separator: " ").first.map(String.init) ?? b
-        let aComponents = aParts.split(separator: ".").compactMap { Int($0) }
-        let bComponents = bParts.split(separator: ".").compactMap { Int($0) }
-        let count = max(aComponents.count, bComponents.count)
-        for i in 0..<count {
-            let av = i < aComponents.count ? aComponents[i] : 0
-            let bv = i < bComponents.count ? bComponents[i] : 0
-            if av > bv { return true }
-            if av < bv { return false }
-        }
-        return false
-    }
-
-    /// Returns a build number from either a bare integer string ("1126") or
-    /// a string containing "build NNN" ("2.10.0 (build 1155)").
-    private static func buildNumber(_ s: String) -> Int? {
-        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Bare integer — treat the whole string as a build number
-        if let n = Int(trimmed) { return n }
-        // "build NNN" anywhere in the string
-        let lower = trimmed.lowercased()
-        guard let range = lower.range(of: "build") else { return nil }
-        let after  = lower[range.upperBound...]
-        let digits = after.filter { $0.isNumber || $0 == " " }
-            .trimmingCharacters(in: .whitespaces)
-            .prefix(while: { $0.isNumber })
-        return Int(String(digits))
-    }
-
-    // Keep parseBuild as an alias for backward compat
-    private static func parseBuild(_ s: String) -> Int? { buildNumber(s) }
-
-    private static func versionsMatch(_ a: String, _ b: String) -> Bool {
-        if a == b { return true }
-        // Both sides resolve to a build number → compare those
-        if let ba = buildNumber(a), let bb = buildNumber(b) { return ba == bb }
-        return false
-    }
-}
-
-// MARK: - Row Divider (unchanged)
-
-private struct ComponentRowDivider: View {
-    var body: some View {
-        Divider()
-            .padding(.vertical, MSC.Spacing.xs)
-            .opacity(0.5)
     }
 }

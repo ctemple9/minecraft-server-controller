@@ -94,7 +94,8 @@ extension RemoteAPIServer {
     private static let adminOnlyPOSTPaths: Set<String> = [
         "/command", "/active-server", "/components/update",
         "/broadcast/credentials", "/broadcast/start", "/broadcast/stop",
-        "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss"
+        "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss",
+        "/worlds/activate", "/backups/now", "/backups/restore"
     ]
 
     func respond(to request: Request, clientFD: Int32) -> Bool {
@@ -436,6 +437,118 @@ extension RemoteAPIServer {
             sendJSON(statusCode: 200, reason: "OK", jsonObject: ["role": roleString], clientFD: clientFD)
             return true
 
+        // Player profiles (all-time, with stats)
+        case ("GET", "/players/profiles"):
+            let response = playerProfilesProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: response, clientFD: clientFD)
+            return true
+
+        // World slots
+        case ("GET", "/worlds"):
+            let response = worldSlotsProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: response, clientFD: clientFD)
+            return true
+
+        case ("POST", "/worlds/activate"):
+            guard !request.body.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "missing_body"], clientFD: clientFD)
+                return true
+            }
+            struct ActivateSlotRequest: Codable { let slotId: String }
+            do {
+                let decoded = try JSONDecoder().decode(ActivateSlotRequest.self, from: request.body)
+                let id = decoded.slotId.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !id.isEmpty else {
+                    sendJSON(statusCode: 400, reason: "Bad Request",
+                             jsonObject: ["error": "missing_slot_id"], clientFD: clientFD)
+                    return true
+                }
+                guard activateWorldSlotProvider(id) else {
+                    sendJSON(statusCode: 409, reason: "Conflict",
+                             jsonObject: ["error": "server_running_or_slot_not_found"], clientFD: clientFD)
+                    return true
+                }
+                sendJSON(statusCode: 200, reason: "OK",
+                         jsonObject: ["result": "activation_started"], clientFD: clientFD)
+            } catch {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+            }
+            return true
+
+        // Backups
+        case ("GET", "/backups"):
+            let response = backupItemsProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: response, clientFD: clientFD)
+            return true
+
+        case ("POST", "/backups/now"):
+            createBackupNowProvider()
+            sendJSON(statusCode: 200, reason: "OK",
+                     jsonObject: ["result": "backup_started"], clientFD: clientFD)
+            return true
+
+        case ("POST", "/backups/restore"):
+            guard !request.body.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "missing_body"], clientFD: clientFD)
+                return true
+            }
+            struct RestoreBackupRequest: Codable { let backupId: String }
+            do {
+                let decoded = try JSONDecoder().decode(RestoreBackupRequest.self, from: request.body)
+                let filename = decoded.backupId.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !filename.isEmpty else {
+                    sendJSON(statusCode: 400, reason: "Bad Request",
+                             jsonObject: ["error": "missing_backup_id"], clientFD: clientFD)
+                    return true
+                }
+                guard restoreBackupProvider(filename) else {
+                    sendJSON(statusCode: 404, reason: "Not Found",
+                             jsonObject: ["error": "backup_not_found"], clientFD: clientFD)
+                    return true
+                }
+                sendJSON(statusCode: 200, reason: "OK",
+                         jsonObject: ["result": "restore_started"], clientFD: clientFD)
+            } catch {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+            }
+            return true
+
+        // Watchdog
+        case ("GET", "/watchdog/status"):
+            let enabled = watchdogStatusProvider()
+            sendJSON(statusCode: 200, reason: "OK",
+                     jsonObject: ["enabled": enabled ? "true" : "false"],
+                     clientFD: clientFD)
+            return true
+
+        case ("POST", "/watchdog/enable"):
+            if let errorMessage = enableWatchdogProvider() {
+                sendJSON(statusCode: 500, reason: "Internal Server Error",
+                         jsonObject: ["success": "false", "error": errorMessage],
+                         clientFD: clientFD)
+            } else {
+                sendJSON(statusCode: 200, reason: "OK",
+                         jsonObject: ["success": "true"],
+                         clientFD: clientFD)
+            }
+            return true
+
+        case ("POST", "/watchdog/disable"):
+            if let errorMessage = disableWatchdogProvider() {
+                sendJSON(statusCode: 500, reason: "Internal Server Error",
+                         jsonObject: ["success": "false", "error": errorMessage],
+                         clientFD: clientFD)
+            } else {
+                sendJSON(statusCode: 200, reason: "OK",
+                         jsonObject: ["success": "true"],
+                         clientFD: clientFD)
+            }
+            return true
+
         default:
             let knownPaths: Set<String> = [
                 "/servers", "/status", "/performance", "/players", "/allowlist", "/session-log",
@@ -444,7 +557,11 @@ extension RemoteAPIServer {
                 "/components", "/components/update",
                 "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart", "/broadcast/credentials",
                 "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
-                "/broadcast/autostart", "/me"
+                "/broadcast/autostart", "/me",
+                "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
+                "/players/profiles",
+                "/worlds", "/worlds/activate",
+                "/backups", "/backups/now", "/backups/restore"
             ]
             if knownPaths.contains(path) {
                 sendJSON(

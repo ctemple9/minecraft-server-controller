@@ -12,6 +12,7 @@ enum NavDestination: String, CaseIterable, Hashable {
     case console
     case players
     case health
+    case worlds
     case settings
 
     var title: String {
@@ -20,6 +21,7 @@ enum NavDestination: String, CaseIterable, Hashable {
         case .console:   return "Console"
         case .players:   return "Players"
         case .health:    return "Health"
+        case .worlds:    return "Worlds"
         case .settings:  return "Settings"
         }
     }
@@ -30,6 +32,7 @@ enum NavDestination: String, CaseIterable, Hashable {
         case .console:   return "terminal"
         case .players:   return "person.2"
         case .health:    return "cross.case"
+        case .worlds:    return "globe"
         case .settings:  return "gearshape"
         }
     }
@@ -278,6 +281,9 @@ struct RootView: View {
         case .health:
             HealthView()
                 .environmentObject(dashboardVM)
+        case .worlds:
+            WorldsView()
+                .environmentObject(dashboardVM)
         case .settings:
             SettingsView()
                 .environmentObject(dashboardVM)
@@ -310,6 +316,11 @@ struct RootView: View {
                 .environmentObject(dashboardVM)
                 .tabItem { Label("Health", systemImage: "cross.case") }
                 .tag(NavDestination.health)
+
+            WorldsView()
+                .environmentObject(dashboardVM)
+                .tabItem { Label("Worlds", systemImage: "globe") }
+                .tag(NavDestination.worlds)
 
             SettingsView()
                 .environmentObject(dashboardVM)

@@ -220,5 +220,121 @@ struct BroadcastAuthPromptDTO: Codable, Equatable, Identifiable {
     let linkURL: String?
 }
 
+// MARK: - Session Log
 
+struct SessionEventDTO: Codable, Identifiable, Equatable {
+    let id: String
+    let playerName: String
+    let eventType: String   // "joined" or "left"
+    let timestamp: String   // ISO8601
+}
 
+struct SessionLogResponseDTO: Codable, Equatable {
+    let activeServerId: String?
+    let events: [SessionEventDTO]
+}
+
+// MARK: - Player Profiles
+
+struct ItemEnchantmentDTO: Codable, Equatable {
+    let id: String
+    let level: Int
+    let displayName: String
+}
+
+struct InventoryItemDTO: Codable, Identifiable, Equatable {
+    let slot: Int
+    let itemID: String
+    let iconName: String
+    let count: Int
+    let displayName: String
+    let enchantments: [ItemEnchantmentDTO]
+    let damage: Int
+
+    var id: Int { slot }
+
+    var itemTextureURL: URL? {
+        URL(string: "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.1/assets/minecraft/textures/item/\(iconName).png")
+    }
+    var blockTextureURL: URL? {
+        URL(string: "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.1/assets/minecraft/textures/block/\(iconName).png")
+    }
+}
+
+struct PlayerStatsDTO: Codable, Equatable {
+    let health: Float
+    let maxHealth: Float
+    let foodLevel: Int
+    let xpLevel: Int
+    let xpTotal: Int
+    let gameMode: Int
+    let gameModeDisplay: String
+    let posX: Double
+    let posY: Double
+    let posZ: Double
+    let dimensionDisplay: String
+    let score: Int
+
+    var healthFraction: Double {
+        guard maxHealth > 0 else { return 0 }
+        return Double(min(health, maxHealth)) / Double(maxHealth)
+    }
+    var foodFraction: Double { Double(min(max(foodLevel, 0), 20)) / 20.0 }
+}
+
+struct PlayerProfileDTO: Codable, Identifiable, Equatable {
+    let id: String
+    let username: String?
+    let imageIdentifier: String
+    let isOnline: Bool
+    let isOp: Bool
+    let lastSeen: String?
+    let isBedrockPlayer: Bool
+    let stats: PlayerStatsDTO?
+    let inventory: [InventoryItemDTO]
+
+    var displayName: String { username ?? String(id.prefix(8)) + "…" }
+
+    var avatarURL: URL? {
+        URL(string: "https://mc-heads.net/avatar/\(imageIdentifier)/64")
+    }
+}
+
+struct PlayerProfilesResponseDTO: Codable, Equatable {
+    let profiles: [PlayerProfileDTO]
+    let isLoadingStats: Bool
+}
+
+// MARK: - World Slots
+
+struct WorldSlotDTO: Codable, Identifiable, Equatable {
+    let id: String
+    let name: String
+    let isActive: Bool
+    let createdAt: String
+    let zipSizeBytes: Int64?
+    let worldSeed: String?
+}
+
+struct WorldSlotsResponseDTO: Codable, Equatable {
+    let slots: [WorldSlotDTO]
+    let activeSlotId: String?
+    let serverRunning: Bool
+}
+
+// MARK: - Backups
+
+struct BackupItemDTO: Codable, Identifiable, Equatable {
+    let id: String
+    let displayName: String
+    let fileSize: Int64?
+    let modificationDate: String?
+    let isAutomatic: Bool
+    let slotId: String?
+    let slotName: String?
+    let triggerReason: String
+}
+
+struct BackupsResponseDTO: Codable, Equatable {
+    let backups: [BackupItemDTO]
+}

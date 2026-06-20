@@ -189,6 +189,46 @@ final class RemoteAPIClient {
         _ = try await post(path: "/broadcast/auth-prompt/dismiss", body: EmptyBody(), as: SimpleResult.self)
     }
 
+    // MARK: - Session Log
+
+    func getSessionLog() async throws -> SessionLogResponseDTO {
+        try await get(path: "/session-log", query: [:], as: SessionLogResponseDTO.self)
+    }
+
+    // MARK: - Player Profiles
+
+    func getPlayerProfiles() async throws -> PlayerProfilesResponseDTO {
+        try await get(path: "/players/profiles", query: [:], as: PlayerProfilesResponseDTO.self)
+    }
+
+    // MARK: - Worlds
+
+    func getWorlds() async throws -> WorldSlotsResponseDTO {
+        try await get(path: "/worlds", query: [:], as: WorldSlotsResponseDTO.self)
+    }
+
+    func activateWorldSlot(slotId: String) async throws -> SimpleResult {
+        let trimmed = slotId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw RemoteAPIError.network("Missing slot id.") }
+        return try await post(path: "/worlds/activate", body: ActivateSlotRequest(slotId: trimmed), as: SimpleResult.self)
+    }
+
+    // MARK: - Backups
+
+    func getBackups() async throws -> BackupsResponseDTO {
+        try await get(path: "/backups", query: [:], as: BackupsResponseDTO.self)
+    }
+
+    func createBackupNow() async throws -> SimpleResult {
+        try await post(path: "/backups/now", body: EmptyBody(), as: SimpleResult.self)
+    }
+
+    func restoreBackup(backupId: String) async throws -> SimpleResult {
+        let trimmed = backupId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw RemoteAPIError.network("Missing backup id.") }
+        return try await post(path: "/backups/restore", body: RestoreBackupRequest(backupId: trimmed), as: SimpleResult.self)
+    }
+
     // MARK: - WebSocket
 
     func makeConsoleStreamTask() throws -> URLSessionWebSocketTask {
@@ -204,6 +244,14 @@ final class RemoteAPIClient {
 
     private struct ActiveServerRequest: Encodable {
         let serverId: String
+    }
+
+    private struct ActivateSlotRequest: Encodable {
+        let slotId: String
+    }
+
+    private struct RestoreBackupRequest: Encodable {
+        let backupId: String
     }
 
     private struct CommandRequest: Encodable {

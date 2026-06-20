@@ -185,4 +185,92 @@ extension RemoteAPIServer {
         let activeServerId: String?
         let events: [SessionEventDTO]
     }
+
+    // MARK: - Player Profiles
+
+    struct PlayerStatsDTO: Codable {
+        let health: Float
+        let maxHealth: Float
+        let foodLevel: Int
+        let xpLevel: Int
+        let xpTotal: Int
+        let gameMode: Int
+        let gameModeDisplay: String
+        let posX: Double
+        let posY: Double
+        let posZ: Double
+        let dimensionDisplay: String
+        let score: Int
+    }
+
+    struct ItemEnchantmentDTO: Codable {
+        let id: String
+        let level: Int
+        let displayName: String
+    }
+
+    struct InventoryItemDTO: Codable {
+        let slot: Int
+        let itemID: String
+        /// Last path component of itemID with no namespace (e.g. "diamond_sword").
+        let iconName: String
+        let count: Int
+        let displayName: String
+        let enchantments: [ItemEnchantmentDTO]
+        let damage: Int
+    }
+
+    struct PlayerProfileDTO: Codable {
+        let id: String
+        let username: String?
+        /// UUID-no-dashes (Java) or Floodgate UUID (Bedrock) — for mc-heads.net avatar URLs.
+        let imageIdentifier: String
+        let isOnline: Bool
+        let isOp: Bool
+        let lastSeen: String?   // ISO8601
+        let isBedrockPlayer: Bool
+        let stats: PlayerStatsDTO?
+        let inventory: [InventoryItemDTO]
+    }
+
+    struct PlayerProfilesResponseDTO: Codable {
+        let profiles: [PlayerProfileDTO]
+        /// True when NBT loading was just triggered for one or more Java profiles.
+        /// iOS should auto-refresh after a short delay to pick up the loaded stats.
+        let isLoadingStats: Bool
+    }
+
+    // MARK: - World Slots
+
+    struct WorldSlotDTO: Codable {
+        let id: String
+        let name: String
+        let isActive: Bool
+        let createdAt: String       // ISO8601
+        let zipSizeBytes: Int64?
+        let worldSeed: String?
+    }
+
+    struct WorldSlotsResponseDTO: Codable {
+        let slots: [WorldSlotDTO]
+        let activeSlotId: String?
+        let serverRunning: Bool
+    }
+
+    // MARK: - Backups
+
+    struct BackupItemDTO: Codable {
+        let id: String              // filename — sent back as backupId for restore
+        let displayName: String
+        let fileSize: Int64?
+        let modificationDate: String?   // ISO8601
+        let isAutomatic: Bool
+        let slotId: String?
+        let slotName: String?
+        let triggerReason: String
+    }
+
+    struct BackupsResponseDTO: Codable {
+        let backups: [BackupItemDTO]
+    }
 }

@@ -41,6 +41,132 @@ struct PreferencesJavaSection: View {
     }
 }
 
+struct PreferencesProcessCleanupSection: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    @State private var detectedCount: Int? = nil
+    @State private var isScanning: Bool = false
+    @State private var watchdogInFlight: Bool = false
+    @State private var watchdogError: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Label("Process Management", systemImage: "terminal")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("If MSC crashes, Java server processes it launched may continue running in the background. Use this to detect and clean them up.")
+                .font(.caption2)
+                .foregroundStyle(MSC.Colors.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: MSC.Spacing.sm) {
+                Button {
+                    isScanning = true
+                    viewModel.scanOrphansInBackground { count in
+                        detectedCount = count
+                        isScanning = false
+                    }
+                } label: {
+                    if isScanning {
+                        HStack(spacing: MSC.Spacing.xs) {
+                            ProgressView().controlSize(.mini)
+                            Text("Scanning…")
+                        }
+                    } else {
+                        Text("Scan for Orphaned Processes")
+                    }
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .disabled(isScanning)
+
+                if let count = detectedCount {
+                    if count == 0 {
+                        Label("None found", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(MSC.Colors.success)
+                    } else {
+                        HStack(spacing: MSC.Spacing.xs) {
+                            Label("\(count) found", systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.orange)
+
+                            Button("Kill All") {
+                                viewModel.killJavaServerProcesses()
+                                viewModel.orphanedJavaProcessCount = 0
+                                detectedCount = 0
+                            }
+                            .buttonStyle(MSCDestructiveButtonStyle())
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+
+            Divider().opacity(0.5)
+
+            // ── WATCHDOG ────────────────────────────────────────────────────
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                HStack(spacing: MSC.Spacing.sm) {
+                    Toggle(
+                        "Relaunch MSC on crash",
+                        isOn: Binding(
+                            get: { viewModel.watchdogEnabled },
+                            set: { newValue in
+                                guard !watchdogInFlight else { return }
+                                watchdogInFlight = true
+                                watchdogError = nil
+                                Task {
+                                    do {
+                                        if newValue { try await viewModel.enableWatchdog() }
+                                        else        { try await viewModel.disableWatchdog() }
+                                    } catch {
+                                        watchdogError = error.localizedDescription
+                                    }
+                                    watchdogInFlight = false
+                                }
+                            }
+                        )
+                    )
+                    .toggleStyle(.switch)
+                    .disabled(watchdogInFlight)
+
+                    if watchdogInFlight {
+                        ProgressView().controlSize(.mini)
+                    }
+                }
+
+                if let err = watchdogError {
+                    Text(err)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if viewModel.watchdogEnabled && !watchdogInFlight {
+                    Label("Watchdog active — MSC will relaunch on crash.", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSC.Colors.success)
+                } else if !viewModel.watchdogEnabled && !watchdogInFlight {
+                    Text("When enabled, launchd monitors MSC and relaunches it on a crash. Normal Cmd+Q does not trigger a relaunch.")
+                        .font(.caption2)
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .pscCard()
+        .onAppear {
+            // Pre-populate from the startup scan so the user sees results immediately
+            // without having to click Scan if the app already detected orphans.
+            if viewModel.orphanedJavaProcessCount > 0 {
+                detectedCount = viewModel.orphanedJavaProcessCount
+            }
+        }
+    }
+}
+
 struct PreferencesRemoteAPISection: View {
     @Binding var remoteAPIExposeOnLAN: Bool
     @Binding var preferredPairingHostInput: String

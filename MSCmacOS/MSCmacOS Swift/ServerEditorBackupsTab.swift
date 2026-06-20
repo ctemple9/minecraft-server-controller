@@ -13,106 +13,125 @@ var backupsTab: some View {
             )
         } else if let server = editingConfigServer {
 
-            // ── 1. Automated Backups ──────────────────────────────────
-            SESection(icon: "clock.arrow.2.circlepath", title: "Automated Backups", color: .green) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    HStack(spacing: MSC.Spacing.sm) {
-                        Toggle("", isOn: $autoBackupEnabledLocal)
-                            .labelsHidden()
-                            .onChange(of: autoBackupEnabledLocal) { newValue in
-                                viewModel.setAutoBackupEnabled(newValue, for: server.id)
-                            }
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Auto-Backup enabled")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("Creates a backup on the configured interval, pruning oldest when over the limit.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
+            // ── Auto-Backup ───────────────────────────────────────────
+            SEBlockHeader(title: "Auto-Backup")
+            SEBlock {
+                SERow(label: "Enabled", hint: "Snapshots while server runs, pruned automatically") {
+                    Toggle("", isOn: $autoBackupEnabledLocal)
+                        .labelsHidden()
+                        .onChange(of: autoBackupEnabledLocal) { _, newValue in
+                            viewModel.setAutoBackupEnabled(newValue, for: server.id)
                         }
-                        Spacer()
-                        if let sizeDisplay = viewModel.backupsFolderSizeDisplay {
-                            Text(sizeDisplay)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                }
+                if autoBackupEnabledLocal {
+                    Divider().padding(.leading, MSC.Spacing.md - 1)
+                    SERow(label: "Interval") {
+                        Picker("", selection: $autoBackupIntervalLocal) {
+                            Text("15 min").tag(15)
+                            Text("30 min").tag(30)
+                            Text("45 min").tag(45)
+                            Text("1 hour").tag(60)
+                            Text("2 hours").tag(120)
+                            Text("4 hours").tag(240)
+                            Text("6 hours").tag(360)
+                        }
+                        .labelsHidden()
+                        .frame(width: 110)
+                        .onChange(of: autoBackupIntervalLocal) { _, newValue in
+                            viewModel.setAutoBackupInterval(newValue, for: server.id)
                         }
                     }
-
-                    Divider().opacity(0.5)
-
-                    HStack(alignment: .top, spacing: MSC.Spacing.lg) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Interval")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(.secondary)
-                            Picker("", selection: $autoBackupIntervalLocal) {
-                                Text("15 min").tag(15)
-                                Text("30 min").tag(30)
-                                Text("45 min").tag(45)
-                                Text("1 hour").tag(60)
-                                Text("2 hours").tag(120)
-                                Text("4 hours").tag(240)
-                                Text("6 hours").tag(360)
-                            }
-                            .labelsHidden()
-                            .frame(width: 100)
-                            .onChange(of: autoBackupIntervalLocal) { newValue in
-                                viewModel.setAutoBackupInterval(newValue, for: server.id)
-                            }
+                    Divider().padding(.leading, MSC.Spacing.md - 1)
+                    SERow(label: "Max Stored", hint: "Oldest pruned on each new backup") {
+                        HStack(spacing: MSC.Spacing.sm) {
+                            Stepper("", value: $autoBackupMaxCountLocal, in: 3...50)
+                                .labelsHidden()
+                                .onChange(of: autoBackupMaxCountLocal) { _, newValue in
+                                    viewModel.setAutoBackupMaxCount(newValue, for: server.id)
+                                }
+                            Text("\(autoBackupMaxCountLocal)")
+                                .font(.system(size: 12, design: .monospaced))
+                                .frame(width: 28, alignment: .leading)
                         }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Max backups")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(.secondary)
-                            HStack(spacing: 6) {
-                                Stepper("", value: $autoBackupMaxCountLocal, in: 3...50)
-                                    .labelsHidden()
-                                    .onChange(of: autoBackupMaxCountLocal) { newValue in
-                                        viewModel.setAutoBackupMaxCount(newValue, for: server.id)
-                                    }
-                                Text("\(autoBackupMaxCountLocal)")
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .frame(width: 28, alignment: .leading)
-                            }
-                        }
+                    }
+                }
+                if let sizeDisplay = viewModel.backupsFolderSizeDisplay {
+                    Divider().padding(.leading, MSC.Spacing.md - 1)
+                    SERow(label: "Total Size") {
+                        Text(sizeDisplay)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
 
-            // ── 2. Back Up Now ────────────────────────────────────────
-            SESection(icon: "archivebox.fill", title: "Manual Backup", color: .blue) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Create an immediate snapshot of the current world. The server should be stopped first for a clean backup.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button("Back Up Now") {
+            // ── Manual Actions ────────────────────────────────────────
+            SEBlockHeader(title: "Manual Actions")
+            SEBlock {
+                SERow(label: "Back Up Now", hint: "Stop server first for a clean snapshot") {
+                    Button("Back Up") {
                         viewModel.createBackupForSelectedServer(isAutomatic: false)
                     }
                     .buttonStyle(MSCSecondaryButtonStyle())
                 }
-            }
-
-            // ── 3. Cleanup ────────────────────────────────────────────
-            SESection(icon: "trash.fill", title: "Cleanup", color: .orange) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Manually remove auto-backups beyond the configured limit. This is done automatically on each new auto-backup, but you can trigger it early to free disk space.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button("Prune Old Backups") {
+                Divider().padding(.leading, MSC.Spacing.md - 1)
+                SERow(label: "Prune Old Backups", hint: "Free disk space before the next scheduled prune") {
+                    Button("Prune") {
                         viewModel.pruneAutoBackupsForSelectedServer()
                     }
                     .buttonStyle(MSCSecondaryButtonStyle())
                 }
             }
 
+            // ── Recent Backups ────────────────────────────────────────
+            if !viewModel.backupItems.isEmpty {
+                SEBlockHeader(title: "Recent Backups")
+                SEBlock {
+                    let sorted = viewModel.backupItems
+                        .sorted { ($0.modificationDate ?? .distantPast) > ($1.modificationDate ?? .distantPast) }
+                    ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, item in
+                        if idx > 0 { Divider().padding(.leading, MSC.Spacing.md - 1) }
+                        HStack(spacing: MSC.Spacing.sm) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(width: 5, height: 5)
+                            Text(timeString(from: item.modificationDate))
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                            Text(item.isAutomatic ? "Auto" : "Manual")
+                                .font(.system(size: 10))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(item.isAutomatic
+                                            ? Color.blue.opacity(0.1)
+                                            : Color.gray.opacity(0.1))
+                                .foregroundStyle(item.isAutomatic ? Color.blue : Color.secondary)
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                            if let size = item.fileSize {
+                                Text(formatBytes(size))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let slotId = item.slotId,
+                               let slot = viewModel.worldSlots.first(where: { $0.id == slotId }) {
+                                Spacer()
+                                Text(slot.name)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                            } else {
+                                Spacer()
+                            }
+                        }
+                        .padding(.horizontal, MSC.Spacing.md - 1)
+                        .padding(.vertical, MSC.Spacing.sm - 1)
+                    }
+                }
+            }
+
             SECallout(
                 icon: "info.circle.fill",
                 color: .blue,
-                text: "Backup history is now visible per world slot in the World tab. Select a slot to see its associated backups."
+                text: "Per-world backup history and Restore are available in the World tab — select a world slot to see its backups."
             )
         }
     }

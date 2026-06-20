@@ -96,6 +96,18 @@ final class RemoteAPIServer {
     var startBroadcastProvider: () -> Void
     var stopBroadcastProvider: () -> Void
     var updateBroadcastCredentialsProvider: (BroadcastCredentialsDTO) -> Bool
+    var watchdogStatusProvider:  () -> Bool     = { false }
+    var enableWatchdogProvider:  () -> String?  = { nil }   // nil = success, non-nil = error message
+    var disableWatchdogProvider: () -> String?  = { nil }
+
+    var playerProfilesProvider:    () -> PlayerProfilesResponseDTO = { PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
+
+    var worldSlotsProvider:        () -> WorldSlotsResponseDTO = { WorldSlotsResponseDTO(slots: [], activeSlotId: nil, serverRunning: false) }
+    var activateWorldSlotProvider: (String) -> Bool            = { _ in false }
+    var backupItemsProvider:       () -> BackupsResponseDTO    = { BackupsResponseDTO(backups: []) }
+    var createBackupNowProvider:   () -> Void                  = { }
+    var restoreBackupProvider:     (String) -> Bool            = { _ in false }
+
     var authPromptProvider: () -> BroadcastAuthPromptDTO
     var dismissAuthPromptProvider: () -> Void
     var broadcastAutoStartProvider: () -> BroadcastAutoStartDTO

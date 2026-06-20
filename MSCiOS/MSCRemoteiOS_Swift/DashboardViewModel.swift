@@ -37,6 +37,11 @@ final class DashboardViewModel: ObservableObject {
     /// "admin" or "guest", nil = not yet determined or not connected.
     @Published var connectedRole: String? = nil
 
+    @Published var worldsResponse: WorldSlotsResponseDTO? = nil
+    @Published var backupsResponse: BackupsResponseDTO? = nil
+    @Published var sessionLogResponse: SessionLogResponseDTO? = nil
+    @Published var playerProfilesResponse: PlayerProfilesResponseDTO? = nil
+
     var notifications: NotificationManager = .shared
 
     // MARK: - Internal state (do not access from views)
@@ -222,5 +227,90 @@ final class DashboardViewModel: ObservableObject {
         updateCredentials(baseURL: baseURL, token: token)
         _ = try? await requireClient().dismissAuthPrompt()
         pendingAuthPrompt = nil
+    }
+
+    // MARK: - Session Log & Player Profiles
+
+    func fetchSessionLog(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        do {
+            sessionLogResponse = try await requireClient().getSessionLog()
+        } catch {
+            // non-fatal — session log is supplementary
+        }
+    }
+
+    func fetchPlayerProfiles(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        do {
+            let response = try await requireClient().getPlayerProfiles()
+            playerProfilesResponse = response
+            // If the server just triggered NBT loading for some profiles, retry once
+            // after a short delay so stats are available on the next render.
+            if response.isLoadingStats {
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                if let updated = try? await requireClient().getPlayerProfiles() {
+                    playerProfilesResponse = updated
+                }
+            }
+        } catch {
+            // non-fatal
+        }
+    }
+
+    // MARK: - Worlds & Backups
+
+    func fetchWorlds(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        do {
+            worldsResponse = try await requireClient().getWorlds()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func fetchBackups(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        do {
+            backupsResponse = try await requireClient().getBackups()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func activateWorldSlot(baseURL: URL, token: String, slotId: String) async -> Bool {
+        updateCredentials(baseURL: baseURL, token: token)
+        errorMessage = nil
+        do {
+            _ = try await requireClient().activateWorldSlot(slotId: slotId)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func createBackupNow(baseURL: URL, token: String) async -> Bool {
+        updateCredentials(baseURL: baseURL, token: token)
+        errorMessage = nil
+        do {
+            _ = try await requireClient().createBackupNow()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func restoreBackup(baseURL: URL, token: String, backupId: String) async -> Bool {
+        updateCredentials(baseURL: baseURL, token: token)
+        errorMessage = nil
+        do {
+            _ = try await requireClient().restoreBackup(backupId: backupId)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 }

@@ -307,6 +307,12 @@ struct ContentView: View {
 
             Divider()
 
+            if viewModel.orphanedJavaProcessCount > 0 {
+                OrphanedProcessBanner(count: viewModel.orphanedJavaProcessCount)
+                    .environmentObject(viewModel)
+                Divider()
+            }
+
             // Main split
             HStack(spacing: 0) {
 
@@ -611,6 +617,43 @@ struct BroadcastAuthSheet: View {
         }
         .padding(MSC.Spacing.xxl)
         .frame(minWidth: 480, minHeight: 320)
+    }
+}
+
+// MARK: - Orphaned Process Banner
+
+private struct OrphanedProcessBanner: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: MSC.Spacing.md) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("\(count) orphaned Java server \(count == 1 ? "process" : "processes") detected from an unclean exit.")
+                .font(.system(size: 13))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Button("Kill All") {
+                viewModel.killJavaServerProcesses()
+                viewModel.orphanedJavaProcessCount = 0
+            }
+            .buttonStyle(MSCDestructiveButtonStyle())
+            .controlSize(.small)
+
+            Button("Dismiss") {
+                viewModel.orphanedJavaProcessCount = 0
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
+        }
+        .padding(.horizontal, MSC.Spacing.xxl)
+        .padding(.vertical, MSC.Spacing.sm)
+        .background(Color.orange.opacity(0.10))
     }
 }
 

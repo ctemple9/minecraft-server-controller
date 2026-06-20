@@ -21,11 +21,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var mainWindowResizeObserver: NSObjectProtocol?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Single-instance guard for launchd watchdog compatibility.
+        // When launchd relaunches MSC it doesn't know an instance is already running,
+        // so it starts a second one. We detect this, activate the existing window, and
+        // exit(0). launchd won't restart on a clean exit (KeepAlive.SuccessfulExit = false).
+        let me = NSRunningApplication.current
+        if let existing = NSWorkspace.shared.runningApplications.first(where: {
+            $0.bundleIdentifier == me.bundleIdentifier && $0.processIdentifier != me.processIdentifier
+        }) {
+            existing.activate(options: .activateIgnoringOtherApps)
+            exit(0)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let panel = NSColorPanel.shared
         panel.showsAlpha = false
         NSColorPanel.setPickerMask(.wheelModeMask)
         NSColorPanel.setPickerMode(.wheel)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        WatchdogRunner.markSessionEnded()  // clean quit — watchdog must not restart
+        viewModel?.forceTerminateAllRunningProcesses()
     }
 
     /// Configures the main window once SwiftUI has attached content to it.

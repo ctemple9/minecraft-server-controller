@@ -113,6 +113,8 @@ final class AppViewModel: ObservableObject {
 
     @Published var commandText: String = ""
     @Published var isServerRunning: Bool = false
+    @Published var orphanedJavaProcessCount: Int = 0
+    @Published var watchdogEnabled: Bool = false
     @Published var isShowingInitialSetup: Bool = false
     @Published var isOnboardingActive: Bool = false
     @Published var isXboxBroadcastRunning: Bool = false
@@ -270,6 +272,9 @@ final class AppViewModel: ObservableObject {
         #endif
 
         requestNotificationPermissionIfNeeded()
+        checkForOrphansOnStartup()
+        WatchdogRunner.markSessionActive()
+        checkWatchdogStatus()
 
         let cfg = configManager.config
 
@@ -717,6 +722,12 @@ final class AppViewModel: ObservableObject {
                 DispatchQueue.main.async { self?.selectedServerXboxBroadcastEnabled = enabled }
             }
 
+            let isoFmt: ISO8601DateFormatter = {
+                let f = ISO8601DateFormatter()
+                f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return f
+            }()
+
             if let shared = AppViewModel.sharedRemoteAPIServer {
                 shared.updateProviders(
                     tokenProvider: tokenProvider,
@@ -747,6 +758,86 @@ final class AppViewModel: ObservableObject {
                 )
                 shared.setListenOnAllInterfaces(cfg.remoteAPIExposeOnLAN)
                 self.remoteAPIServer = shared
+                shared.watchdogStatusProvider  = { [weak self] in self?.watchdogEnabled ?? false }
+                shared.enableWatchdogProvider  = { [weak self] in self?.enableWatchdogSync() }
+                shared.disableWatchdogProvider = { [weak self] in self?.disableWatchdogSync() }
+                shared.playerProfilesProvider = { [weak self, isoFmt] in
+                    guard let self else { return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
+                    let profiles = Thread.isMainThread ? self.playerProfiles : DispatchQueue.main.sync { self.playerProfiles }
+                    let dtos = profiles.map { p -> RemoteAPIServer.PlayerProfileDTO in
+                        let statsDTO = p.stats.map { s in
+                            RemoteAPIServer.PlayerStatsDTO(
+                                health: s.health, maxHealth: s.maxHealth, foodLevel: s.foodLevel,
+                                xpLevel: s.xpLevel, xpTotal: s.xpTotal, gameMode: s.gameMode,
+                                gameModeDisplay: s.gameModeDisplay, posX: s.posX, posY: s.posY,
+                                posZ: s.posZ, dimensionDisplay: s.dimensionDisplay, score: s.score
+                            )
+                        }
+                    let inventoryDTOs = p.inventory.map { item in
+                            RemoteAPIServer.InventoryItemDTO(
+                                slot: item.slot, itemID: item.itemID, iconName: item.iconName,
+                                count: item.count, displayName: item.displayName,
+                                enchantments: item.enchantments.map {
+                                    RemoteAPIServer.ItemEnchantmentDTO(id: $0.id, level: $0.level, displayName: $0.displayName)
+                                },
+                                damage: item.damage
+                            )
+                        }
+                        return RemoteAPIServer.PlayerProfileDTO(
+                            id: p.id, username: p.username, imageIdentifier: p.imageIdentifier,
+                            isOnline: p.isOnline, isOp: p.isOp,
+                            lastSeen: isoFmt.string(from: p.lastModified),
+                            isBedrockPlayer: p.isBedrockPlayer, stats: statsDTO,
+                            inventory: inventoryDTOs
+                        )
+                    }
+                    // Trigger NBT loading for Java profiles that don't have stats yet.
+                    let needsNBT = profiles.filter { $0.stats == nil && !$0.isBedrockPlayer }
+                    if !needsNBT.isEmpty {
+                        DispatchQueue.main.async { needsNBT.forEach { self.loadProfileNBT(uuid: $0.uuid) } }
+                    }
+                    return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: dtos, isLoadingStats: !needsNBT.isEmpty)
+                }
+                shared.worldSlotsProvider = { [weak self, isoFmt] in
+                    guard let self else { return RemoteAPIServer.WorldSlotsResponseDTO(slots: [], activeSlotId: nil, serverRunning: false) }
+                    let (slots, running, selectedServer) = Thread.isMainThread
+                        ? (self.worldSlots, self.isServerRunning, self.selectedServer)
+                        : DispatchQueue.main.sync { (self.worldSlots, self.isServerRunning, self.selectedServer) }
+                    let activeId = selectedServer.flatMap { self.activeWorldSlotId(forServerDir: $0.directory) }
+                    let dtos = slots.map { RemoteAPIServer.WorldSlotDTO(id: $0.id, name: $0.name, isActive: $0.id == activeId,
+                                                                        createdAt: isoFmt.string(from: $0.createdAt),
+                                                                        zipSizeBytes: $0.zipSizeBytes, worldSeed: $0.worldSeed) }
+                    return RemoteAPIServer.WorldSlotsResponseDTO(slots: dtos, activeSlotId: activeId, serverRunning: running)
+                }
+                shared.activateWorldSlotProvider = { [weak self] slotId in
+                    guard let self else { return false }
+                    let (slots, running) = Thread.isMainThread
+                        ? (self.worldSlots, self.isServerRunning)
+                        : DispatchQueue.main.sync { (self.worldSlots, self.isServerRunning) }
+                    guard !running, let slot = slots.first(where: { $0.id == slotId }) else { return false }
+                    Task { @MainActor [weak self] in await self?.activateWorldSlot(slot) }
+                    return true
+                }
+                shared.backupItemsProvider = { [weak self, isoFmt] in
+                    guard let self else { return RemoteAPIServer.BackupsResponseDTO(backups: []) }
+                    let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
+                    let dtos = items.map { RemoteAPIServer.BackupItemDTO(id: $0.filename, displayName: $0.displayName,
+                                                                         fileSize: $0.fileSize,
+                                                                         modificationDate: $0.modificationDate.map { isoFmt.string(from: $0) },
+                                                                         isAutomatic: $0.isAutomatic, slotId: $0.slotId,
+                                                                         slotName: $0.slotName, triggerReason: $0.triggerReason) }
+                    return RemoteAPIServer.BackupsResponseDTO(backups: dtos)
+                }
+                shared.createBackupNowProvider = { [weak self] in
+                    DispatchQueue.main.async { self?.createBackupForSelectedServer(isAutomatic: false) }
+                }
+                shared.restoreBackupProvider = { [weak self] filename in
+                    guard let self else { return false }
+                    let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
+                    guard let backup = items.first(where: { $0.filename == filename }) else { return false }
+                    DispatchQueue.main.async { self.restoreBackup(backup) }
+                    return true
+                }
                 shared.start()
                 return
             }
@@ -782,6 +873,85 @@ final class AppViewModel: ObservableObject {
             )
             AppViewModel.sharedRemoteAPIServer = api
             self.remoteAPIServer = api
+            api.watchdogStatusProvider  = { [weak self] in self?.watchdogEnabled ?? false }
+            api.enableWatchdogProvider  = { [weak self] in self?.enableWatchdogSync() }
+            api.disableWatchdogProvider = { [weak self] in self?.disableWatchdogSync() }
+            api.playerProfilesProvider = { [weak self, isoFmt] in
+                guard let self else { return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
+                let profiles = Thread.isMainThread ? self.playerProfiles : DispatchQueue.main.sync { self.playerProfiles }
+                let dtos = profiles.map { p -> RemoteAPIServer.PlayerProfileDTO in
+                    let statsDTO = p.stats.map { s in
+                        RemoteAPIServer.PlayerStatsDTO(
+                            health: s.health, maxHealth: s.maxHealth, foodLevel: s.foodLevel,
+                            xpLevel: s.xpLevel, xpTotal: s.xpTotal, gameMode: s.gameMode,
+                            gameModeDisplay: s.gameModeDisplay, posX: s.posX, posY: s.posY,
+                            posZ: s.posZ, dimensionDisplay: s.dimensionDisplay, score: s.score
+                        )
+                    }
+                    let inventoryDTOs = p.inventory.map { item in
+                        RemoteAPIServer.InventoryItemDTO(
+                            slot: item.slot, itemID: item.itemID, iconName: item.iconName,
+                            count: item.count, displayName: item.displayName,
+                            enchantments: item.enchantments.map {
+                                RemoteAPIServer.ItemEnchantmentDTO(id: $0.id, level: $0.level, displayName: $0.displayName)
+                            },
+                            damage: item.damage
+                        )
+                    }
+                    return RemoteAPIServer.PlayerProfileDTO(
+                        id: p.id, username: p.username, imageIdentifier: p.imageIdentifier,
+                        isOnline: p.isOnline, isOp: p.isOp,
+                        lastSeen: isoFmt.string(from: p.lastModified),
+                        isBedrockPlayer: p.isBedrockPlayer, stats: statsDTO,
+                        inventory: inventoryDTOs
+                    )
+                }
+                let needsNBT = profiles.filter { $0.stats == nil && !$0.isBedrockPlayer }
+                if !needsNBT.isEmpty {
+                    DispatchQueue.main.async { needsNBT.forEach { self.loadProfileNBT(uuid: $0.uuid) } }
+                }
+                return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: dtos, isLoadingStats: !needsNBT.isEmpty)
+            }
+            api.worldSlotsProvider = { [weak self, isoFmt] in
+                guard let self else { return RemoteAPIServer.WorldSlotsResponseDTO(slots: [], activeSlotId: nil, serverRunning: false) }
+                let (slots, running, selectedServer) = Thread.isMainThread
+                    ? (self.worldSlots, self.isServerRunning, self.selectedServer)
+                    : DispatchQueue.main.sync { (self.worldSlots, self.isServerRunning, self.selectedServer) }
+                let activeId = selectedServer.flatMap { self.activeWorldSlotId(forServerDir: $0.directory) }
+                let dtos = slots.map { RemoteAPIServer.WorldSlotDTO(id: $0.id, name: $0.name, isActive: $0.id == activeId,
+                                                                    createdAt: isoFmt.string(from: $0.createdAt),
+                                                                    zipSizeBytes: $0.zipSizeBytes, worldSeed: $0.worldSeed) }
+                return RemoteAPIServer.WorldSlotsResponseDTO(slots: dtos, activeSlotId: activeId, serverRunning: running)
+            }
+            api.activateWorldSlotProvider = { [weak self] slotId in
+                guard let self else { return false }
+                let (slots, running) = Thread.isMainThread
+                    ? (self.worldSlots, self.isServerRunning)
+                    : DispatchQueue.main.sync { (self.worldSlots, self.isServerRunning) }
+                guard !running, let slot = slots.first(where: { $0.id == slotId }) else { return false }
+                Task { @MainActor [weak self] in await self?.activateWorldSlot(slot) }
+                return true
+            }
+            api.backupItemsProvider = { [weak self, isoFmt] in
+                guard let self else { return RemoteAPIServer.BackupsResponseDTO(backups: []) }
+                let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
+                let dtos = items.map { RemoteAPIServer.BackupItemDTO(id: $0.filename, displayName: $0.displayName,
+                                                                     fileSize: $0.fileSize,
+                                                                     modificationDate: $0.modificationDate.map { isoFmt.string(from: $0) },
+                                                                     isAutomatic: $0.isAutomatic, slotId: $0.slotId,
+                                                                     slotName: $0.slotName, triggerReason: $0.triggerReason) }
+                return RemoteAPIServer.BackupsResponseDTO(backups: dtos)
+            }
+            api.createBackupNowProvider = { [weak self] in
+                DispatchQueue.main.async { self?.createBackupForSelectedServer(isAutomatic: false) }
+            }
+            api.restoreBackupProvider = { [weak self] filename in
+                guard let self else { return false }
+                let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
+                guard let backup = items.first(where: { $0.filename == filename }) else { return false }
+                DispatchQueue.main.async { self.restoreBackup(backup) }
+                return true
+            }
             api.start()
         }
 

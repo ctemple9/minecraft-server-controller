@@ -62,6 +62,10 @@ struct ServerEditorView: View {
     @State var replaceSourcePath: String = ""
     @State var renameWorldName: String = ""
 
+    // World tab — sheet presentation
+    @State var showImportZIPSheet: Bool = false
+    @State var showReplaceWorldSheet: Bool = false
+
     // World tab — P6 slot admin
     @State var selectedSlotForEditor: WorldSlot? = nil
         @State var showDuplicateSlotSheet: Bool = false
@@ -652,13 +656,8 @@ struct ServerEditorView: View {
             editorHeader
             tabBar
 
-            ScrollView {
-                tabContent
-                    .padding(MSC.Spacing.xl)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .contextualHelpAnchor(currentTabContentAnchorID)
-            }
-            .frame(maxHeight: .infinity)
+            editorContentArea
+                .frame(maxHeight: .infinity)
 
             editorFooter
         }
@@ -702,8 +701,6 @@ struct ServerEditorView: View {
         }
         // Server duplicate sheet (existing — not slot duplicate)
                 .sheet(isPresented: $showDuplicateSheet) { duplicateSheet }
-                // Slot duplicate sheet
-                .sheet(isPresented: $showDuplicateSlotSheet) { duplicateSlotSheetView }
         // Cross-Platform Setup Guide
                         .sheet(isPresented: $isShowingCrossPlatformGuide) {
                             CrossPlatformGuideSheet().environmentObject(viewModel)
@@ -733,6 +730,30 @@ struct ServerEditorView: View {
                                     }
                             .contextualHelpHost(guideIDs: contextualHelpGuideIDs)
                         }
+
+    // MARK: - Content Area (sidebar + tab content, or full-width world tab)
+
+    @ViewBuilder
+    var editorContentArea: some View {
+        if selectedTab == .world {
+            worldTab
+                .contextualHelpAnchor(currentTabContentAnchorID)
+        } else {
+            HStack(spacing: 0) {
+                ServerEditorSidebarView(
+                    data: data,
+                    editingConfigServer: editingConfigServer
+                )
+                Divider()
+                ScrollView {
+                    tabContent
+                        .padding(MSC.Spacing.xl)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .contextualHelpAnchor(currentTabContentAnchorID)
+                }
+            }
+        }
+    }
 
     // MARK: - Header
 

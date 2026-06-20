@@ -168,9 +168,13 @@
 		9AAF276A2F6A2B0100F752CA /* RouterPortForwardGuideReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */; };
 		9AAF276E2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */; };
 		9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */; };
+		9AAF27712F6C000000000001 /* JavaProcessScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27722F6C000000000002 /* JavaProcessScanner.swift */; };
+		9AAF27732F6D000000000003 /* WatchdogRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27742F6D000000000004 /* WatchdogRunner.swift */; };
+		9AAF27752F6D000000000005 /* AppViewModel+Watchdog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AAF27762F6D000000000006 /* AppViewModel+Watchdog.swift */; };
 		9AB1C0042F9A00000000AA04 /* RemoteAPIServer+ComponentRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */; };
 		9AB1C0062F9A00000000BB01 /* HeadlessScriptGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */; };
 		9AB1C0082F9A00000000BB03 /* HeadlessScriptSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */; };
+		9ABCDE012F65AD6D00FB8246 /* ServerEditorSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ABCDE012F65AD6C00FB8246 /* ServerEditorSidebar.swift */; };
 		9AC4CEAF2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */; };
 		9AC4CEB12F69F331002B5564 /* RouterPortForwardGuideComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */; };
 		9AC4CEB52F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEB42F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift */; };
@@ -355,9 +359,13 @@
 		9AAF27692F6A2B0100F752CA /* RouterPortForwardGuideReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideReader.swift; sourceTree = "<group>"; };
 		9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideTroubleshootingScreen.swift; sourceTree = "<group>"; };
 		9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+JavaProcessCleanup.swift"; sourceTree = "<group>"; };
+		9AAF27722F6C000000000002 /* JavaProcessScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaProcessScanner.swift; sourceTree = "<group>"; };
+		9AAF27742F6D000000000004 /* WatchdogRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchdogRunner.swift; sourceTree = "<group>"; };
+		9AAF27762F6D000000000006 /* AppViewModel+Watchdog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Watchdog.swift"; sourceTree = "<group>"; };
 		9AB1C0052F9A00000000AA05 /* RemoteAPIServer+ComponentRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+ComponentRoutes.swift"; sourceTree = "<group>"; };
 		9AB1C0072F9A00000000BB02 /* HeadlessScriptGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptGenerator.swift; sourceTree = "<group>"; };
 		9AB1C0092F9A00000000BB04 /* HeadlessScriptSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptSheet.swift; sourceTree = "<group>"; };
+		9ABCDE012F65AD6C00FB8246 /* ServerEditorSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerEditorSidebar.swift; sourceTree = "<group>"; };
 		9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Minecraft Server Controller.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AC4CEAE2F69F216002B5564 /* RouterPortForwardGuideMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideMatcher.swift; sourceTree = "<group>"; };
 		9AC4CEB02F69F331002B5564 /* RouterPortForwardGuideComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideComposer.swift; sourceTree = "<group>"; };
@@ -400,6 +408,9 @@
 				9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */,
 				9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */,
 				9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */,
+				9AAF27722F6C000000000002 /* JavaProcessScanner.swift */,
+				9AAF27742F6D000000000004 /* WatchdogRunner.swift */,
+				9AAF27762F6D000000000006 /* AppViewModel+Watchdog.swift */,
 				9A5631E12F65AD6C00FB8246 /* AboutView.swift */,
 				9A5631E22F65AD6C00FB8246 /* AppConfig.swift */,
 				9A5631E32F65AD6C00FB8246 /* AppModels.swift */,
@@ -558,6 +569,7 @@
 				9A5632592F65AD6C00FB8246 /* ServerEditorModels.swift */,
 				9A56325A2F65AD6C00FB8246 /* ServerEditorSettingsTab.swift */,
 				9A56325B2F65AD6C00FB8246 /* ServerEditorSupportViews.swift */,
+				9ABCDE012F65AD6C00FB8246 /* ServerEditorSidebar.swift */,
 				9A56325C2F65AD6C00FB8246 /* ServerEditorView.swift */,
 				9A56325D2F65AD6C00FB8246 /* ServerEditorWorldTab.swift */,
 				9A56325E2F65AD6C00FB8246 /* ServerFilesTabView.swift */,
@@ -718,6 +730,7 @@
 				9A8A015D2F69ECA800D62CB3 /* RouterPortForwardGuideRepository.swift in Sources */,
 				9A56328B2F65AD6D00FB8246 /* DetailsPerformanceHelpers.swift in Sources */,
 				9A56328C2F65AD6D00FB8246 /* ServerEditorSupportViews.swift in Sources */,
+				9ABCDE012F65AD6D00FB8246 /* ServerEditorSidebar.swift in Sources */,
 				9A56328D2F65AD6D00FB8246 /* AppViewModel.swift in Sources */,
 				9A56328E2F65AD6D00FB8246 /* PrerequisitesView.swift in Sources */,
 				9A56328F2F65AD6D00FB8246 /* AppViewModel+Backups.swift in Sources */,
@@ -798,6 +811,9 @@
 				9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */,
 				9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */,
 				9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */,
+				9AAF27712F6C000000000001 /* JavaProcessScanner.swift in Sources */,
+				9AAF27732F6D000000000003 /* WatchdogRunner.swift in Sources */,
+				9AAF27752F6D000000000005 /* AppViewModel+Watchdog.swift in Sources */,
 				9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */,
 				9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */,
 				9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */,
@@ -1016,7 +1032,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1055,7 +1071,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

@@ -2,388 +2,231 @@ import SwiftUI
 import AppKit
 
 extension ServerEditorView {
-// MARK: - WORLD TAB (P6 full admin surface)
+// MARK: - WORLD TAB  (full-width master-detail, no outer ScrollView)
 
 var worldTab: some View {
-    VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+    Group {
         if mode == .new || editingConfigServer == nil {
-            SEUnavailableCard(
-                icon: "globe",
-                title: "Save first to use world tools",
-                message: "World management is available after this server has been created. Save, then reopen Edit Server."
-            )
+            // Unavailable state — show card in a scroll view
+            ScrollView {
+                SEUnavailableCard(
+                    icon: "globe",
+                    title: "Save first to use world tools",
+                    message: "World management is available after this server has been created. Save, then reopen Edit Server."
+                )
+                .padding(MSC.Spacing.xl)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
         } else if let cfg = editingConfigServer {
-
-            // ── 1. World Slots Grid ───────────────────────────────────
-            SESection(icon: "square.grid.3x3.fill", title: "World Slots", color: .blue) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-                    if viewModel.worldSlots.isEmpty {
-                        VStack(spacing: MSC.Spacing.sm) {
-                            Image(systemName: "square.dashed")
-                                .font(.system(size: 28, weight: .light))
-                                .foregroundStyle(.secondary.opacity(0.4))
-                            Text("No world slots saved yet.")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                            Text("Use \"Create New World\" below to make a new slot, or save the current active world back into its slot.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, MSC.Spacing.lg)
-                    } else {
-                        let activeSlotId = viewModel.activeWorldSlotId(forServerDir: cfg.serverDir)
-                        LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: MSC.Spacing.md),
-                            GridItem(.flexible(), spacing: MSC.Spacing.md),
-                            GridItem(.flexible(), spacing: MSC.Spacing.md)
-                        ], spacing: MSC.Spacing.md) {
-                            ForEach(viewModel.worldSlots) { slot in
-                                worldSlotAdminCard(slot: slot, cfg: cfg, isActive: activeSlotId == slot.id)
-                            }
-                        }
-                    }
-
-                    // ── 2. Slot Admin Action Buttons (when a slot is selected) ──
-                    if let selected = selectedSlotForEditor {
-                        Divider().opacity(0.5)
-
-                        HStack(spacing: MSC.Spacing.sm) {
-                            // Duplicate
-                            Button {
-                                duplicateSlotName = selected.name + " Copy"
-                                showDuplicateSlotSheet = true
-                            } label: {
-                                Label("Duplicate…", systemImage: "doc.on.doc")
-                            }
-                            .buttonStyle(MSCSecondaryButtonStyle())
-                            .controlSize(.small)
-
-                            
-                            // Export as ZIP
-                            Button {
-                                exportSlot(selected, cfg: cfg)
-                            } label: {
-                                Label("Export as ZIP…", systemImage: "square.and.arrow.up")
-                            }
-                            .buttonStyle(MSCSecondaryButtonStyle())
-                            .controlSize(.small)
-
-                            Spacer()
-                            Text("Selected: \(selected.name)")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
+            HStack(spacing: 0) {
+                worldListPanel(cfg: cfg)
+                Divider()
+                worldInspectorPanel(cfg: cfg)
             }
-            .contextualHelpAnchor(worldSlotsAnchorID)
-
-            // ── 3. Import ZIP as New Slot ─────────────────────────────
-            SESection(icon: "square.and.arrow.down", title: "Import ZIP as New Slot", color: .teal) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Import an external world ZIP (e.g. from another server or a download) as a new named slot.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        TextField("No ZIP selected", text: $importZIPPath)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(true)
-                            .foregroundStyle(.secondary)
-                        Button("Browse…") { browseForImportZIP() }
-                            .buttonStyle(MSCSecondaryButtonStyle())
-                    }
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        TextField("Slot name", text: $importSlotName)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 220)
-
-                        Button("Import") {
-                            let zipURL = URL(fileURLWithPath: importZIPPath)
-                            let name = importSlotName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            Task {
-                                let ok = await viewModel.importZIPAsSlot(zipURL: zipURL, name: name)
-                                if ok {
-                                    importZIPPath = ""
-                                    importSlotName = ""
-                                }
-                            }
-                        }
-                        .buttonStyle(MSCPrimaryButtonStyle())
-                        .disabled(importZIPPath.isEmpty || importSlotName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
-            }
-            .contextualHelpAnchor(worldImportAnchorID)
-
-            // ── 4. Slot-Aware Backup History ──────────────────────────
-            if let selected = selectedSlotForEditor {
-                let slotBackups = viewModel.backupItems.filter { $0.slotId == selected.id }
-                SESection(icon: "clock.arrow.2.circlepath", title: "Backups for \"\(selected.name)\"", color: .green) {
-                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                        if slotBackups.isEmpty {
-                            Text("No backups associated with this slot yet.")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, MSC.Spacing.md)
-                        } else {
-                            ForEach(slotBackups.sorted { ($0.modificationDate ?? .distantPast) > ($1.modificationDate ?? .distantPast) }) { item in
-                                HStack(spacing: MSC.Spacing.sm) {
-                                    Circle()
-                                        .fill(Color.secondary.opacity(0.3))
-                                        .frame(width: 5, height: 5)
-                                    Text(timeString(from: item.modificationDate))
-                                        .font(.system(size: 11, design: .monospaced))
-                                        .foregroundStyle(.secondary)
-                                    Text(item.isAutomatic ? "Auto" : "Manual")
-                                        .font(.system(size: 10))
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(item.isAutomatic ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
-                                        .foregroundStyle(item.isAutomatic ? Color.blue : Color.secondary)
-                                        .clipShape(RoundedRectangle(cornerRadius: 3))
-                                    if let size = item.fileSize {
-                                        Text(formatBytes(size))
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.vertical, 2)
-                                Divider().opacity(0.4)
-                            }
-                        }
-
-                        Button("Back Up Now (for this slot)") {
-                            Task {
-                                await viewModel.createBackup(for: cfg, isAutomatic: false,
-                                                             slotId: selected.id,
-                                                             slotName: selected.name)
-                            }
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .controlSize(.small)
-                        .disabled(viewModel.isServerRunning)
-                    }
-                }
-            }
-
-            // ── 5. Save Current World ─────────────────────────────────
-            SESection(icon: "square.and.arrow.down.on.square", title: "Save Current World", color: .purple) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Save the server's current live world back into the active persistent slot. This no longer creates a new snapshot slot.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        if let activeName = viewModel.activeWorldSlotId(forServerDir: cfg.serverDir).flatMap({ id in
-                            viewModel.worldSlots.first(where: { $0.id == id })?.name
-                        }) {
-                            Text("Active slot: \(activeName)")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("No active slot yet — saving will create the initial persistent slot.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Button("Save to Active Slot") {
-                            viewModel.saveCurrentWorldToActiveSlot()
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                    }
-                }
-            }
-            .contextualHelpAnchor(worldSaveCurrentAnchorID)
-
-            // ── 6. Create New World ───────────────────────────────────
-                        SESection(icon: "plus.square.on.square", title: "Create New World", color: .teal) {
-                            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                                Text("Add another persistent world slot to this server. Worlds can be switched anytime the server is stopped.")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-
-                                Button("Create New World…") {
-                                    showCreateWorldSlotSheet = true
-                                }
-                                .buttonStyle(MSCSecondaryButtonStyle())
-                            }
-                        }
-                        .sheet(isPresented: $showCreateWorldSlotSheet) {
-                            CreateWorldSlotSheet(isPresented: $showCreateWorldSlotSheet) { name, seed in
-                                viewModel.createNewWorldSlot(name: name, seed: seed)
-                            }
-                        }
-
-
-            // ── 7. Replace World ──────────────────────────────────────
-            SESection(icon: "arrow.triangle.2.circlepath", title: "Replace World", color: .orange) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Swap in a different world folder. For ZIP backups created by this app, use Backups → Restore instead.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        TextField("No source selected", text: $replaceSourcePath)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(true)
-                            .foregroundStyle(.secondary)
-
-                        Menu("Choose…") {
-                            Button("World Folder…") { browseForReplaceSourceFolder() }
-                            Button("Backup ZIP…")   { browseForReplaceSourceZip() }
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                    }
-
-                    Button("Apply Replace") {
-                        let trimmed = replaceSourcePath.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
-                        let sourceURL = URL(fileURLWithPath: trimmed)
-                        let isZip = sourceURL.pathExtension.lowercased() == "zip"
-                        let worldSource: AppViewModel.WorldSource = isZip
-                            ? .backupZip(sourceURL)
-                            : .existingFolder(sourceURL)
-                        let currentProps = ServerPropertiesManager.readProperties(serverDir: cfg.serverDir)
-                        let currentLevel = (currentProps["level-name"]?
-                            .trimmingCharacters(in: .whitespacesAndNewlines))
-                            .flatMap { $0.isEmpty ? nil : $0 } ?? "world"
-                        Task {
-                            let ok = await viewModel.replaceWorld(
-                                for: cfg,
-                                newLevelName: currentLevel,
-                                worldSource: worldSource,
-                                backupFirst: true
-                            )
-                            if ok { replaceSourcePath = "" }
-                        }
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .disabled(replaceSourcePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .contextualHelpAnchor(worldReplaceAnchorID)
-
-            // ── 8. Rename World ───────────────────────────────────────
-            SESection(icon: "pencil", title: "Rename World", color: .purple) {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Renames the world folder and updates level-name in server.properties together, so they stay in sync.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        TextField("New world name", text: $renameWorldName)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 300)
-
-                        Button("Apply Rename") {
-                            let newName = renameWorldName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !newName.isEmpty else { return }
-                            Task {
-                                let ok = await viewModel.renameWorld(for: cfg, newLevelName: newName, backupFirst: true)
-                                if ok { renameWorldName = "" }
-                            }
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .disabled(renameWorldName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
-            }
-
-            SECallout(
-                icon: "exclamationmark.triangle.fill",
-                color: .orange,
-                text: "Always stop the server before replacing or renaming a world. Both tools create a backup of the existing world first."
-            )
         }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    // Import ZIP sheet
+    .sheet(isPresented: $showImportZIPSheet) {
+        importZIPSheetView
+    }
+    // Replace World sheet
+    .sheet(isPresented: $showReplaceWorldSheet) {
+        if let cfg = editingConfigServer {
+            replaceWorldSheetView(cfg: cfg)
+        }
+    }
+    // Create World sheet
+    .sheet(isPresented: $showCreateWorldSlotSheet) {
+        CreateWorldSlotSheet(isPresented: $showCreateWorldSlotSheet) { name, seed in
+            viewModel.createNewWorldSlot(name: name, seed: seed)
+        }
+    }
+    // Slot Duplicate sheet
+    .sheet(isPresented: $showDuplicateSlotSheet) { duplicateSlotSheetView }
+    .contextualHelpAnchor(worldSlotsAnchorID)
+}
+
+// MARK: - Left Panel: World List
+
+@ViewBuilder
+func worldListPanel(cfg: ConfigServer) -> some View {
+    VStack(spacing: 0) {
+        // Header
+        HStack(spacing: MSC.Spacing.sm) {
+            Text("World Slots")
+                .font(.system(size: 10, weight: .semibold))
+                .tracking(0.5)
+                .foregroundStyle(MSC.Colors.tertiary)
+                .textCase(.uppercase)
+            Spacer()
+            Button {
+                viewModel.saveCurrentWorldToActiveSlot()
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down.on.square")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .help("Save the live world back into the active slot")
+
+            Button {
+                showCreateWorldSlotSheet = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .help("Create a new world slot")
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4))
+
+        Divider()
+
+        // Slot list
+        ScrollView {
+            LazyVStack(spacing: MSC.Spacing.sm) {
+                if viewModel.worldSlots.isEmpty {
+                    VStack(spacing: MSC.Spacing.sm) {
+                        Image(systemName: "square.dashed")
+                            .font(.system(size: 24, weight: .light))
+                            .foregroundStyle(.secondary.opacity(0.4))
+                        Text("No world slots yet")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Text("Use + to create one, or save the current active world.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, MSC.Spacing.xxl)
+                } else {
+                    let activeId = viewModel.activeWorldSlotId(forServerDir: cfg.serverDir)
+                    ForEach(viewModel.worldSlots) { slot in
+                        WorldSlotListCard(
+                            slot: slot,
+                            isActive: activeId == slot.id,
+                            isSelected: selectedSlotForEditor?.id == slot.id
+                        )
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedSlotForEditor = selectedSlotForEditor?.id == slot.id ? nil : slot
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(MSC.Spacing.sm)
+        }
+
+        Divider()
+
+        // Footer: Import ZIP
+        Button {
+            browseForImportZIP()
+            if !importZIPPath.isEmpty {
+                showImportZIPSheet = true
+            }
+        } label: {
+            Label("Import ZIP as New World…", systemImage: "square.and.arrow.down")
+                .font(.system(size: 11))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.4))
+    }
+    .frame(width: 220)
+    .background(Color(nsColor: .controlBackgroundColor).opacity(0.2))
+}
+
+// MARK: - Right Panel: World Inspector
+
+@ViewBuilder
+func worldInspectorPanel(cfg: ConfigServer) -> some View {
+    if let slot = selectedSlotForEditor {
+        ScrollView {
+            worldInspectorView(slot: slot, cfg: cfg)
+                .padding(MSC.Spacing.xl)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else {
+        VStack(spacing: MSC.Spacing.md) {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(.secondary.opacity(0.35))
+            Text("Select a world")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+            Text("Click a world slot on the left to manage it.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-// MARK: - World Slot Admin Card
+// MARK: - World Inspector Content
 
 @ViewBuilder
-func worldSlotAdminCard(slot: WorldSlot, cfg: ConfigServer, isActive: Bool) -> some View {
-    let isSelected = selectedSlotForEditor?.id == slot.id
+func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
+    let isActive = viewModel.activeWorldSlotId(forServerDir: cfg.serverDir) == slot.id
+    let slotBackups = viewModel.backupItems
+        .filter { $0.slotId == slot.id }
+        .sorted { ($0.modificationDate ?? .distantPast) > ($1.modificationDate ?? .distantPast) }
 
-    VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
 
-        // ── Thumbnail ──────────────────────────────────────────────────
-        ZStack(alignment: .bottomLeading) {
+        // ── Hero thumbnail ─────────────────────────────────────────
+        ZStack(alignment: .topTrailing) {
             LinearGradient(
-                colors: [Color(hue: 0.57, saturation: 0.6, brightness: 0.85),
-                         Color(hue: 0.57, saturation: 0.45, brightness: 0.65)],
-                startPoint: .top, endPoint: .bottom
+                colors: [
+                    Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
+                    Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
-            .frame(height: 90)
-
-            VStack(spacing: 0) {
-                Rectangle().fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42)).frame(height: 8)
-                Rectangle().fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35)).frame(height: 16)
-            }
             .frame(maxWidth: .infinity)
+            .frame(height: 130)
+            .overlay(
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                        .frame(height: 8)
+                    Rectangle()
+                        .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                        .frame(height: 16)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            )
 
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(.white.opacity(0.22))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.bottom, 22)
-
-            if let bytes = slot.zipSizeBytes {
-                Text(WorldSlotManager.formatBytes(bytes))
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(.black.opacity(0.4)))
-                    .padding(6)
-            }
-
-            // Active badge
             if isActive {
-                HStack(spacing: 3) {
+                HStack(spacing: 4) {
                     Circle().fill(MSC.Colors.success).frame(width: 5, height: 5)
                     Text("Active")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white)
                 }
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(MSC.Colors.success.opacity(0.75)))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(6)
-            } else if isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white)
-                    .shadow(radius: 2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(MSC.Colors.success.opacity(0.85)))
+                .padding(MSC.Spacing.sm)
             }
         }
-        .clipShape(UnevenRoundedRectangle(
-            topLeadingRadius: MSC.Radius.md,
-            bottomLeadingRadius: 0,
-            bottomTrailingRadius: 0,
-            topTrailingRadius: MSC.Radius.md
-        ))
+        .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
 
-        // ── Info ───────────────────────────────────────────────────────
-        VStack(alignment: .leading, spacing: 3) {
+        // ── Name + Rename ──────────────────────────────────────────
+        HStack(spacing: MSC.Spacing.sm) {
             if showSlotRenameId == slot.id {
                 TextField("Slot name", text: $slotRenameText)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 16, weight: .bold))
                     .onSubmit {
                         let newName = slotRenameText.trimmingCharacters(in: .whitespacesAndNewlines)
                         if !newName.isEmpty {
@@ -391,94 +234,304 @@ func worldSlotAdminCard(slot: WorldSlot, cfg: ConfigServer, isActive: Bool) -> s
                         }
                         showSlotRenameId = nil
                     }
+                Button("Cancel") { showSlotRenameId = nil }
+                    .buttonStyle(MSCSecondaryButtonStyle())
             } else {
                 Text(slot.name)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 17, weight: .bold))
                     .lineLimit(1)
+                Spacer()
+                Button {
+                    slotRenameText = slot.name
+                    showSlotRenameId = slot.id
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+            }
+        }
+
+        // ── Badges ────────────────────────────────────────────────
+        HStack(spacing: MSC.Spacing.sm) {
+            if isActive {
+                Text("● Active")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MSC.Colors.success)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(MSC.Colors.success.opacity(0.10)))
+                    .overlay(Capsule().stroke(MSC.Colors.success.opacity(0.25), lineWidth: 0.5))
+            } else {
+                Text("Inactive")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.secondary.opacity(0.08)))
+                    .overlay(Capsule().stroke(Color.secondary.opacity(0.2), lineWidth: 0.5))
+            }
+            if let bytes = slot.zipSizeBytes {
+                Text(WorldSlotManager.formatBytes(bytes))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.secondary.opacity(0.07)))
+                    .overlay(Capsule().stroke(Color.secondary.opacity(0.15), lineWidth: 0.5))
             }
             Text(shortDate(slot.createdAt))
                 .font(.system(size: 10))
-                .foregroundStyle(MSC.Colors.caption)
-
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.secondary.opacity(0.07)))
+                .overlay(Capsule().stroke(Color.secondary.opacity(0.15), lineWidth: 0.5))
             if let seed = slot.worldSeed?.trimmingCharacters(in: .whitespacesAndNewlines), !seed.isEmpty {
-                Text("Seed \(seed)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(MSC.Colors.caption)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                Text("Seed: \(seed)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.secondary.opacity(0.07)))
+                    .overlay(Capsule().stroke(Color.secondary.opacity(0.15), lineWidth: 0.5))
                     .textSelection(.enabled)
             }
         }
-        .padding(.horizontal, MSC.Spacing.sm)
-        .padding(.top, MSC.Spacing.xs)
-        .padding(.bottom, MSC.Spacing.xxs)
 
-        Divider().padding(.horizontal, MSC.Spacing.xs)
-
-        // ── Actions ────────────────────────────────────────────────────
-        HStack(spacing: 2) {
-            Button {
-                Task { await viewModel.activateWorldSlot(slot) }
-            } label: {
-                Image(systemName: "play.fill")
+        // ── Actions ───────────────────────────────────────────────
+        SEBlockHeader(title: "Actions")
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: MSC.Spacing.sm),
+                      GridItem(.flexible(), spacing: MSC.Spacing.sm)],
+            spacing: MSC.Spacing.sm
+        ) {
+            if isActive {
+                WorldActionButton(icon: "square.and.arrow.down.on.square",
+                                  label: "Save Live World Here",
+                                  style: .primary) {
+                    viewModel.saveCurrentWorldToActiveSlot()
+                }
+                .contextualHelpAnchor(worldSaveCurrentAnchorID)
+            } else {
+                WorldActionButton(icon: "play.fill",
+                                  label: "Set as Active",
+                                  style: .primary) {
+                    Task { await viewModel.activateWorldSlot(slot) }
+                }
+                .disabled(viewModel.isServerRunning)
             }
-            .buttonStyle(.borderless)
-            .controlSize(.mini)
-            .disabled(isActive || viewModel.isServerRunning)
-            .help(isActive ? "Already active" : viewModel.isServerRunning ? "Stop server first" : "Activate this slot")
 
-            Button {
-                slotRenameText = slot.name
-                showSlotRenameId = slot.id
-            } label: {
-                Image(systemName: "pencil")
+            WorldActionButton(icon: "doc.on.doc", label: "Duplicate…", style: .normal) {
+                duplicateSlotName = slot.name + " Copy"
+                showDuplicateSlotSheet = true
             }
-            .buttonStyle(.borderless)
-            .controlSize(.mini)
-            .help("Rename this slot")
 
-            Button {
-                slotToDelete = slot
-                showSlotDeleteConfirm = true
-            } label: {
-                Image(systemName: "trash").foregroundStyle(.red)
+            WorldActionButton(icon: "square.and.arrow.up", label: "Export as ZIP…", style: .normal) {
+                exportSlot(slot, cfg: cfg)
             }
-            .buttonStyle(.borderless)
-            .controlSize(.mini)
-            .help("Delete this slot")
 
-            Spacer()
+            WorldActionButton(icon: "arrow.triangle.2.circlepath", label: "Replace World…", style: .normal) {
+                replaceSourcePath = ""
+                showReplaceWorldSheet = true
+            }
+            .contextualHelpAnchor(worldReplaceAnchorID)
         }
-        .padding(.horizontal, MSC.Spacing.sm)
-        .padding(.vertical, MSC.Spacing.xs)
-    }
-    .background(
-        RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
-            .fill(MSC.Colors.cardBackground)
-            .overlay(
-                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
-                    .stroke(
-                        isActive ? MSC.Colors.success.opacity(0.8)
-                            : isSelected ? Color.accentColor.opacity(0.7)
-                            : MSC.Colors.cardBorder,
-                        lineWidth: (isActive || isSelected) ? 2 : 1
-                    )
-            )
-    )
-    .shadow(
-        color: isActive ? MSC.Colors.success.opacity(0.12) : .black.opacity(isSelected ? 0.08 : 0.03),
-        radius: isActive ? 5 : 2, y: 1
-    )
-    .contentShape(Rectangle())
-    .onTapGesture {
-        withAnimation(.easeInOut(duration: 0.15)) {
-            selectedSlotForEditor = isSelected ? nil : slot
+
+        Button(role: .destructive) {
+            slotToDelete = slot
+            showSlotDeleteConfirm = true
+        } label: {
+            Label("Delete This World Slot", systemImage: "trash.fill")
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(MSCDestructiveButtonStyle())
+
+        Divider().opacity(0.5)
+
+        // ── Backup History ────────────────────────────────────────
+        SEBlockHeader(title: "Backup History")
+
+        if slotBackups.isEmpty {
+            Text("No backups for this world yet.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, MSC.Spacing.md)
+        } else {
+            SEBlock {
+                ForEach(Array(slotBackups.enumerated()), id: \.element.id) { idx, item in
+                    if idx > 0 { Divider().padding(.leading, MSC.Spacing.md - 1) }
+                    HStack(spacing: MSC.Spacing.sm) {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.3))
+                            .frame(width: 5, height: 5)
+                        Text(timeString(from: item.modificationDate))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Text(item.isAutomatic ? "Auto" : "Manual")
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(item.isAutomatic
+                                        ? Color.blue.opacity(0.10)
+                                        : Color.gray.opacity(0.10))
+                            .foregroundStyle(item.isAutomatic ? Color.blue : Color.secondary)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                        if let size = item.fileSize {
+                            Text(formatBytes(size))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Restore") {
+                            selectedBackupId = item.id
+                            showRestoreConfirm = true
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal, MSC.Spacing.md - 1)
+                    .padding(.vertical, MSC.Spacing.sm - 1)
+                }
+            }
+        }
+
+        Button("Back Up Now") {
+            Task {
+                await viewModel.createBackup(for: cfg,
+                                             isAutomatic: false,
+                                             slotId: slot.id,
+                                             slotName: slot.name)
+            }
+        }
+        .buttonStyle(MSCSecondaryButtonStyle())
+        .disabled(viewModel.isServerRunning)
+        .frame(maxWidth: .infinity)
     }
 }
 
-// MARK: - Duplicate Slot Sheet
+// MARK: - Import ZIP Sheet
+
+var importZIPSheetView: some View {
+    VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+        Text("Import ZIP as New World Slot")
+            .font(.system(size: 16, weight: .bold))
+
+        Text("Selected: \(URL(fileURLWithPath: importZIPPath).lastPathComponent)")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+
+        VStack(alignment: .leading, spacing: 4) {
+            Text("SLOT NAME")
+                .font(.system(size: 9.5, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(MSC.Colors.tertiary)
+            TextField("Slot name", text: $importSlotName)
+                .textFieldStyle(.roundedBorder)
+        }
+
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                importZIPPath = ""
+                importSlotName = ""
+                showImportZIPSheet = false
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+
+            Button("Import") {
+                let zipURL = URL(fileURLWithPath: importZIPPath)
+                let name = importSlotName.trimmingCharacters(in: .whitespacesAndNewlines)
+                Task {
+                    let ok = await viewModel.importZIPAsSlot(zipURL: zipURL, name: name)
+                    if ok {
+                        importZIPPath = ""
+                        importSlotName = ""
+                    }
+                }
+                showImportZIPSheet = false
+            }
+            .buttonStyle(MSCPrimaryButtonStyle())
+            .disabled(importSlotName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+    .padding(MSC.Spacing.xl)
+    .frame(minWidth: 380)
+}
+
+// MARK: - Replace World Sheet
+
+func replaceWorldSheetView(cfg: ConfigServer) -> some View {
+    VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+        Text("Replace World")
+            .font(.system(size: 16, weight: .bold))
+
+        Text("Swap in a different world. A backup of the current world is taken first.")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        SECallout(
+            icon: "exclamationmark.triangle.fill",
+            color: .orange,
+            text: "Stop the server before replacing the world. A safety backup is created automatically."
+        )
+
+        HStack(spacing: MSC.Spacing.sm) {
+            TextField(replaceSourcePath.isEmpty ? "No source selected" : replaceSourcePath,
+                      text: .constant(replaceSourcePath.isEmpty ? "" : URL(fileURLWithPath: replaceSourcePath).lastPathComponent))
+                .textFieldStyle(.roundedBorder)
+                .disabled(true)
+                .foregroundStyle(.secondary)
+
+            Menu("Choose…") {
+                Button("World Folder…") { browseForReplaceSourceFolder() }
+                Button("Backup ZIP…")   { browseForReplaceSourceZip() }
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+        }
+        .contextualHelpAnchor(worldReplaceAnchorID)
+
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                replaceSourcePath = ""
+                showReplaceWorldSheet = false
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+
+            Button("Apply Replace") {
+                let trimmed = replaceSourcePath.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                let sourceURL = URL(fileURLWithPath: trimmed)
+                let isZip = sourceURL.pathExtension.lowercased() == "zip"
+                let worldSource: AppViewModel.WorldSource = isZip
+                    ? .backupZip(sourceURL)
+                    : .existingFolder(sourceURL)
+                let currentProps = ServerPropertiesManager.readProperties(serverDir: cfg.serverDir)
+                let currentLevel = (currentProps["level-name"]?
+                    .trimmingCharacters(in: .whitespacesAndNewlines))
+                    .flatMap { $0.isEmpty ? nil : $0 } ?? "world"
+                Task {
+                    let ok = await viewModel.replaceWorld(
+                        for: cfg,
+                        newLevelName: currentLevel,
+                        worldSource: worldSource,
+                        backupFirst: true
+                    )
+                    if ok { replaceSourcePath = "" }
+                }
+                showReplaceWorldSheet = false
+            }
+            .buttonStyle(MSCPrimaryButtonStyle())
+            .disabled(replaceSourcePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+    .padding(MSC.Spacing.xl)
+    .frame(minWidth: 440)
+}
+
+// MARK: - Duplicate Slot Sheet (kept from original)
 
 var duplicateSlotSheetView: some View {
     VStack(alignment: .leading, spacing: MSC.Spacing.md) {
@@ -513,4 +566,149 @@ var duplicateSlotSheetView: some View {
     .frame(minWidth: 380)
 }
 
+}
+
+// MARK: - World Slot List Card
+
+struct WorldSlotListCard: View {
+    let slot: WorldSlot
+    let isActive: Bool
+    let isSelected: Bool
+
+    private var borderColor: Color {
+        if isActive && isSelected { return MSC.Colors.success }
+        if isActive   { return MSC.Colors.success.opacity(0.7) }
+        if isSelected { return Color.accentColor }
+        return Color.clear
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Thumbnail
+            ZStack(alignment: .topTrailing) {
+                LinearGradient(
+                    colors: [
+                        Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
+                        Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 58)
+                .overlay(
+                    VStack(spacing: 0) {
+                        Rectangle()
+                            .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                            .frame(height: 6)
+                        Rectangle()
+                            .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                            .frame(height: 12)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                )
+
+                if isActive {
+                    HStack(spacing: 3) {
+                        Circle().fill(Color.white).frame(width: 4, height: 4)
+                        Text("Active")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(MSC.Colors.success.opacity(0.85)))
+                    .padding(5)
+                }
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(slot.name)
+                    .font(.system(size: 11, weight: .bold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                HStack(spacing: 4) {
+                    if let bytes = slot.zipSizeBytes {
+                        Text(WorldSlotManager.formatBytes(bytes))
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.secondary)
+                        Text("·")
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(shortDate(slot.createdAt))
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, MSC.Spacing.sm)
+            .padding(.vertical, MSC.Spacing.xs + 1)
+            .background(MSC.Colors.tierContent)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                .stroke(isSelected || isActive ? borderColor : MSC.Colors.contentBorder,
+                        lineWidth: isSelected || isActive ? 1.5 : 1)
+        )
+        .shadow(
+            color: isActive ? MSC.Colors.success.opacity(0.10) : .black.opacity(isSelected ? 0.07 : 0.03),
+            radius: isActive ? 4 : 2, y: 1
+        )
+        .contentShape(Rectangle())
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateStyle = .short; f.timeStyle = .none
+        return f.string(from: date)
+    }
+}
+
+// MARK: - World Action Button
+
+struct WorldActionButton: View {
+    enum Style { case primary, normal }
+
+    let icon: String
+    let label: String
+    let style: Style
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: MSC.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                Text(label)
+                    .font(.system(size: 10.5))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .padding(.horizontal, MSC.Spacing.sm)
+            .padding(.vertical, MSC.Spacing.sm)
+            .background {
+                let bg: Color = style == .primary
+                    ? Color.accentColor.opacity(isEnabled ? 0.12 : 0.05)
+                    : MSC.Colors.tierContent
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous).fill(bg)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(style == .primary
+                            ? Color.accentColor.opacity(isEnabled ? 0.35 : 0.12)
+                            : MSC.Colors.contentBorder,
+                            lineWidth: 1)
+            )
+            .foregroundStyle(style == .primary
+                             ? (isEnabled ? Color.accentColor : Color.secondary)
+                             : (isEnabled ? Color.primary : Color.secondary))
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1.0 : 0.55)
+    }
 }

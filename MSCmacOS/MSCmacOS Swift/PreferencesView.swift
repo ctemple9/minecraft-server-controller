@@ -253,6 +253,10 @@ struct PreferencesView: View {
                                                 // ── JAVA ────────────────────────────────────────────────
                                                 javaCard
 
+                        // ── PROCESS MANAGEMENT ──────────────────────────────────
+                        PreferencesProcessCleanupSection()
+                            .environmentObject(viewModel)
+
                         // ── REMOTE ACCESS ───────────────────────────────────────
                         remoteAccessCard
 

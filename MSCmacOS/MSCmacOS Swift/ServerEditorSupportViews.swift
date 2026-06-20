@@ -220,3 +220,59 @@ struct SEStatusChip: View {
     }
 }
 
+// MARK: - Grouped-Row Design System (Option C redesign)
+
+/// Small floating section header above a SEBlock.
+struct SEBlockHeader: View {
+    let title: String
+    var body: some View {
+        Text(title.uppercased())
+            .font(.system(size: 9.5, weight: .semibold))
+            .tracking(0.6)
+            .foregroundStyle(MSC.Colors.tertiary)
+            .padding(.leading, 2)
+    }
+}
+
+/// Rounded block container. Place SERow views (and Divider separators) inside.
+struct SEBlock<Content: View>: View {
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(spacing: 0) {
+            content
+        }
+        .background(MSC.Colors.tierContent)
+        .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                .stroke(MSC.Colors.contentBorder, lineWidth: 1)
+        )
+    }
+}
+
+/// A single settings row inside a SEBlock: label left, optional hint below, control right.
+struct SERow<Content: View>: View {
+    let label: String
+    var hint: String? = nil
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(alignment: hint != nil ? .top : .center, spacing: MSC.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.primary)
+                if let hint {
+                    Text(hint)
+                        .font(.system(size: 10))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                }
+            }
+            Spacer()
+            content
+        }
+        .padding(.horizontal, MSC.Spacing.md - 1)
+        .padding(.vertical, MSC.Spacing.sm)
+    }
+}
+
