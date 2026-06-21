@@ -61,11 +61,24 @@ enum BedrockNBTReader {
         let foodLevel: Int
         if case .int(let v) = dict["FoodLevel"] { foodLevel = Int(v) } else { foodLevel = 20 }
 
+        // Bedrock stores XP as PlayerLevel (int) + PlayerLevelProgress (float 0–1).
+        // Java's XpLevel / XpTotal keys do not exist in Bedrock NBT.
         let xpLevel: Int
-        if case .int(let v) = dict["XpLevel"] { xpLevel = Int(v) } else { xpLevel = 0 }
+        if case .int(let v) = dict["PlayerLevel"] { xpLevel = Int(v) } else { xpLevel = 0 }
 
-        let xpTotal: Int
-        if case .int(let v) = dict["XpTotal"] { xpTotal = Int(v) } else { xpTotal = 0 }
+        let xpTotal: Int = {
+            let level = xpLevel
+            // XP needed to reach `level` from 0, using standard Minecraft formula.
+            let base: Int
+            if level < 17        { base = level * level + 6 * level }
+            else if level < 32   { base = Int(2.5 * Double(level * level)) - 40 * level + 360 }
+            else                 { base = Int(4.5 * Double(level * level)) - 162 * level + 2220 }
+            // Add fractional progress within the current level.
+            let progress: Float
+            if case .float(let v) = dict["PlayerLevelProgress"] { progress = v } else { progress = 0 }
+            let xpPerLevel = level < 16 ? (2 * level + 7) : level < 31 ? (5 * level - 38) : (9 * level - 158)
+            return base + Int(Float(xpPerLevel) * progress)
+        }()
 
         let gameMode: Int
         if case .int(let v) = dict["playerGameType"] { gameMode = Int(v) } else { gameMode = 0 }

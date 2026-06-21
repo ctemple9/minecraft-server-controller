@@ -100,8 +100,6 @@
 		9A5632CF2F65AD6D00FB8246 /* GitHubReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632232F65AD6C00FB8246 /* GitHubReleaseChecker.swift */; };
 		9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632162F65AD6C00FB8246 /* DetailsPacksTabView.swift */; };
 		9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */; };
-		9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */; };
-		9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */; };
 		9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */; };
 		9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */; };
 		9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */; };
@@ -151,6 +149,8 @@
 		9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */; };
 		9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */; };
 		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
+		9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */; };
+		9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */; };
 		9A563310AABBCCDD00FB8246 /* PluginSourceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */; };
 		9A563312AABBCCDD00FB8246 /* PluginNameParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */; };
 		9A563314AABBCCDD00FB8246 /* HangarAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A563315AABBCCDD00FB8246 /* HangarAPI.swift */; };
@@ -197,6 +197,7 @@
 		BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000AAA000000000000AA /* BedrockNBTReader.swift */; };
 		BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */; };
 		BB02000CAA000000000000CB /* BedrockNameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000CAA000000000000CA /* BedrockNameCache.swift */; };
+		BB02000DAA000000000000DC /* BedrockHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000DAA000000000000DA /* BedrockHiddenProfiles.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -232,7 +233,6 @@
 		9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Templates.swift"; sourceTree = "<group>"; };
 		9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldManagement.swift"; sourceTree = "<group>"; };
 		9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldSlots.swift"; sourceTree = "<group>"; };
-		9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldRepair.swift"; sourceTree = "<group>"; };
 		9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+XboxBroadcastDownload.swift"; sourceTree = "<group>"; };
 		9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModelModels.swift; sourceTree = "<group>"; };
 		9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -340,10 +340,11 @@
 		9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideView.swift; sourceTree = "<group>"; };
 		9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotManager.swift; sourceTree = "<group>"; };
 		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
-		9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldRepairView.swift; sourceTree = "<group>"; };
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
 		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
+		9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldRepairView.swift; sourceTree = "<group>"; };
+		9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldRepair.swift"; sourceTree = "<group>"; };
 		9A563311AABBCCDD00FB8246 /* PluginSourceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginSourceDetector.swift; sourceTree = "<group>"; };
 		9A563313AABBCCDD00FB8246 /* PluginNameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginNameParser.swift; sourceTree = "<group>"; };
 		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
@@ -392,6 +393,7 @@
 		BB01000AAA000000000000AA /* BedrockNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNBTReader.swift; sourceTree = "<group>"; };
 		BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPlayerDataManager.swift; sourceTree = "<group>"; };
 		BB01000CAA000000000000CA /* BedrockNameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNameCache.swift; sourceTree = "<group>"; };
+		BB01000DAA000000000000DA /* BedrockHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockHiddenProfiles.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -461,6 +463,7 @@
 				BB01000AAA000000000000AA /* BedrockNBTReader.swift */,
 				BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */,
 				BB01000CAA000000000000CA /* BedrockNameCache.swift */,
+				BB01000DAA000000000000DA /* BedrockHiddenProfiles.swift */,
 				9A5631FF2F65AD6C00FB8246 /* BackupsView.swift */,
 				9A5632002F65AD6C00FB8246 /* BannerView.swift */,
 				9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */,
@@ -886,6 +889,7 @@
 				BB02000AAA000000000000AB /* BedrockNBTReader.swift in Sources */,
 				BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */,
 				BB02000CAA000000000000CB /* BedrockNameCache.swift in Sources */,
+				BB02000DAA000000000000DC /* BedrockHiddenProfiles.swift in Sources */,
 				9A5633022F65AD6D00FB8246 /* DetailsPerformanceTabContent.swift in Sources */,
 				9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */,
 				9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */,
@@ -1040,7 +1044,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.6;
+				MARKETING_VERSION = 1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1079,7 +1083,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.6;
+				MARKETING_VERSION = 1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

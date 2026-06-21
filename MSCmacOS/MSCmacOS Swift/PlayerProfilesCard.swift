@@ -14,6 +14,7 @@ struct PlayerProfilesCard: View {
     @State private var searchText: String = ""
     @State private var sortOrder: ProfileSortOrder = .lastSeen
     @State private var selectedProfile: PlayerProfile? = nil
+    @State private var showHidden: Bool = false
 
     enum ProfileSortOrder: String, CaseIterable, Identifiable {
         case lastSeen = "Last Seen"
@@ -21,9 +22,22 @@ struct PlayerProfilesCard: View {
         var id: String { rawValue }
     }
 
+    private var hiddenXUIDs: Set<String> { viewModel.hiddenBedrockXUIDs }
+    private var hiddenCount: Int { viewModel.playerProfiles.filter { isHidden($0) }.count }
+
+    private func isHidden(_ p: PlayerProfile) -> Bool {
+        guard let x = p.xuid else { return false }
+        return hiddenXUIDs.contains(x)
+    }
+
     private var filteredProfiles: [PlayerProfile] {
         let trim = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         var result = viewModel.playerProfiles
+
+        // Exclude hidden profiles unless the user has toggled "show hidden"
+        if !showHidden {
+            result = result.filter { !isHidden($0) }
+        }
 
         // Filter — search username, display name, UUID, and XUID (Bedrock)
         if !trim.isEmpty {
@@ -62,9 +76,24 @@ struct PlayerProfilesCard: View {
                         .scaleEffect(0.6)
                         .padding(.trailing, MSC.Spacing.xs)
                 } else {
-                    Text("\(viewModel.playerProfiles.count) profiles")
+                    let visible = viewModel.playerProfiles.count - hiddenCount
+                    Text("\(visible) profiles")
                         .font(MSC.Typography.caption)
                         .foregroundStyle(MSC.Colors.caption)
+                }
+
+                if hiddenCount > 0 {
+                    Button {
+                        showHidden.toggle()
+                    } label: {
+                        Label(
+                            showHidden ? "Hide hidden" : "Show \(hiddenCount) hidden",
+                            systemImage: showHidden ? "eye.slash" : "eye"
+                        )
+                        .font(.system(size: 10))
+                        .foregroundStyle(showHidden ? MSC.Colors.accent : MSC.Colors.tertiary)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 // Sort picker
@@ -132,6 +161,7 @@ struct PlayerProfilesCard: View {
                             profile: profile,
                             selectedProfile: $selectedProfile
                         )
+                        .opacity(isHidden(profile) ? 0.4 : 1.0)
                     }
                 }
             }

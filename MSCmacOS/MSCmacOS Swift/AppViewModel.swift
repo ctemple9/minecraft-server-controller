@@ -160,6 +160,7 @@ final class AppViewModel: ObservableObject {
 
     @Published var playerProfiles: [PlayerProfile] = []
     @Published var isLoadingProfiles: Bool = false
+    @Published var hiddenBedrockXUIDs: Set<String> = []
 
     // MARK: - Templates
 

@@ -20,6 +20,8 @@ struct PlayerProfileDetailSheet: View {
     @State private var showCopyPicker: Bool = false
     @State private var showMigrateManualInput: Bool = false
     @State private var manualUUIDInput: String = ""
+    @State private var showIdentifyInput: Bool = false
+    @State private var identifyInput: String = ""
     @State private var actionError: String? = nil
     @State private var actionSuccess: String? = nil
 
@@ -359,9 +361,111 @@ struct PlayerProfileDetailSheet: View {
             sectionHeader("Data Management", icon: "gearshape.fill")
 
             if localProfile.isBedrockPlayer {
+                identifyPlayerView
+                hidePlayerView
                 bedrockActionsNote
             } else {
                 javaActionsButtons
+            }
+        }
+    }
+
+    // MARK: - Identify / change gamertag (all Bedrock profiles)
+
+    private var isUnknownBedrock: Bool {
+        localProfile.username == nil || localProfile.username == "Unknown Player"
+    }
+
+    private var identifyPlayerView: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+            if showIdentifyInput {
+                HStack(spacing: MSC.Spacing.sm) {
+                    TextField("Gamertag", text: $identifyInput)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12))
+                        .onSubmit { saveIdentity() }
+
+                    Button("Save") { saveIdentity() }
+                        .controlSize(.small)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(identifyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Button("Cancel") {
+                        showIdentifyInput = false
+                        identifyInput = ""
+                    }
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.vertical, MSC.Spacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .fill(MSC.Colors.subtleBackground)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                        .stroke(MSC.Colors.contentBorder, lineWidth: 1)
+                )
+            } else if isUnknownBedrock {
+                actionButton(
+                    label: "Identify Player",
+                    subtitle: "Assign a Bedrock gamertag to this profile",
+                    icon: "person.badge.plus",
+                    color: MSC.Colors.accent
+                ) {
+                    showIdentifyInput = true
+                }
+            } else {
+                actionButton(
+                    label: "Change Gamertag",
+                    subtitle: "Update the gamertag assigned to this profile",
+                    icon: "pencil",
+                    color: .secondary
+                ) {
+                    identifyInput = localProfile.username ?? ""
+                    showIdentifyInput = true
+                }
+            }
+        }
+    }
+
+    private func saveIdentity() {
+        let trimmed = identifyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        viewModel.identifyBedrockPlayer(profile: localProfile, gamertag: trimmed)
+        showIdentifyInput = false
+        identifyInput = ""
+        flash(success: "Identified as \(trimmed). Skin will load shortly.")
+    }
+
+    // MARK: - Hide / unhide (Bedrock)
+
+    private var isHidden: Bool {
+        guard let xuid = localProfile.xuid else { return false }
+        return viewModel.hiddenBedrockXUIDs.contains(xuid)
+    }
+
+    private var hidePlayerView: some View {
+        Group {
+            if isHidden {
+                actionButton(
+                    label: "Unhide Profile",
+                    subtitle: "Show this profile in the player list again",
+                    icon: "eye",
+                    color: MSC.Colors.accent
+                ) {
+                    viewModel.unhideBedrockPlayer(profile: localProfile)
+                }
+            } else {
+                actionButton(
+                    label: "Hide Profile",
+                    subtitle: "Remove from list without deleting data",
+                    icon: "eye.slash",
+                    color: .secondary
+                ) {
+                    viewModel.hideBedrockPlayer(profile: localProfile)
+                    dismiss()
+                }
             }
         }
     }

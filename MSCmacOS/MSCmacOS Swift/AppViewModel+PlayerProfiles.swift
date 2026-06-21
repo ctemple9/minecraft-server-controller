@@ -103,18 +103,26 @@ extension AppViewModel {
                 return
             }
 
-            // 2. Apply the local name cache — fills in names that were seen during
-            //    previous sessions (persisted across server log rollovers).
+            // 2. Load hidden XUIDs so the card view can filter them out.
+            let hidden = BedrockHiddenProfiles.load(serverDir: serverDir)
+            await MainActor.run { self.hiddenBedrockXUIDs = hidden }
+
+            // 3. Apply the local name cache — fills in names that were seen during
+            //    previous sessions (persisted across server log rollovers), and names
+            //    that were manually assigned via "Identify Player".
+            //    Also overwrites "Unknown Player" so manual assignments and auto-resolved
+            //    server_* entries (Realm/Floodgate) are applied on load.
             let nameCache = BedrockNameCache.load(serverDir: serverDir)
             for i in profiles.indices {
-                guard let xuid = profiles[i].xuid,
-                      profiles[i].username == nil else { continue }
+                guard let xuid = profiles[i].xuid else { continue }
+                let isUnresolved = profiles[i].username == nil || profiles[i].username == "Unknown Player"
+                guard isUnresolved else { continue }
                 if let cachedName = nameCache[xuid] {
                     profiles[i].username = cachedName
                 }
             }
 
-            // 3. Mark online players
+            // 4. Mark online players
             for i in profiles.indices {
                 if let xuid = profiles[i].xuid {
                     profiles[i].isOnline = onlineXUIDs.contains(xuid)
@@ -136,6 +144,38 @@ extension AppViewModel {
             }
             if !unresolved.isEmpty {
                 await self.resolveBedrockXUIDs(unresolved, serverDir: serverDir)
+            }
+
+            // 5. Resolve Floodgate UUIDs for server_* profiles that already have a name
+            //    (from cache or manual identification). Without this, their imageIdentifier
+            //    falls back to the Realm UUID which mc-heads.net can't render.
+            let namedServerProfiles = profiles.filter {
+                guard let x = $0.xuid else { return false }
+                let hasName = $0.username != nil && $0.username != "Unknown Player"
+                return x.hasPrefix("server_") && hasName
+            }
+            if !namedServerProfiles.isEmpty {
+                await self.resolveServerProfileFloodgateUUIDs(namedServerProfiles)
+            }
+        }
+    }
+
+    private func resolveServerProfileFloodgateUUIDs(_ profiles: [PlayerProfile]) async {
+        await withTaskGroup(of: (String, UUID?).self) { group in
+            for profile in profiles {
+                guard let gamertag = profile.username else { continue }
+                let profileId = profile.id
+                group.addTask {
+                    (profileId, await BedrockPlayerDataManager.resolveFloodgateUUID(gamertag: gamertag))
+                }
+            }
+            for await (profileId, floodgateUUID) in group {
+                guard let uuid = floodgateUUID else { continue }
+                await MainActor.run {
+                    if let i = self.playerProfiles.firstIndex(where: { $0.id == profileId }) {
+                        self.playerProfiles[i].floodgateUUID = uuid
+                    }
+                }
             }
         }
     }
@@ -174,6 +214,51 @@ extension AppViewModel {
 
             if batchStart + batchSize < profiles.count {
                 try? await Task.sleep(nanoseconds: 250_000_000) // 250ms between batches
+            }
+        }
+    }
+
+    // MARK: - Bedrock hide / unhide
+
+    func hideBedrockPlayer(profile: PlayerProfile) {
+        guard let xuid = profile.xuid,
+              let cfg = selectedConfigServerForProfiles() else { return }
+        BedrockHiddenProfiles.hide(xuid: xuid, serverDir: cfg.serverDir)
+        hiddenBedrockXUIDs.insert(xuid)
+    }
+
+    func unhideBedrockPlayer(profile: PlayerProfile) {
+        guard let xuid = profile.xuid,
+              let cfg = selectedConfigServerForProfiles() else { return }
+        BedrockHiddenProfiles.unhide(xuid: xuid, serverDir: cfg.serverDir)
+        hiddenBedrockXUIDs.remove(xuid)
+    }
+
+    // MARK: - Bedrock manual identification
+
+    /// Assigns a gamertag to an unresolved Bedrock profile (e.g. a Realm player whose
+    /// name was never logged). Persists to bedrock_names.json so the assignment survives
+    /// restarts and is overwritten automatically if the player connects and the correct
+    /// name comes in via the console log.
+    func identifyBedrockPlayer(profile: PlayerProfile, gamertag: String) {
+        let trimmed = gamertag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let xuid = profile.xuid,
+              let cfg = selectedConfigServerForProfiles() else { return }
+
+        BedrockNameCache.record(xuid: xuid, name: trimmed, serverDir: cfg.serverDir)
+
+        if let i = playerProfiles.firstIndex(where: { $0.id == profile.id }) {
+            playerProfiles[i].username = trimmed
+        }
+
+        Task {
+            if let floodgateUUID = await BedrockPlayerDataManager.resolveFloodgateUUID(gamertag: trimmed) {
+                await MainActor.run {
+                    if let i = self.playerProfiles.firstIndex(where: { $0.id == profile.id }) {
+                        self.playerProfiles[i].floodgateUUID = floodgateUUID
+                    }
+                }
             }
         }
     }

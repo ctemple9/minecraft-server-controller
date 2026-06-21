@@ -43,12 +43,19 @@ enum BedrockPlayerDataManager {
             // Parse NBT immediately so stats/inventory are available without a second load.
             let (stats, inventory) = BedrockNBTReader.readAll(from: nbtData)
 
+            // Skip phantom entries — LevelDB retains stub records from failed or very brief
+            // connections that never completed a save. Real players always have at least health
+            // and position in their NBT; if both stats and inventory are absent, the entry
+            // has no useful data and should not appear in the profile list.
+            if stats == nil && inventory.isEmpty { continue }
+
             // Classify the XUID to set meaningful defaults before async resolution.
             //
             //   "local"              → Local Player (split-screen / single-player)
             //   all digits           → Xbox Live XUID; resolved later via GeyserMC
-            //   "server_<UUID>"      → Geyser/Floodgate bridge player; UUID may be
-            //                          the Floodgate UUID usable directly on mc-heads.net
+            //   "server_<UUID>"      → Realm-format player UUID (also used by Floodgate);
+            //                          UUID may be usable with mc-heads.net once a gamertag
+            //                          is known via the name cache or manual identification
             //   UUID-format (dashes) → Offline/LAN player; no gamertag available
             let isNumericXUID   = xuid.allSatisfy { $0.isNumber }
             let isServerXUID    = xuid.hasPrefix("server_")
@@ -75,7 +82,7 @@ enum BedrockPlayerDataManager {
             case _ where isNumericXUID:
                 initialUsername = nil               // Will be resolved via GeyserMC
             default: // isServerXUID
-                initialUsername = "Unknown Player"  // Geyser/Floodgate bridge player; no API lookup available
+                initialUsername = "Unknown Player"  // Realm/Floodgate player; resolved via name cache or manual identification
             }
 
             var profile = PlayerProfile(
@@ -119,7 +126,9 @@ enum BedrockPlayerDataManager {
     static func resolveFloodgateUUID(gamertag: String) async -> UUID? {
         let dotted = gamertag.hasPrefix(".") ? gamertag : ".\(gamertag)"
         let encoded = dotted.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? dotted
-        guard let url = URL(string: "https://api.geysermc.org/v2/utils/uuid/bedrock_or_java/\(encoded)") else {
+        // The GeyserMC endpoint requires `prefix=.` as a query param to identify the
+        // name as a Bedrock gamertag; without it the API returns 400.
+        guard let url = URL(string: "https://api.geysermc.org/v2/utils/uuid/bedrock_or_java/\(encoded)?prefix=.") else {
             return nil
         }
         var request = URLRequest(url: url)
