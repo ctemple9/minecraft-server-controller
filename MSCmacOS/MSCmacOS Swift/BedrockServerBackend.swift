@@ -350,12 +350,12 @@ final class BedrockServerBackend: ServerBackend {
                 }
 
                 // Pin to a specific BDS version if configured.
-                // The itzg image reads BEDROCK_SERVER_VERSION at container start.
+                // The itzg image reads VERSION at container start.
                 // nil, empty, or "LATEST" means use the image default (latest stable).
                 if let version = config.bedrockVersion,
                    !version.isEmpty,
                    version.uppercased() != "LATEST" {
-                    runArgs.append(contentsOf: ["-e", "BEDROCK_SERVER_VERSION=\(version)"])
+                    runArgs.append(contentsOf: ["-e", "VERSION=\(version)"])
                 }
 
                 runArgs.append(image)

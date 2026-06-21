@@ -65,6 +65,7 @@ struct ServerEditorView: View {
     // World tab — sheet presentation
     @State var showImportZIPSheet: Bool = false
     @State var showReplaceWorldSheet: Bool = false
+    @State var showRepairWorldSheet: Bool = false
 
     // World tab — P6 slot admin
     @State var selectedSlotForEditor: WorldSlot? = nil

@@ -52,12 +52,6 @@ extension AppViewModel {
         let trimmedLevel = newLevelName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedLevel.isEmpty else { return false }
 
-        guard configServer.serverType == .java else {
-            logAppMessage("[World] Replace World is currently supported for Java servers only.")
-            showError(title: "World Replace Failed", message: "Replace World is currently available for Java servers only.")
-            return false
-        }
-
         if isServerRunning, configManager.config.activeServerId == configServer.id {
             logAppMessage("[World] Refusing to replace world for \(configServer.displayName) while server is running.")
             return false
@@ -90,17 +84,25 @@ extension AppViewModel {
             }
         }
 
+        let isBedrock = configServer.isBedrock
         let serverDirURL = URL(fileURLWithPath: configServer.serverDir, isDirectory: true)
+        // Bedrock worlds live inside worlds/<name>/; Java worlds live directly at the server root.
+        let worldBaseURL = isBedrock
+            ? serverDirURL.appendingPathComponent("worlds", isDirectory: true)
+            : serverDirURL
         let currentProps = ServerPropertiesManager.readProperties(serverDir: serverDirURL.path)
         let currentLevel = (currentProps["level-name"]?.trimmingCharacters(in: .whitespacesAndNewlines))
-            .flatMap { $0.isEmpty ? nil : $0 } ?? "world"
+            .flatMap { $0.isEmpty ? nil : $0 } ?? (isBedrock ? "Bedrock level" : "world")
 
-        let worldFolderNames = [currentLevel, "\(currentLevel)_nether", "\(currentLevel)_the_end"]
+        let worldFolderNames: [String] = isBedrock
+            ? [currentLevel]
+            : [currentLevel, "\(currentLevel)_nether", "\(currentLevel)_the_end"]
+
         let removed: Bool = await Task.detached(priority: .userInitiated) {
             let fm = FileManager.default
             do {
                 for name in worldFolderNames {
-                    let url = serverDirURL.appendingPathComponent(name, isDirectory: true)
+                    let url = worldBaseURL.appendingPathComponent(name, isDirectory: true)
                     if fm.fileExists(atPath: url.path) { try fm.removeItem(at: url) }
                 }
                 return true
@@ -119,13 +121,15 @@ extension AppViewModel {
         case .fresh:
             logAppMessage("[World] Cleared world for \(configServer.displayName). A new world will generate on next start.")
         case .backupZip(let zipURL):
+            // For Bedrock, backup ZIPs contain worlds/<name>/... so extracting to serverDirURL lands correctly.
             let ok = await unzipWorldBackup(zipURL, into: serverDirURL, logPrefix: "[World]")
             guard ok else {
                 showError(title: "World Replace Failed", message: "The selected backup ZIP could not be extracted. Restore from the safety backup if needed.")
                 return false
             }
         case .existingFolder(let sourceURL):
-            let ok = await copyExistingWorldFolder(from: sourceURL, toServerDir: serverDirURL, levelName: trimmedLevel, logPrefix: "[World]")
+            // For Bedrock, copy into worlds/<newLevelName>/; for Java, copy into <serverDir>/<newLevelName>/.
+            let ok = await copyExistingWorldFolder(from: sourceURL, toServerDir: worldBaseURL, levelName: trimmedLevel, logPrefix: "[World]")
             guard ok else {
                 showError(title: "World Replace Failed", message: "The selected world folder could not be copied. Restore from the safety backup if needed.")
                 return false
@@ -153,22 +157,21 @@ extension AppViewModel {
         let trimmed = newLevelName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
-        guard configServer.serverType == .java else {
-            logAppMessage("[World] Rename World is currently supported for Java servers only.")
-            showError(title: "World Rename Failed", message: "Rename World is currently available for Java servers only.")
-            return false
-        }
-
         if let activeId = configManager.config.activeServerId,
            activeId == configServer.id, isServerRunning {
             logAppMessage("[World] Refusing to rename world for \(configServer.displayName) while server is running.")
             return false
         }
 
+        let isBedrock = configServer.isBedrock
         let serverDirURL = URL(fileURLWithPath: configServer.serverDir, isDirectory: true)
+        // Bedrock worlds live inside worlds/<name>/; Java worlds live at the server root.
+        let worldBaseURL = isBedrock
+            ? serverDirURL.appendingPathComponent("worlds", isDirectory: true)
+            : serverDirURL
         var props = ServerPropertiesManager.readProperties(serverDir: serverDirURL.path)
         let oldLevel = (props["level-name"]?.trimmingCharacters(in: .whitespacesAndNewlines))
-            .flatMap { $0.isEmpty ? nil : $0 } ?? "world"
+            .flatMap { $0.isEmpty ? nil : $0 } ?? (isBedrock ? "Bedrock level" : "world")
         if trimmed == oldLevel { return true }
 
         if backupFirst {
@@ -181,9 +184,11 @@ extension AppViewModel {
         }
 
         let fm = FileManager.default
-        let targetNames = [trimmed, "\(trimmed)_nether", "\(trimmed)_the_end"]
+        let targetNames: [String] = isBedrock
+            ? [trimmed]
+            : [trimmed, "\(trimmed)_nether", "\(trimmed)_the_end"]
         for name in targetNames {
-            let url = serverDirURL.appendingPathComponent(name, isDirectory: true)
+            let url = worldBaseURL.appendingPathComponent(name, isDirectory: true)
             var isDir: ObjCBool = false
             if fm.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
                 logAppMessage("[World] Cannot rename: folder \(name) already exists in \(configServer.displayName).")
@@ -192,11 +197,9 @@ extension AppViewModel {
             }
         }
 
-        let mapping: [(old: String, new: String)] = [
-            (oldLevel, trimmed),
-            ("\(oldLevel)_nether", "\(trimmed)_nether"),
-            ("\(oldLevel)_the_end", "\(trimmed)_the_end")
-        ]
+        let mapping: [(old: String, new: String)] = isBedrock
+            ? [(oldLevel, trimmed)]
+            : [(oldLevel, trimmed), ("\(oldLevel)_nether", "\(trimmed)_nether"), ("\(oldLevel)_the_end", "\(trimmed)_the_end")]
         var movedPairs: [(oldURL: URL, newURL: URL)] = []
 
         func rollbackMovedFolders() {
@@ -213,8 +216,8 @@ extension AppViewModel {
         }
 
         for (oldName, newName) in mapping {
-            let oldURL = serverDirURL.appendingPathComponent(oldName, isDirectory: true)
-            let newURL = serverDirURL.appendingPathComponent(newName, isDirectory: true)
+            let oldURL = worldBaseURL.appendingPathComponent(oldName, isDirectory: true)
+            let newURL = worldBaseURL.appendingPathComponent(newName, isDirectory: true)
             var isDir: ObjCBool = false
             if fm.fileExists(atPath: oldURL.path, isDirectory: &isDir), isDir.boolValue {
                 do {

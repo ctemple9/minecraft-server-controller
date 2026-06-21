@@ -42,6 +42,11 @@ var worldTab: some View {
             viewModel.createNewWorldSlot(name: name, seed: seed)
         }
     }
+    // Repair World sheet (Bedrock only)
+    .sheet(isPresented: $showRepairWorldSheet) {
+        WorldRepairView(isPresented: $showRepairWorldSheet)
+            .environmentObject(viewModel)
+    }
     // Slot Duplicate sheet
     .sheet(isPresented: $showDuplicateSlotSheet) { duplicateSlotSheetView }
     .contextualHelpAnchor(worldSlotsAnchorID)
@@ -335,6 +340,13 @@ func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
                 showReplaceWorldSheet = true
             }
             .contextualHelpAnchor(worldReplaceAnchorID)
+
+            if cfg.isBedrock {
+                WorldActionButton(icon: "wrench.and.screwdriver", label: "Repair World…", style: .normal) {
+                    showRepairWorldSheet = true
+                }
+                .disabled(viewModel.isServerRunning)
+            }
         }
 
         Button(role: .destructive) {

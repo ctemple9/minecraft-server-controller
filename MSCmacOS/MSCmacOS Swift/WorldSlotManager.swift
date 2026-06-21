@@ -680,6 +680,32 @@ enum WorldSlotManager {
                 logLine("[WorldSlots] unzip failed (status \(unzipStatus)) for slot \"\(slot.name)\".")
                 return false
             }
+
+            // If the world files landed at worlds/ directly instead of worlds/<level-name>/,
+            // move them into the correct subdirectory. This happens when old zips were
+            // created before the world was reorganised into a named subfolder.
+            if let levelName = storedLevelName, !levelName.isEmpty {
+                let worldsDir = serverDirURL.appendingPathComponent("worlds", isDirectory: true)
+                let expectedDir = worldsDir.appendingPathComponent(levelName, isDirectory: true)
+                let looseDbDir  = worldsDir.appendingPathComponent("db", isDirectory: true)
+                let fm = FileManager.default
+
+                if !fm.fileExists(atPath: expectedDir.path),
+                   fm.fileExists(atPath: looseDbDir.path) {
+                    logLine("[WorldSlots] World files found at worlds/ root — moving into worlds/\(levelName)/...")
+                    do {
+                        try fm.createDirectory(at: expectedDir, withIntermediateDirectories: true)
+                        let entries = try fm.contentsOfDirectory(at: worldsDir, includingPropertiesForKeys: nil)
+                        for entry in entries where entry.lastPathComponent != levelName {
+                            let dest = expectedDir.appendingPathComponent(entry.lastPathComponent)
+                            try fm.moveItem(at: entry, to: dest)
+                        }
+                        logLine("[WorldSlots] World files moved to worlds/\(levelName)/.")
+                    } catch {
+                        logLine("[WorldSlots] Warning: could not relocate world files: \(error.localizedDescription)")
+                    }
+                }
+            }
         } else {
             let levelName = sanitizedWorldLevelName(freshLevelName ?? slot.name, fallback: currentLevelName(for: configServer))
             guard applyWorldIdentity(levelName: levelName, seed: slot.worldSeed, applySeed: true, for: configServer, logLine: logLine) else {

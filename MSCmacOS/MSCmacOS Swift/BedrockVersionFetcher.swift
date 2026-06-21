@@ -34,10 +34,9 @@ struct BedrockVersionEntry: Identifiable, Hashable {
 /// fetch reflects any new versions.
 enum BedrockVersionFetcher {
 
-    // The itzg project publishes a versions.json on their GitHub repo.
-    // If that ever moves, update this URL — the fallback list covers the gap.
+    // kittizz/bedrock-server-downloads is the canonical version list used by itzg at runtime.
     private static let manifestURL = URL(string:
-        "https://raw.githubusercontent.com/itzg/minecraft-bedrock-server/master/versions.json"
+        "https://raw.githubusercontent.com/kittizz/bedrock-server-downloads/refs/heads/main/bedrock-server-downloads.json"
     )!
 
     private static var cachedVersions: [BedrockVersionEntry]? = nil
@@ -70,22 +69,29 @@ enum BedrockVersionFetcher {
 
     // MARK: - Parsing
 
-    // versions.json may be an array of strings or a dict keyed by version string.
+    // Handles the kittizz bedrock-server-downloads.json format:
+    // { "release": { "1.26.31": { "linux": { "url": "...bedrock-server-1.26.31.1.zip" } } } }
+    // Full version strings are extracted from the download URLs because that is what
+    // itzg's VERSION env var expects (e.g. "1.26.30.5", not "1.26.30").
     private static func parseManifest(_ data: Data) throws -> [BedrockVersionEntry] {
+        if let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let release = root["release"] as? [String: Any] {
+            let versions: [String] = release.values.compactMap { entry in
+                guard let platforms = entry as? [String: Any],
+                      let linux = platforms["linux"] as? [String: Any],
+                      let url = linux["url"] as? String,
+                      let match = url.range(of: #"bedrock-server-([0-9.]+)\.zip"#, options: .regularExpression) else { return nil }
+                let full = String(url[match])
+                // Extract just the version portion from "bedrock-server-X.Y.Z.W.zip"
+                return full
+                    .replacingOccurrences(of: "bedrock-server-", with: "")
+                    .replacingOccurrences(of: ".zip", with: "")
+            }
+            if !versions.isEmpty { return collate(versions) }
+        }
+        // Legacy: plain array of strings.
         if let array = try? JSONDecoder().decode([String].self, from: data) {
             return collate(array)
-        }
-        // Dict form — we only need the keys, not the values.
-        if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            return collate(Array(dict.keys))
-        }
-        // Newline-separated plain text fallback.
-        if let text = String(data: data, encoding: .utf8) {
-            let lines = text
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty && $0.first?.isNumber == true }
-            if !lines.isEmpty { return collate(lines) }
         }
         throw URLError(.cannotParseResponse)
     }
@@ -115,16 +121,16 @@ enum BedrockVersionFetcher {
 
     private static func staticFallback() -> [BedrockVersionEntry] {
         let known = [
-            "1.21.50.07",
-            "1.21.44.01",
-            "1.21.41.01",
-            "1.21.40.03",
-            "1.21.30.03",
-            "1.21.23.01",
-            "1.21.20.03",
-            "1.21.3.01",
-            "1.21.2.02",
-            "1.21.1.03",
+            "1.26.31.1",
+            "1.26.30.5",
+            "1.26.23.1",
+            "1.26.21.1",
+            "1.26.20.5",
+            "1.26.14.1",
+            "1.26.13.1",
+            "1.26.12.2",
+            "1.21.132.1",
+            "1.21.131.1",
         ]
         return [BedrockVersionEntry(version: "LATEST")] + known.map { BedrockVersionEntry(version: $0) }
     }

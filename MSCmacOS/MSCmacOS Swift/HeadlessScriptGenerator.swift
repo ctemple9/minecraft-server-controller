@@ -172,7 +172,7 @@ enum HeadlessScriptGenerator {
         if let version = config.bedrockVersion,
            !version.isEmpty,
            version.uppercased() != "LATEST" {
-            runArgs.append(("-e", "BEDROCK_SERVER_VERSION=\(version)"))
+            runArgs.append(("-e", "VERSION=\(version)"))
         }
 
         // Build readable multi-line docker run command

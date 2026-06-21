@@ -16,7 +16,7 @@
 		9A5632752F65AD6D00FB8246 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631E12F65AD6C00FB8246 /* AboutView.swift */; };
 		9A5632762F65AD6D00FB8246 /* YAMLHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */; };
 		9A5632772F65AD6D00FB8246 /* AppViewModel+Templates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */; };
-		9A5632782F65AD6D00FB8246 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632442F65AD6C00FB8246 /* PreferencesView.swift */; };
+		9A5632782F65AD6D00FB8246 /* MSCSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632442F65AD6C00FB8246 /* MSCSettingsView.swift */; };
 		9A5632792F65AD6D00FB8246 /* ServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632522F65AD6C00FB8246 /* ServerBackend.swift */; };
 		9A56327B2F65AD6D00FB8246 /* ServerProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632612F65AD6C00FB8246 /* ServerProcessManager.swift */; };
 		9A56327C2F65AD6D00FB8246 /* RemoteAPIServerDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324C2F65AD6C00FB8246 /* RemoteAPIServerDTOs.swift */; };
@@ -100,6 +100,8 @@
 		9A5632CF2F65AD6D00FB8246 /* GitHubReleaseChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632232F65AD6C00FB8246 /* GitHubReleaseChecker.swift */; };
 		9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632162F65AD6C00FB8246 /* DetailsPacksTabView.swift */; };
 		9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */; };
+		9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */; };
+		9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */; };
 		9A5632D22F65AD6D00FB8246 /* RemoteAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324B2F65AD6C00FB8246 /* RemoteAPIServer.swift */; };
 		9A5632D32F65AD6D00FB8246 /* DetailsPerformanceCharts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632172F65AD6C00FB8246 /* DetailsPerformanceCharts.swift */; };
 		9A5632D52F65AD6D00FB8246 /* RenameWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */; };
@@ -157,7 +159,7 @@
 		9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */; };
 		9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */; };
 		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
-		9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */; };
+		9A56A0012F65AD6D00FB8246 /* MSCSettingsSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */; };
 		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
 		9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */; };
 		9A8A015C2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A015A2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift */; };
@@ -230,6 +232,7 @@
 		9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Templates.swift"; sourceTree = "<group>"; };
 		9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldManagement.swift"; sourceTree = "<group>"; };
 		9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldSlots.swift"; sourceTree = "<group>"; };
+		9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldRepair.swift"; sourceTree = "<group>"; };
 		9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+XboxBroadcastDownload.swift"; sourceTree = "<group>"; };
 		9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModelModels.swift; sourceTree = "<group>"; };
 		9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -294,7 +297,7 @@
 		9A5632402F65AD6C00FB8246 /* PlayerAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerAvatarView.swift; sourceTree = "<group>"; };
 		9A5632412F65AD6C00FB8246 /* PlayerSessionTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSessionTimelineView.swift; sourceTree = "<group>"; };
 		9A5632422F65AD6C00FB8246 /* PluginDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginDownloader.swift; sourceTree = "<group>"; };
-		9A5632442F65AD6C00FB8246 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		9A5632442F65AD6C00FB8246 /* MSCSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCSettingsView.swift; sourceTree = "<group>"; };
 		9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrerequisitesView.swift; sourceTree = "<group>"; };
 		9A5632462F65AD6C00FB8246 /* MSCStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCStyles.swift; sourceTree = "<group>"; };
 		9A5632472F65AD6C00FB8246 /* MSCTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCTabBar.swift; sourceTree = "<group>"; };
@@ -337,6 +340,7 @@
 		9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideView.swift; sourceTree = "<group>"; };
 		9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotManager.swift; sourceTree = "<group>"; };
 		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
+		9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldRepairView.swift; sourceTree = "<group>"; };
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
 		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
@@ -348,7 +352,7 @@
 		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
 		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
-		9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesSections.swift; sourceTree = "<group>"; };
+		9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCSettingsSections.swift; sourceTree = "<group>"; };
 		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
 		9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuidesFoundation.swift; sourceTree = "<group>"; };
 		9A8A015A2F69ECA800D62CB3 /* RouterPortForwardGuideCatalogLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuideCatalogLoader.swift; sourceTree = "<group>"; };
@@ -437,6 +441,7 @@
 				9A5631F92F65AD6C00FB8246 /* AppViewModel+Templates.swift */,
 				9A5631FA2F65AD6C00FB8246 /* AppViewModel+WorldManagement.swift */,
 				9A5631FB2F65AD6C00FB8246 /* AppViewModel+WorldSlots.swift */,
+				9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */,
 				9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */,
 				9A5631FD2F65AD6C00FB8246 /* AppViewModelModels.swift */,
 				9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */,
@@ -525,8 +530,8 @@
 				9A563315AABBCCDD00FB8246 /* HangarAPI.swift */,
 				9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */,
 				9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */,
-				9A56A0002F65AD6C00FB8246 /* PreferencesSections.swift */,
-				9A5632442F65AD6C00FB8246 /* PreferencesView.swift */,
+				9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */,
+				9A5632442F65AD6C00FB8246 /* MSCSettingsView.swift */,
 				9A5632452F65AD6C00FB8246 /* PrerequisitesView.swift */,
 				9A5632482F65AD6C00FB8246 /* QuickCommandsView.swift */,
 				9A5632492F65AD6C00FB8246 /* QuickStartView.swift */,
@@ -590,6 +595,7 @@
 				9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */,
 				9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */,
 				9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */,
+				9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */,
 				9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */,
 				9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */,
 				9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */,
@@ -698,8 +704,8 @@
 				9A5632752F65AD6D00FB8246 /* AboutView.swift in Sources */,
 				9A5632762F65AD6D00FB8246 /* YAMLHelper.swift in Sources */,
 				9A5632772F65AD6D00FB8246 /* AppViewModel+Templates.swift in Sources */,
-				9A5632782F65AD6D00FB8246 /* PreferencesView.swift in Sources */,
-				9A56A0012F65AD6D00FB8246 /* PreferencesSections.swift in Sources */,
+				9A5632782F65AD6D00FB8246 /* MSCSettingsView.swift in Sources */,
+				9A56A0012F65AD6D00FB8246 /* MSCSettingsSections.swift in Sources */,
 				9AAF27632F6A22DA00F752CA /* RouterPortForwardGuideSheet.swift in Sources */,
 				9AAF27642F6A22DA00F752CA /* RouterPortForwardGuideSheetViewModel.swift in Sources */,
 				9A5632792F65AD6D00FB8246 /* ServerBackend.swift in Sources */,
@@ -810,6 +816,8 @@
 				9A5632CF2F65AD6D00FB8246 /* GitHubReleaseChecker.swift in Sources */,
 				9A5632D02F65AD6D00FB8246 /* DetailsPacksTabView.swift in Sources */,
 				9A5632D12F65AD6D00FB8246 /* WorldSlotsView.swift in Sources */,
+				9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */,
+				9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */,
 				9AAF27702F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift in Sources */,
 				9AAF27712F6C000000000001 /* JavaProcessScanner.swift in Sources */,
 				9AAF27732F6D000000000003 /* WatchdogRunner.swift in Sources */,

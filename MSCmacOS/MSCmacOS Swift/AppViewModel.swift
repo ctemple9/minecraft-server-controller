@@ -52,6 +52,7 @@ final class AppViewModel: ObservableObject {
     @Published var isFetchingBedrockVersions: Bool = false
     @Published var bedrockVersionFetchError: String? = nil
     @Published var isUpdatingBedrockImage: Bool = false
+    @Published var isRepairingWorld: Bool = false
 
     // MARK: - Published UI state
 

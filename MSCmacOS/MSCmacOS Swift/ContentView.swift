@@ -479,7 +479,7 @@ struct ContentView: View {
 
         // Preferences
         .sheet(isPresented: preferencesBinding) {
-            PreferencesView().environmentObject(viewModel)
+            MSCSettingsView().environmentObject(viewModel)
         }
 
         // Prerequisites

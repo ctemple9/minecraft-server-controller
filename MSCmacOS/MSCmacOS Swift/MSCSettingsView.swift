@@ -1,5 +1,5 @@
 //
-//  PreferencesView.swift
+//  MSCSettingsView.swift
 //  MinecraftServerController
 //
 
@@ -12,7 +12,7 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 #endif
 
-struct PreferencesView: View {
+struct MSCSettingsView: View {
     @EnvironmentObject var viewModel: AppViewModel
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var contextualHelpManager = ContextualHelpManager.shared
@@ -63,6 +63,7 @@ struct PreferencesView: View {
     private let preferencesHeaderAnchorID = "preferences.header"
     private let appearanceCardAnchorID = "preferences.appearance"
     private let javaCardAnchorID = "preferences.java"
+    private let processManagementCardAnchorID = "preferences.processManagement"
     private let remoteAccessCardAnchorID = "preferences.remoteAccess"
     private let remoteAccessToggleAnchorID = "preferences.remoteAccess.toggle"
     private let remoteAccessURLBoxAnchorID = "preferences.remoteAccess.urlBox"
@@ -78,7 +79,7 @@ struct PreferencesView: View {
             steps: [
                 helpStep(
                     id: "preferences.page.overview",
-                    title: "Preferences is app-level setup",
+                    title: "Settings is app-level setup",
                     body: "This page controls app-wide behavior like the Java runtime, Remote Access, appearance, and utility folders. It is not the place for per-server gameplay changes.",
                     anchorID: preferencesHeaderAnchorID
                 ),
@@ -95,6 +96,12 @@ struct PreferencesView: View {
                     anchorID: javaCardAnchorID
                 ),
                 helpStep(
+                    id: "preferences.page.processManagement",
+                    title: "Process Management handles orphans and crash recovery",
+                    body: "If MSC crashes while a Java server is running, that server process keeps going. Use Scan for Orphaned Processes to find and clean them up. The Relaunch MSC on crash toggle installs a launchd watchdog so MSC automatically restarts after an unexpected quit — a normal Cmd+Q does not trigger it.",
+                    anchorID: processManagementCardAnchorID
+                ),
+                helpStep(
                     id: "preferences.page.remote",
                     title: "Remote Access is for MSCRemoteiOS pairing",
                     body: "This section controls whether the Remote API stays local to this Mac or is reachable from your iPhone over LAN or VPN. The deeper help here explains pairing links, QR, and shared access tokens.",
@@ -105,6 +112,12 @@ struct PreferencesView: View {
                     title: "Data & Folders is utility space",
                     body: "These buttons are maintenance shortcuts so you can jump straight to the app support folder or the selected server folder without digging through Finder.",
                     anchorID: dataFoldersCardAnchorID
+                ),
+                helpStep(
+                    id: "preferences.page.storage",
+                    title: "Storage shows how much disk space MSC uses",
+                    body: "The Storage card breaks down disk usage between the MSC app support folder and your servers root. Hit Refresh to recalculate. This is informational — nothing is deleted from here.",
+                    anchorID: storageCardAnchorID
                 ),
                 helpStep(
                     id: "preferences.page.save",
@@ -195,12 +208,14 @@ struct PreferencesView: View {
     private func isScrollableContextualHelpAnchor(_ anchorID: String) -> Bool {
         anchorID == appearanceCardAnchorID ||
         anchorID == javaCardAnchorID ||
+        anchorID == processManagementCardAnchorID ||
         anchorID == remoteAccessCardAnchorID ||
         anchorID == remoteAccessToggleAnchorID ||
         anchorID == remoteAccessURLBoxAnchorID ||
         anchorID == remoteAccessPreferredHostAnchorID ||
         anchorID == remoteAccessActionsAnchorID ||
-        anchorID == dataFoldersCardAnchorID
+        anchorID == dataFoldersCardAnchorID ||
+        anchorID == storageCardAnchorID
     }
 
     private func preferredScrollAnchor(for anchorID: String) -> UnitPoint {
@@ -218,7 +233,7 @@ struct PreferencesView: View {
             // ── HEADER ─────────────────────────────────────────────────────
             HStack(alignment: .top, spacing: MSC.Spacing.md) {
                 VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                    Text("Preferences")
+                    Text("Settings")
                         .font(MSC.Typography.pageTitle)
                     Text("Java runtime, remote access, and app settings.")
                         .font(MSC.Typography.caption)
@@ -233,7 +248,7 @@ struct PreferencesView: View {
                     Label("Explain this page", systemImage: "questionmark.circle")
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
-                .help("Explains the main Preferences sections and save behavior.")
+                .help("Explains the main Settings sections and save behavior.")
             }
             .padding(.horizontal, MSC.Spacing.xl)
             .padding(.top, MSC.Spacing.xl)
@@ -256,6 +271,8 @@ struct PreferencesView: View {
                         // ── PROCESS MANAGEMENT ──────────────────────────────────
                         PreferencesProcessCleanupSection()
                             .environmentObject(viewModel)
+                            .id(processManagementCardAnchorID)
+                            .contextualHelpAnchor(processManagementCardAnchorID)
 
                         // ── REMOTE ACCESS ───────────────────────────────────────
                         remoteAccessCard
@@ -477,11 +494,12 @@ struct PreferencesView: View {
             Divider()
 
             SEField(label: "Banner Color", hint: "accent color for the app header") {
-                HStack(spacing: MSC.Spacing.sm) {
+                HStack(alignment: .center, spacing: MSC.Spacing.md) {
                     ColorPicker("", selection: $bannerColorDraft, supportsOpacity: false)
                         .labelsHidden()
                         .frame(width: 28, height: 28)
-                    Text("  Changes apply when you press Save.")
+                        .offset(x: 6)
+                    Text("      Changes apply when you press Save.")
                         .font(MSC.Typography.caption)
                         .foregroundStyle(MSC.Colors.caption)
                 }
@@ -851,7 +869,7 @@ struct MSCDestructiveInlineButtonStyle: ButtonStyle {
 }
 
 #Preview {
-    PreferencesView()
+    MSCSettingsView()
         .environmentObject(AppViewModel())
 }
 

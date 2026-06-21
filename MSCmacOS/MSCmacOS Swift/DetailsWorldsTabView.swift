@@ -15,6 +15,7 @@ struct DetailsWorldsTabView: View {
     // World slot selection and actions
     @State private var selectedSlot: WorldSlot? = nil
     @State private var showCreateWorldSheet: Bool = false
+    @State private var showRepairWorldSheet: Bool = false
     @State private var showActivateConfirm: Bool = false
     @State private var showDeleteSlotConfirm: Bool = false
     @State private var showRenameSheet: Bool = false
@@ -39,16 +40,7 @@ struct DetailsWorldsTabView: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-
-                // World Slots section
-                worldSlotsSection
-
-                // Backup section — slot-aware history for the selected world slot
-                backupsSection
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, MSC.Spacing.md)
+            mainContent
         }
         .onAppear {
             viewModel.loadWorldSlotsForSelectedServer()
@@ -70,6 +62,11 @@ struct DetailsWorldsTabView: View {
             CreateWorldSlotSheet(isPresented: $showCreateWorldSheet) { name, seed in
                 viewModel.createNewWorldSlot(name: name, seed: seed)
             }
+        }
+        // Repair world sheet
+        .sheet(isPresented: $showRepairWorldSheet) {
+            WorldRepairView(isPresented: $showRepairWorldSheet)
+                .environmentObject(viewModel)
         }
         // Rename sheet
         .sheet(isPresented: $showRenameSheet) {
@@ -149,6 +146,18 @@ struct DetailsWorldsTabView: View {
         }
     }
 
+    // MARK: - Main content
+
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            worldSlotsSection
+            backupsSection
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, MSC.Spacing.md)
+    }
+
     // MARK: - World Slots section
 
     private var worldSlotsSection: some View {
@@ -173,6 +182,17 @@ struct DetailsWorldsTabView: View {
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
                 .disabled(viewModel.isWorldSlotsLoading)
+
+                if cfgServer?.isBedrock == true {
+                    Button {
+                        showRepairWorldSheet = true
+                    } label: {
+                        Label("Repair World", systemImage: "wrench.and.screwdriver")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .disabled(serverIsRunning || viewModel.isRepairingWorld)
+                }
 
                 Button {
                     showCreateWorldSheet = true
