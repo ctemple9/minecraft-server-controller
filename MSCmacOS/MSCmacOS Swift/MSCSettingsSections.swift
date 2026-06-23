@@ -1,4 +1,5 @@
 import SwiftUI
+import Network
 
 struct PreferencesJavaSection: View {
     @Binding var javaPath: String
@@ -817,6 +818,276 @@ private struct PreferencesURLRow: View {
                 .font(MSC.Typography.monoSmall)
                 .foregroundStyle(.primary)
                 .textSelection(.enabled)
+        }
+    }
+}
+
+// MARK: - Network Ports
+
+/// One port the app or one of its servers uses.
+struct AppPortInfo: Identifiable {
+    let id = UUID()
+    let service: String        // e.g. "Game (Java)"
+    let serverName: String?    // nil = app-wide
+    let port: Int
+    let isUDP: Bool
+    let needsForwarding: Bool
+    let note: String
+    var isListening: Bool? = nil   // nil = probing in progress
+
+    var proto: String { isUDP ? "UDP" : "TCP" }
+}
+
+/// Best-effort loopback probe to see if something is currently listening on a port.
+/// TCP is reliable; UDP is ambiguous (stateless) and treated optimistically, matching
+/// the health-card behaviour.
+enum PortProbe {
+    static func isListening(port: Int, isUDP: Bool) async -> Bool {
+        guard port > 0, port <= 65535, let nwPort = NWEndpoint.Port(rawValue: UInt16(port)) else { return false }
+        return await withCheckedContinuation { continuation in
+            let connection = NWConnection(host: NWEndpoint.Host("127.0.0.1"), port: nwPort, using: isUDP ? .udp : .tcp)
+            let lock = NSLock()
+            var resolved = false
+            func finish(_ value: Bool) {
+                lock.lock(); defer { lock.unlock() }
+                guard !resolved else { return }
+                resolved = true
+                connection.cancel()
+                continuation.resume(returning: value)
+            }
+            let timeout = DispatchWorkItem { finish(isUDP) } // UDP: assume listening if no error by timeout
+            DispatchQueue.global().asyncAfter(deadline: .now() + (isUDP ? 1.0 : 1.5), execute: timeout)
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    timeout.cancel(); finish(true)
+                case .failed, .waiting:
+                    timeout.cancel(); finish(false)
+                default:
+                    break
+                }
+            }
+            connection.start(queue: .global())
+        }
+    }
+}
+
+extension AppViewModel {
+    /// Gather every inbound port the app and its configured servers use.
+    /// Per-server game/Geyser rows that share a port+protocol are merged into one row
+    /// listing all the affected servers. App-wide ports appear once.
+    func collectPortInfos() -> [AppPortInfo] {
+        var infos: [AppPortInfo] = []
+        let cfg = configManager.config
+
+        // App-wide: Remote API control channel (iOS app).
+        infos.append(AppPortInfo(
+            service: "Remote API (iOS app)",
+            serverName: nil,
+            port: cfg.remoteAPIPort,
+            isUDP: false,
+            needsForwarding: false,
+            note: cfg.remoteAPIExposeOnLAN ? "Exposed on LAN" : "Local only"
+        ))
+
+        // App-wide: resource pack host — one HTTP host serves whichever Java pack is active,
+        // so list it a single time rather than per server.
+        if let javaServer = cfg.servers.first(where: { $0.isJava }) {
+            infos.append(AppPortInfo(
+                service: "Resource pack host",
+                serverName: nil,
+                port: javaServer.resourcePackHostPort,
+                isUDP: false,
+                needsForwarding: true,
+                note: "Active only while hosting a Java pack"
+            ))
+        }
+
+        // Per-server game / Geyser ports, merged by (service, port, protocol) so that
+        // multiple servers sharing a port collapse into one row, while different services
+        // on the same port (e.g. a Bedrock game and Geyser both on 19000/UDP) stay distinct.
+        struct PortKey: Hashable { let service: String; let port: Int; let isUDP: Bool }
+        var groups: [PortKey: [String]] = [:]
+        var order: [PortKey] = []
+        func add(service: String, name: String, port: Int, isUDP: Bool) {
+            let key = PortKey(service: service, port: port, isUDP: isUDP)
+            if groups[key] == nil {
+                groups[key] = [name]
+                order.append(key)
+            } else {
+                groups[key]?.append(name)
+            }
+        }
+
+        for server in cfg.servers {
+            if server.isBedrock {
+                add(service: "Game (Bedrock)", name: server.displayName,
+                    port: effectiveBedrockPort(for: server) ?? 19132, isUDP: true)
+            } else {
+                add(service: "Game (Java)", name: server.displayName,
+                    port: loadServerPropertiesModel(for: server).serverPort, isUDP: false)
+                if ResourcePackManager.isGeyserInstalled(serverDir: server.serverDir),
+                   let geyserPort = GeyserConfigManager.readConfig(serverDir: server.serverDir)?.port {
+                    add(service: "Geyser (Bedrock)", name: server.displayName,
+                        port: geyserPort, isUDP: true)
+                }
+            }
+        }
+
+        for key in order {
+            guard let names = groups[key] else { continue }
+            infos.append(AppPortInfo(
+                service: key.service,
+                serverName: names.joined(separator: ", "),
+                port: key.port,
+                isUDP: key.isUDP,
+                needsForwarding: true,
+                note: ""
+            ))
+        }
+        return infos
+    }
+}
+
+struct PreferencesPortsSection: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let anchorID: String
+    let onOpenPortForwardGuide: () -> Void
+
+    @State private var ports: [AppPortInfo] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            HStack {
+                Label("Network Ports", systemImage: "network")
+                    .font(MSC.Typography.cardTitle)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    reload()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .help("Re-check ports")
+            }
+
+            Divider()
+
+            if ports.isEmpty {
+                Text("No ports to display.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, MSC.Spacing.sm)
+            } else {
+                // Column header
+                HStack(spacing: MSC.Spacing.sm) {
+                    Text("Service").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Port").frame(width: 64, alignment: .trailing)
+                    Text("Proto").frame(width: 48, alignment: .center)
+                    Text("Status").frame(width: 90, alignment: .leading)
+                }
+                .font(MSC.Typography.captionBold)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, MSC.Spacing.xs)
+
+                Divider()
+
+                ForEach(ports) { port in
+                    portRow(port)
+                    Divider().opacity(0.4)
+                }
+            }
+
+            Text("Game, Geyser, and resource-pack-host ports must be forwarded in your router for players outside your network. The Remote API port is for the iOS app only and is not for players.")
+                .font(.caption2)
+                .foregroundStyle(MSC.Colors.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, MSC.Spacing.xs)
+
+            Button {
+                onOpenPortForwardGuide()
+            } label: {
+                Label("Port Forwarding Guide", systemImage: "wifi.router")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .padding(.top, MSC.Spacing.xs)
+        }
+        .pscCard()
+        .id(anchorID)
+        .contextualHelpAnchor(anchorID)
+        .onAppear { reload() }
+    }
+
+    @ViewBuilder
+    private func portRow(_ port: AppPortInfo) -> some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(port.service)
+                    .font(MSC.Typography.caption)
+                if let serverName = port.serverName {
+                    Text(serverName)
+                        .font(.caption2)
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .lineLimit(1)
+                } else {
+                    Text(port.note)
+                        .font(.caption2)
+                        .foregroundStyle(MSC.Colors.tertiary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(verbatim: String(port.port))
+                .font(MSC.Typography.monoSmall)
+                .frame(width: 64, alignment: .trailing)
+
+            Text(port.proto)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: 48, alignment: .center)
+
+            HStack(spacing: 5) {
+                statusDot(port.isListening)
+                Text(statusLabel(port.isListening))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 90, alignment: .leading)
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func statusDot(_ listening: Bool?) -> some View {
+        switch listening {
+        case .some(true):  Circle().fill(MSC.Colors.success).frame(width: 7, height: 7)
+        case .some(false): Circle().fill(MSC.Colors.tertiary).frame(width: 7, height: 7)
+        case .none:        ProgressView().scaleEffect(0.45).frame(width: 7, height: 7)
+        }
+    }
+
+    private func statusLabel(_ listening: Bool?) -> String {
+        switch listening {
+        case .some(true):  return "Listening"
+        case .some(false): return "Not in use"
+        case .none:        return "Checking…"
+        }
+    }
+
+    private func reload() {
+        let collected = viewModel.collectPortInfos()
+        ports = collected
+        for port in collected {
+            Task {
+                let listening = await PortProbe.isListening(port: port.port, isUDP: port.isUDP)
+                await MainActor.run {
+                    if let idx = ports.firstIndex(where: { $0.id == port.id }) {
+                        ports[idx].isListening = listening
+                    }
+                }
+            }
         }
     }
 }

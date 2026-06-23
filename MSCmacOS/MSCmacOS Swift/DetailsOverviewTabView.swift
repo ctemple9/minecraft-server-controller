@@ -34,6 +34,7 @@ struct DetailsOverviewTabView: View {
     @Binding var messageText: String
 
     var onOpenComponentsTab: (() -> Void)? = nil
+    var onOpenWorldsTab: (() -> Void)? = nil
 
     private var isBedrock: Bool {
         guard let s = viewModel.selectedServer else { return false }
@@ -61,31 +62,58 @@ struct DetailsOverviewTabView: View {
                     )
                 }
 
-                // Zone 3: Connection + live stats — fixed minimum height forces both cards equal
-                                HStack(alignment: .top, spacing: MSC.Spacing.md) {
-                    OverviewConnectionCardView(
-                        showAddresses: $showAddresses,
-                        hasSavedDuckDNS: $hasSavedDuckDNS,
-                        isEditingDuckDNS: $isEditingDuckDNS,
-                        copyToPasteboard: { DetailsClipboardAndHUDHelpers.copyToPasteboard($0) },
-                        showHUDMessage: {
-                            DetailsClipboardAndHUDHelpers.showHUDMessage(
-                                $0,
-                                copiedHUDText: $copiedHUDText,
-                                showCopiedHUD: $showCopiedHUD
-                            )
-                        }
-                    )
+                // Zone 3: Status — connection + live stats (equal-height row)
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    MSCOverline("Status")
 
-                                    OverviewJavaLivePanel(isBedrock: isBedrock)
-                                                    }
-                                                    .frame(minHeight: 200)
+                    HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                        OverviewConnectionCardView(
+                            showAddresses: $showAddresses,
+                            hasSavedDuckDNS: $hasSavedDuckDNS,
+                            isEditingDuckDNS: $isEditingDuckDNS,
+                            copyToPasteboard: { DetailsClipboardAndHUDHelpers.copyToPasteboard($0) },
+                            showHUDMessage: {
+                                DetailsClipboardAndHUDHelpers.showHUDMessage(
+                                    $0,
+                                    copiedHUDText: $copiedHUDText,
+                                    showCopiedHUD: $showCopiedHUD
+                                )
+                            }
+                        )
+
+                        OverviewJavaLivePanel(isBedrock: isBedrock)
+                    }
+                    .frame(minHeight: 200)
+                }
 
                                                     // Zone 4: Server Health grid
                 HealthCardsGridView(onOpenComponentsTab: onOpenComponentsTab)
 
-                // Zone 5: Notes
-                ServerNotesSectionView(serverNotesText: $serverNotesText)
+                // Zone 5: Activity — players + active world + chat
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    MSCOverline("Activity")
+
+                    HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                        OverviewPlayersStripView(
+                            messageTarget: $messageTarget,
+                            messageText: $messageText
+                        )
+                        .frame(maxWidth: .infinity)
+
+                        OverviewActiveWorldCardView(onOpenWorldsTab: onOpenWorldsTab)
+                            .frame(width: 250)
+
+                        OverviewChatCardView(console: viewModel.console)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(minHeight: 230)
+                }
+
+                // Zone 6: Notes
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    MSCOverline("Notes")
+                    ServerNotesSectionView(serverNotesText: $serverNotesText)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 8)

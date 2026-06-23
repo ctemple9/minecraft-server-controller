@@ -17,6 +17,15 @@ extension AppViewModel {
         return props["level-name"] ?? "world"
     }
 
+    /// Friendly name of the world the player data is read from: the active world slot's
+    /// display name when available, otherwise the raw level-name.
+    private func activeWorldDisplayName(for cfg: ConfigServer) -> String {
+        if let active = WorldSlotManager.activeSlot(forServerDir: cfg.serverDir) {
+            return active.name
+        }
+        return currentLevelName(for: cfg)
+    }
+
     private func selectedConfigServerForProfiles() -> ConfigServer? {
         guard let server = selectedServer else { return nil }
         return configServer(for: server)
@@ -29,8 +38,10 @@ extension AppViewModel {
         guard let cfg = selectedConfigServerForProfiles() else {
             playerProfiles = []
             isLoadingProfiles = false
+            activePlayerDataWorldName = nil
             return
         }
+        activePlayerDataWorldName = activeWorldDisplayName(for: cfg)
         if cfg.isJava {
             loadPlayerProfiles(for: cfg)
         } else {
@@ -103,9 +114,14 @@ extension AppViewModel {
                 return
             }
 
-            // 2. Load hidden XUIDs so the card view can filter them out.
+            // 2. Load hidden players (Bedrock XUIDs + Java UUIDs) so the card
+            //    views can filter them out.
             let hidden = BedrockHiddenProfiles.load(serverDir: serverDir)
-            await MainActor.run { self.hiddenBedrockXUIDs = hidden }
+            let hiddenJava = JavaHiddenProfiles.load(serverDir: serverDir)
+            await MainActor.run {
+                self.hiddenBedrockXUIDs = hidden
+                self.hiddenJavaUUIDs = hiddenJava
+            }
 
             // 3. Apply the local name cache — fills in names that were seen during
             //    previous sessions (persisted across server log rollovers), and names
@@ -232,6 +248,43 @@ extension AppViewModel {
               let cfg = selectedConfigServerForProfiles() else { return }
         BedrockHiddenProfiles.unhide(xuid: xuid, serverDir: cfg.serverDir)
         hiddenBedrockXUIDs.remove(xuid)
+    }
+
+    // MARK: - Java hide / unhide
+
+    func hideJavaPlayer(profile: PlayerProfile) {
+        guard !profile.isBedrockPlayer,
+              let cfg = selectedConfigServerForProfiles() else { return }
+        let uuid = profile.uuid.uuidString
+        JavaHiddenProfiles.hide(uuid: uuid, serverDir: cfg.serverDir)
+        hiddenJavaUUIDs.insert(uuid)
+    }
+
+    func unhideJavaPlayer(profile: PlayerProfile) {
+        guard let cfg = selectedConfigServerForProfiles() else { return }
+        let uuid = profile.uuid.uuidString
+        JavaHiddenProfiles.unhide(uuid: uuid, serverDir: cfg.serverDir)
+        hiddenJavaUUIDs.remove(uuid)
+    }
+
+    // MARK: - Unified hide helpers (Java + Bedrock)
+
+    /// True when a profile is hidden by either the Bedrock (XUID) or Java (UUID) list.
+    func isProfileHidden(_ profile: PlayerProfile) -> Bool {
+        if let xuid = profile.xuid { return hiddenBedrockXUIDs.contains(xuid) }
+        return hiddenJavaUUIDs.contains(profile.uuid.uuidString)
+    }
+
+    /// Hides a profile using the correct list for its edition.
+    func hideProfile(_ profile: PlayerProfile) {
+        if profile.isBedrockPlayer { hideBedrockPlayer(profile: profile) }
+        else { hideJavaPlayer(profile: profile) }
+    }
+
+    /// Unhides a profile using the correct list for its edition.
+    func unhideProfile(_ profile: PlayerProfile) {
+        if profile.isBedrockPlayer { unhideBedrockPlayer(profile: profile) }
+        else { unhideJavaPlayer(profile: profile) }
     }
 
     // MARK: - Bedrock manual identification

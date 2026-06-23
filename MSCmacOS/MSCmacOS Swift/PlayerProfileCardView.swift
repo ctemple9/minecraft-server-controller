@@ -21,10 +21,12 @@ struct PlayerHeadView: View {
     var body: some View {
         Group {
             if let img = image {
+                // Fill (not fit) so non-square / padded avatars still render at a
+                // uniform size — fit can letterbox an odd image and make it look smaller.
                 Image(nsImage: img)
                     .interpolation(.none)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFill()
                     .frame(width: size, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: size * 0.15, style: .continuous))
             } else {
@@ -51,7 +53,63 @@ struct PlayerHeadView: View {
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let img = NSImage(data: data) else { return }
-        await MainActor.run { image = img }
+        // Some avatars (notably Bedrock/Floodgate skins) come back with a
+        // transparent border, which makes the face look small once it fills the
+        // tile. Trim the transparent margin so every head renders edge-to-edge.
+        let finalImage = PlayerImageTrim.croppedToOpaqueBounds(img) ?? img
+        await MainActor.run { image = finalImage }
+    }
+}
+
+// MARK: - Transparent-margin trimming
+
+enum PlayerImageTrim {
+    /// Crops fully/near-transparent margins off an avatar so its visible content
+    /// fills the frame. Returns nil (caller falls back to the original) when the
+    /// image has no usable alpha or is already tight.
+    static func croppedToOpaqueBounds(_ image: NSImage) -> NSImage? {
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let cg = bitmap.cgImage else { return nil }
+
+        let alpha = cg.alphaInfo
+        let alphaLast  = (alpha == .last || alpha == .premultipliedLast)
+        let alphaFirst = (alpha == .first || alpha == .premultipliedFirst)
+        guard alphaLast || alphaFirst else { return nil }  // no alpha → already opaque
+
+        let w = cg.width, h = cg.height
+        guard w > 0, h > 0,
+              let pixelData = cg.dataProvider?.data,
+              let ptr = CFDataGetBytePtr(pixelData) else { return nil }
+
+        let bpp = cg.bitsPerPixel / 8
+        let stride = cg.bytesPerRow
+        let threshold: UInt8 = 12
+
+        var minX = w, minY = h, maxX = -1, maxY = -1
+        for y in 0..<h {
+            let row = y * stride
+            for x in 0..<w {
+                let idx = row + x * bpp
+                let a = alphaFirst ? ptr[idx] : ptr[idx + bpp - 1]
+                if a > threshold {
+                    if x < minX { minX = x }
+                    if x > maxX { maxX = x }
+                    if y < minY { minY = y }
+                    if y > maxY { maxY = y }
+                }
+            }
+        }
+
+        guard maxX >= minX, maxY >= minY else { return nil }
+        let cropW = maxX - minX + 1
+        let cropH = maxY - minY + 1
+        // Already effectively tight — keep the original.
+        if cropW >= w - 2, cropH >= h - 2 { return nil }
+
+        let rect = CGRect(x: minX, y: minY, width: cropW, height: cropH)
+        guard let cropped = cg.cropping(to: rect) else { return nil }
+        return NSImage(cgImage: cropped, size: NSSize(width: cropW, height: cropH))
     }
 }
 

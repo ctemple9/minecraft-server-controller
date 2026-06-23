@@ -18,6 +18,7 @@
 // stopped. We write it directly; BDS regenerates on next start.
 
 import Foundation
+import CryptoKit
 
 // MARK: - Model
 
@@ -29,12 +30,13 @@ struct InstalledResourcePack: Identifiable, Hashable {
     let fileURL: URL         // absolute path to the file
     let fileSizeBytes: Int64 // raw bytes, 0 if unknown
     let packType: PackType
-    let isRequired: Bool     // Java only: whether the server forces it (resource-pack-sha1 set)
+    let isRequired: Bool     // Java only: whether the server forces it (require-resource-pack=true)
+    var isActive: Bool = false  // Java: set in server.properties · Geyser: present in active packs/ folder
 
     enum PackType {
         case javaZip        // .zip in resource-packs/
-        case bedrockMcpack  // .mcpack in resource_packs/
-        case bedrockFolder  // extracted folder in resource_packs/
+        case bedrockMcpack  // .mcpack in resource_packs/ (BDS) or Geyser packs/
+        case bedrockFolder  // extracted folder
     }
 
     var fileSizeDisplay: String {
@@ -86,8 +88,8 @@ enum ResourcePackManager {
         let props = ServerPropertiesManager.readProperties(serverDir: serverDir)
         let activePack = props["resource-pack"]?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let hasSHA1 = !(props["resource-pack-sha1"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
+        let requireFlag = (props["require-resource-pack"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "") == "true"
 
         do {
             let contents = try fm.contentsOfDirectory(
@@ -102,7 +104,9 @@ enum ResourcePackManager {
                     let attrs = try? url.resourceValues(forKeys: [.fileSizeKey])
                     let size = Int64(attrs?.fileSize ?? 0)
                     let name = url.deletingPathExtension().lastPathComponent
-                    let isRequired = hasSHA1 && activePack.contains(url.lastPathComponent)
+                    // Active if the configured URL/path ends in this file name.
+                    let isActive = !activePack.isEmpty && activePack.contains(url.lastPathComponent)
+                    let isRequired = isActive && requireFlag
 
                     return InstalledResourcePack(
                         id: url.lastPathComponent,
@@ -111,7 +115,8 @@ enum ResourcePackManager {
                         fileURL: url,
                         fileSizeBytes: size,
                         packType: .javaZip,
-                        isRequired: isRequired
+                        isRequired: isRequired,
+                        isActive: isActive
                     )
                 }
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -285,6 +290,7 @@ enum ResourcePackManager {
             if existing.contains(pack.fileName) {
                 props["resource-pack"] = ""
                 props["resource-pack-sha1"] = ""
+                props["require-resource-pack"] = "false"
                 try ServerPropertiesManager.writeProperties(props, to: serverDir)
             }
         } else {
@@ -294,17 +300,145 @@ enum ResourcePackManager {
 
     // MARK: - Java: set active pack in server.properties
 
-    /// Write the resource-pack field in server.properties for a Java server.
-    /// Pass nil to clear the active pack.
-    static func setJavaActivePack(_ pack: InstalledResourcePack?, serverDir: String) throws {
+    /// Point server.properties at a hosted resource pack so Java clients download it on join.
+    /// - url:     the URL the *client* fetches (e.g. http://host:port/pack.zip). Required to activate.
+    /// - sha1:    hex SHA1 of the zip; clients verify and cache against it. Recommended.
+    /// - require: when true, players who decline are disconnected (require-resource-pack=true).
+    /// Pass `url: nil` to clear the active pack.
+    static func setJavaActivePack(url: String?, sha1: String?, require: Bool, serverDir: String) throws {
         var props = ServerPropertiesManager.readProperties(serverDir: serverDir)
-        if let pack = pack {
-            props["resource-pack"] = "resource-packs/\(pack.fileName)"
+        if let url = url, !url.isEmpty {
+            props["resource-pack"] = url
+            props["resource-pack-sha1"] = sha1 ?? ""
+            props["require-resource-pack"] = require ? "true" : "false"
         } else {
             props["resource-pack"] = ""
             props["resource-pack-sha1"] = ""
+            props["require-resource-pack"] = "false"
         }
         try ServerPropertiesManager.writeProperties(props, to: serverDir)
+    }
+
+    /// Compute the hex-encoded SHA1 of a file (used for resource-pack-sha1).
+    static func sha1Hex(of fileURL: URL) -> String? {
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        let digest = Insecure.SHA1.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    // MARK: - Geyser (Bedrock packs for Bedrock players on a Java server)
+    //
+    // Geyser sends Bedrock-format packs from plugins/Geyser-Spigot/packs/ to every
+    // connecting Bedrock client (including players who join via XboxBroadcast). These
+    // are delivered in-band over the Bedrock connection — no URL or port forwarding.
+    // We toggle a pack off by moving it into packs-disabled/ (our own convention) so
+    // Geyser stops loading it.
+
+    static func geyserPluginDirectory(serverDir: String) -> URL {
+        URL(fileURLWithPath: serverDir, isDirectory: true)
+            .appendingPathComponent("plugins/Geyser-Spigot", isDirectory: true)
+    }
+
+    static func geyserPacksDirectory(serverDir: String) -> URL {
+        geyserPluginDirectory(serverDir: serverDir)
+            .appendingPathComponent("packs", isDirectory: true)
+    }
+
+    static func geyserDisabledPacksDirectory(serverDir: String) -> URL {
+        geyserPluginDirectory(serverDir: serverDir)
+            .appendingPathComponent("packs-disabled", isDirectory: true)
+    }
+
+    /// True if Geyser-Spigot appears to be installed for this server.
+    static func isGeyserInstalled(serverDir: String) -> Bool {
+        FileManager.default.fileExists(atPath: geyserPluginDirectory(serverDir: serverDir).path)
+    }
+
+    /// List Bedrock packs known to Geyser — both enabled (packs/) and disabled (packs-disabled/).
+    static func listGeyserPacks(serverDir: String) -> [InstalledResourcePack] {
+        let fm = FileManager.default
+        func read(_ dir: URL, enabled: Bool) -> [InstalledResourcePack] {
+            guard fm.fileExists(atPath: dir.path),
+                  let contents = try? fm.contentsOfDirectory(
+                      at: dir,
+                      includingPropertiesForKeys: [.fileSizeKey, .isDirectoryKey],
+                      options: [.skipsHiddenFiles]
+                  ) else { return [] }
+
+            return contents.compactMap { url in
+                let attrs = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
+                let isDir = attrs?.isDirectory ?? false
+                let ext = url.pathExtension.lowercased()
+                guard isDir || ext == "mcpack" || ext == "zip" else { return nil }
+                let size = isDir ? directorySizeInBytes(at: url) : Int64(attrs?.fileSize ?? 0)
+                return InstalledResourcePack(
+                    id: "geyser:\(url.lastPathComponent)",
+                    name: url.deletingPathExtension().lastPathComponent,
+                    fileName: url.lastPathComponent,
+                    fileURL: url,
+                    fileSizeBytes: size,
+                    packType: isDir ? .bedrockFolder : .bedrockMcpack,
+                    isRequired: false,
+                    isActive: enabled
+                )
+            }
+        }
+        let packs = read(geyserPacksDirectory(serverDir: serverDir), enabled: true)
+            + read(geyserDisabledPacksDirectory(serverDir: serverDir), enabled: false)
+        return packs.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Copy a Bedrock pack into Geyser's packs/ folder (enabled by default).
+    @discardableResult
+    static func installGeyserPack(from sourceURL: URL, serverDir: String) throws -> InstalledResourcePack {
+        let dest = geyserPacksDirectory(serverDir: serverDir)
+        let fm = FileManager.default
+        try fm.createDirectory(at: dest, withIntermediateDirectories: true)
+
+        var targetURL = dest.appendingPathComponent(sourceURL.lastPathComponent)
+        var counter = 2
+        while fm.fileExists(atPath: targetURL.path) {
+            let base = sourceURL.deletingPathExtension().lastPathComponent
+            let ext = sourceURL.pathExtension
+            targetURL = dest.appendingPathComponent("\(base) (\(counter)).\(ext)")
+            counter += 1
+        }
+        try fm.copyItem(at: sourceURL, to: targetURL)
+
+        let attrs = try? targetURL.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
+        let isDir = attrs?.isDirectory ?? false
+        let size = isDir ? directorySizeInBytes(at: targetURL) : Int64(attrs?.fileSize ?? 0)
+        return InstalledResourcePack(
+            id: "geyser:\(targetURL.lastPathComponent)",
+            name: targetURL.deletingPathExtension().lastPathComponent,
+            fileName: targetURL.lastPathComponent,
+            fileURL: targetURL,
+            fileSizeBytes: size,
+            packType: isDir ? .bedrockFolder : .bedrockMcpack,
+            isRequired: false,
+            isActive: true
+        )
+    }
+
+    /// Enable/disable a Geyser pack by moving it between packs/ and packs-disabled/.
+    static func setGeyserPackEnabled(_ pack: InstalledResourcePack, enabled: Bool, serverDir: String) throws {
+        let fm = FileManager.default
+        let activeDir = geyserPacksDirectory(serverDir: serverDir)
+        let disabledDir = geyserDisabledPacksDirectory(serverDir: serverDir)
+        let targetDir = enabled ? activeDir : disabledDir
+        try fm.createDirectory(at: targetDir, withIntermediateDirectories: true)
+
+        let destURL = targetDir.appendingPathComponent(pack.fileName)
+        guard pack.fileURL.path != destURL.path else { return }
+        if fm.fileExists(atPath: destURL.path) {
+            try fm.removeItem(at: destURL)
+        }
+        try fm.moveItem(at: pack.fileURL, to: destURL)
+    }
+
+    /// Delete a Geyser pack from whichever folder it currently lives in.
+    static func removeGeyserPack(_ pack: InstalledResourcePack, serverDir: String) throws {
+        try FileManager.default.removeItem(at: pack.fileURL)
     }
 
     // MARK: - Allowed file types

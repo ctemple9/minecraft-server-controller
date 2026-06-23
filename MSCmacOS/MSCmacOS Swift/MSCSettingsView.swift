@@ -71,6 +71,8 @@ struct MSCSettingsView: View {
     private let remoteAccessActionsAnchorID = "preferences.remoteAccess.actions"
     private let dataFoldersCardAnchorID = "preferences.dataFolders"
     private let storageCardAnchorID = "preferences.storage"
+    private let portsCardAnchorID = "preferences.ports"
+    private let learnHelpCardAnchorID = "preferences.learnHelp"
     private let saveButtonAnchorID = "preferences.saveButton"
 
     private var preferencesPageHelpGuide: ContextualHelpGuide {
@@ -118,6 +120,18 @@ struct MSCSettingsView: View {
                     title: "Storage shows how much disk space MSC uses",
                     body: "The Storage card breaks down disk usage between the MSC app support folder and your servers root. Hit Refresh to recalculate. This is informational — nothing is deleted from here.",
                     anchorID: storageCardAnchorID
+                ),
+                helpStep(
+                    id: "preferences.page.ports",
+                    title: "Network Ports lists every port MSC uses",
+                    body: "This is a reference of all the ports the app and your servers listen on — the iOS Remote API, each server's game port, Geyser's Bedrock port, and the resource-pack host. The status dot shows what's actually listening right now. Game, Geyser, and pack-host ports must be forwarded in your router for outside players, and the Port Forwarding Guide button takes you straight there.",
+                    anchorID: portsCardAnchorID
+                ),
+                helpStep(
+                    id: "preferences.page.learnHelp",
+                    title: "Learn & Help reopens the guided tours",
+                    body: "Use this section to bring back the onboarding material at any time — the welcome guide, the prerequisites checklist, and the setup tour. Nothing here changes your configuration; it just relaunches the walkthroughs.",
+                    anchorID: learnHelpCardAnchorID
                 ),
                 helpStep(
                     id: "preferences.page.save",
@@ -215,7 +229,9 @@ struct MSCSettingsView: View {
         anchorID == remoteAccessPreferredHostAnchorID ||
         anchorID == remoteAccessActionsAnchorID ||
         anchorID == dataFoldersCardAnchorID ||
-        anchorID == storageCardAnchorID
+        anchorID == storageCardAnchorID ||
+        anchorID == portsCardAnchorID ||
+        anchorID == learnHelpCardAnchorID
     }
 
     private func preferredScrollAnchor(for anchorID: String) -> UnitPoint {
@@ -282,6 +298,9 @@ struct MSCSettingsView: View {
 
                         // ── STORAGE ─────────────────────────────────────────────
                         storageCard
+
+                        // ── NETWORK PORTS ───────────────────────────────────────
+                        portsCard
 
                         // ── LEARN & HELP ────────────────────────────────────────
                         learnHelpCard
@@ -520,6 +539,14 @@ struct MSCSettingsView: View {
         )
     }
 
+    private var portsCard: some View {
+        PreferencesPortsSection(anchorID: portsCardAnchorID) {
+            viewModel.isShowingRouterPortForwardGuide = true
+            dismiss()
+        }
+        .environmentObject(viewModel)
+    }
+
     private var learnHelpCard: some View {
         PreferencesLearnHelpSection(
             onShowWelcomeGuide: {
@@ -539,6 +566,8 @@ struct MSCSettingsView: View {
                 }
             }
         )
+        .id(learnHelpCardAnchorID)
+        .contextualHelpAnchor(learnHelpCardAnchorID)
     }
 
     // MARK: - Logic (unchanged from original)

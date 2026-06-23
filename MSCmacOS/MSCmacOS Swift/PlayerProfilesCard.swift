@@ -22,12 +22,10 @@ struct PlayerProfilesCard: View {
         var id: String { rawValue }
     }
 
-    private var hiddenXUIDs: Set<String> { viewModel.hiddenBedrockXUIDs }
     private var hiddenCount: Int { viewModel.playerProfiles.filter { isHidden($0) }.count }
 
     private func isHidden(_ p: PlayerProfile) -> Bool {
-        guard let x = p.xuid else { return false }
-        return hiddenXUIDs.contains(x)
+        viewModel.isProfileHidden(p)
     }
 
     private var filteredProfiles: [PlayerProfile] {
@@ -65,9 +63,18 @@ struct PlayerProfilesCard: View {
 
             // ── Card header ────────────────────────────────────────────────
             HStack {
-                Label("Player Data", systemImage: "person.crop.rectangle.stack")
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Player Data", systemImage: "person.crop.rectangle.stack")
+                        .font(MSC.Typography.cardTitle)
+                        .foregroundStyle(.secondary)
+
+                    if let world = viewModel.activePlayerDataWorldName, !world.isEmpty {
+                        Label("Active world: \(world)", systemImage: "globe")
+                            .font(.caption2)
+                            .foregroundStyle(MSC.Colors.tertiary)
+                            .help("Player data is read from the active world only. Switch worlds in the Worlds tab to see a different world's player data.")
+                    }
+                }
 
                 Spacer()
 

@@ -162,7 +162,7 @@ extension DetailsPerformanceTabView {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .frame(height: 120)
+        .frame(minHeight: 120, maxHeight: .infinity)
         .frame(maxWidth: .infinity)
     }
 

@@ -89,6 +89,7 @@ final class AppViewModel: ObservableObject {
             tpsHistory1m.removeAll()
             playerCountHistory.removeAll()
             clearBedrockPerformanceMetrics()
+            clearLiveWorldTime()
 
             serverStartTime = Date()
             updateUptimeDisplay()
@@ -152,6 +153,13 @@ final class AppViewModel: ObservableObject {
     @Published var installedResourcePacks: [InstalledResourcePack] = []
     @Published var isLoadingResourcePacks: Bool = false
 
+    /// Bedrock packs managed through Geyser (for Bedrock/Xbox players on a Java server).
+    @Published var geyserResourcePacks: [InstalledResourcePack] = []
+    @Published var isGeyserAvailable: Bool = false
+
+    /// HTTP server that hosts Java resource packs so connecting clients can download them.
+    let resourcePackHostServer = ResourcePackHostServer()
+
     // MARK: - Session log
 
     @Published var sessionEvents: [SessionEvent] = []
@@ -160,7 +168,37 @@ final class AppViewModel: ObservableObject {
 
     @Published var playerProfiles: [PlayerProfile] = []
     @Published var isLoadingProfiles: Bool = false
+
+    /// Friendly name of the world the currently shown player data belongs to.
+    /// Player .dat / LevelDB data is read only from the active world, so this makes that explicit.
+    @Published var activePlayerDataWorldName: String? = nil
     @Published var hiddenBedrockXUIDs: Set<String> = []
+    @Published var hiddenJavaUUIDs: Set<String> = []
+
+    /// Live in-game world time, polled from the running Java server via `/time query`.
+    /// `worldTimeOfDayTicks` is 0–23999 (time of day); `worldDayNumber` is the day count.
+    /// Both are nil when no live reading is available (use the level.dat fallback instead).
+    @Published var worldTimeOfDayTicks: Int? = nil
+    @Published var worldDayNumber: Int? = nil
+    /// True while the values above are being refreshed from a running server.
+    @Published var worldTimeIsLive: Bool = false
+    /// Transient parse state: which `/time query` responses we're expecting next,
+    /// in submission order (responses share the same "The time is X" text).
+    var pendingTimeQueryKinds: [TimeQueryKind] = []
+
+    enum TimeQueryKind { case day, daytime }
+
+    /// The player whose full-body render is featured in the Overview Players card.
+    /// Drives the live health query so we only poll the one shown character.
+    @Published var featuredPlayerName: String? = nil {
+        didSet {
+            // Drop the old player's health immediately so hearts don't linger.
+            if oldValue != featuredPlayerName { featuredPlayerHealth = nil }
+        }
+    }
+    /// Live current health (HP) of the featured player, from `/data get entity … Health`.
+    /// nil when unavailable (offline / Bedrock / not yet polled).
+    @Published var featuredPlayerHealth: Double? = nil
 
     // MARK: - Templates
 

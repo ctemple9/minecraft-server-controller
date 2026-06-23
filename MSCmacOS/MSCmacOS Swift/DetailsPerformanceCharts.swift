@@ -58,7 +58,7 @@ extension DetailsPerformanceTabView {
             }
         }
         .chartYScale(domain: 0...22)
-        .frame(height: 120)
+        .frame(minHeight: 120, maxHeight: .infinity)
     }
 
     // MARK: - Bedrock CPU chart (Docker only)
@@ -110,7 +110,7 @@ extension DetailsPerformanceTabView {
             }
         }
         .chartYScale(domain: 0...ceiling)
-        .frame(height: 120)
+        .frame(minHeight: 120, maxHeight: .infinity)
     }
 
     // MARK: - Player count chart (Java + Bedrock)
@@ -155,7 +155,7 @@ extension DetailsPerformanceTabView {
             }
         }
         .chartYScale(domain: 0...maxPlayers)
-        .frame(height: 120)
+        .frame(minHeight: 120, maxHeight: .infinity)
     }
 
 }

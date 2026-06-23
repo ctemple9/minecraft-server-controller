@@ -43,11 +43,12 @@ extension AppViewModel {
         // Read the actual port from server.properties rather than assuming 25565.
         // This means changing the port in settings immediately affects the health card.
         let javaPort = await MainActor.run { loadServerPropertiesModel(for: server).serverPort }
+        let (running, startTime, host) = await currentPortCheckContext()
         async let dir   = checkDirectory(for: server)
         async let java  = checkJavaRuntime(for: server)
         async let jar   = checkComponentJars(for: server)
         async let ram   = checkRAMAllocation(for: server)
-        async let port  = checkPortReachability(port: javaPort, isUDP: false, serverHasEverStarted: server.hasEverStarted)
+        async let port  = checkPortReachability(port: javaPort, isUDP: false, serverHasEverStarted: server.hasEverStarted, isRunning: running, serverStartTime: startTime, host: host, serverDir: server.serverDir)
         async let start = checkLastStartup(for: server)
         return await [dir, java, jar, ram, port, start]
     }
@@ -58,13 +59,25 @@ extension AppViewModel {
         // Read the actual Bedrock port (from config or Geyser config), fall back to 19132.
         let bedrockPort = await MainActor.run { effectiveBedrockPort(for: server) ?? 19132 }
         let playerCount = await MainActor.run { onlinePlayers.count }
+        let (running, startTime, host) = await currentPortCheckContext()
         async let dir    = checkDirectory(for: server)
         async let docker = checkDockerForHealthCard()
         async let comps  = checkBedrockComponents(for: server)
         async let world  = checkBedrockWorldData(for: server)
-        async let port   = checkPortReachability(port: bedrockPort, isUDP: true, serverHasEverStarted: server.hasEverStarted, onlinePlayerCount: playerCount)
+        async let port   = checkPortReachability(port: bedrockPort, isUDP: true, serverHasEverStarted: server.hasEverStarted, isRunning: running, serverStartTime: startTime, host: host, serverDir: server.serverDir, onlinePlayerCount: playerCount)
         async let start  = checkLastStartup(for: server)
         return await [dir, docker, comps, world, port, start]
+    }
+
+    /// Reads the live state the port check needs from the main actor in one hop:
+    /// whether the server is running, when it started (for the boot grace period),
+    /// and the public-facing host to probe (DuckDNS hostname if set, else public IP).
+    private func currentPortCheckContext() async -> (running: Bool, startTime: Date?, host: String?) {
+        await MainActor.run {
+            let duck = duckdnsInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let host = duck.isEmpty ? cachedPublicIPAddress : duck
+            return (isServerRunning, serverStartTime, host)
+        }
     }
 
     // MARK: - Resolved executable paths
@@ -469,50 +482,127 @@ extension AppViewModel {
 
     // MARK: - Card: Port Reachability
     //
-    // Strategy:
-    //   1. Local loopback probe — confirms the process is actually listening on the port.
-    //      Uses NWConnection for TCP or a UDP send-receive for UDP.
-    //   2. External TCP check — confirms the port is reachable from the internet.
-    //      UDP external checks are inherently unreliable (stateless protocol); skip for Bedrock.
+    // Strategy (Option A — external status API):
+    //   The card only makes a definitive reachability claim while the server is
+    //   actually running, because port forwarding cannot be validated against a
+    //   dead server. A local loopback probe disambiguates "off/booting" from
+    //   "running but misconfigured"; an external status-API ping (mcsrvstat.us,
+    //   which speaks Java SLP and Bedrock RakNet from the internet side) answers
+    //   "can players actually reach it?" and yields MOTD/player count for free.
     //
     // Result logic:
-    //   - Local fails:    red   "Server is not listening on port X — is it running?"
-    //   - Local ok, external fails (TCP only): yellow  "Server is up locally, port may not be forwarded"
-    //   - Local ok, external ok (TCP):         green   "Port X is open and reachable"
-    //   - Local ok, UDP:                       yellow  "Server is listening locally; UDP external checks are unreliable"
-    //   - Not yet started:                     gray
-
-    // onlinePlayerCount: Bedrock UDP card turns green when > 0 (player presence proves port is open).
-    private func checkPortReachability(port: Int, isUDP: Bool, serverHasEverStarted: Bool, onlinePlayerCount: Int = 0) async -> HealthCardResult {
+    //   - Never started:               gray   "Waiting for first start"
+    //   - Off (ran before):            gray   "Server is off" (+ last-verified-reachable if cached)
+    //   - Booting (grace period):      gray   "Server starting up — checking…"
+    //   - Running, not listening:      red    "Running but nothing is listening on this port"
+    //   - Running, listening, online:  green  "Reachable from internet" (+ MOTD/players)
+    //   - Running, listening, offline: yellow "Listening locally but not reachable — check forwarding"
+    //   - External check inconclusive: yellow local-only
+    //
+    // onlinePlayerCount: Bedrock UDP fallback — a connected player proves the port
+    // is open even if the external API can't confirm it.
+    private func checkPortReachability(port: Int, isUDP: Bool, serverHasEverStarted: Bool, isRunning: Bool, serverStartTime: Date?, host: String?, serverDir: String, onlinePlayerCount: Int = 0) async -> HealthCardResult {
         let cardID = "port"
-        let guideURL = "https://minecraft.wiki/w/Tutorials/Setting_up_a_server#Forwarding_ports"
+        let proto = isUDP ? "UDP" : "TCP"
 
+        // Never started → nothing to verify yet.
         guard serverHasEverStarted else {
             return HealthCardResult(
                 id: cardID,
                 status: .gray,
-                detectedValue: "Waiting for first start\nPort \(port) (\(isUDP ? "UDP" : "TCP"))",
+                detectedValue: "Waiting for first start\nPort \(port) (\(proto))",
                 actionLabel: "View Port Setup Guide",
                 actionType: .openRouterPortForwardGuide
             )
         }
 
-        // --- Step 1: Local loopback probe ---
+        // Server off → forwarding can't be validated against a dead server.
+        // Surface the last known-good result if we have one so an idle server
+        // doesn't look broken.
+        guard isRunning else {
+            if let rec = readPortCheckRecord(serverDir), rec.wasReachable {
+                return HealthCardResult(
+                    id: cardID,
+                    status: .gray,
+                    detectedValue: "Server is off\nLast verified reachable \(relativeTime(rec.checkedAt))\nStart the server to re-check.",
+                    actionLabel: nil,
+                    actionType: nil
+                )
+            }
+            return HealthCardResult(
+                id: cardID,
+                status: .gray,
+                detectedValue: "Server is off\nStart it to verify port \(port) (\(proto)) reachability.",
+                actionLabel: "View Port Setup Guide",
+                actionType: .openRouterPortForwardGuide
+            )
+        }
+
+        // Boot grace window: the port may not be bound yet and the external API
+        // may still hold a stale "offline" cache. Don't flash red/yellow during this.
+        let secondsSinceStart = serverStartTime.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
+        let inGracePeriod = secondsSinceStart < 45
+
+        // --- Stage 1: Local loopback probe — is anything listening to forward to? ---
         let localListening = await probeLocalPort(port: port, isUDP: isUDP)
 
         if !localListening {
+            if inGracePeriod {
+                return HealthCardResult(
+                    id: cardID,
+                    status: .gray,
+                    detectedValue: "Port \(port) (\(proto))\nServer starting up — checking…",
+                    actionLabel: nil,
+                    actionType: nil
+                )
+            }
             return HealthCardResult(
                 id: cardID,
                 status: .red,
-                detectedValue: "Port \(port) (\(isUDP ? "UDP" : "TCP"))\nNot listening locally\nStart the server before checking reachability.",
+                detectedValue: "Port \(port) (\(proto))\nServer is running but nothing is listening on this port.\nCheck the port in your server settings.",
                 actionLabel: "View Port Setup Guide",
                 actionType: .openRouterPortForwardGuide
             )
         }
 
-        // --- UDP: can't verify externally, but a connected player proves port is open ---
-        if isUDP {
-            if onlinePlayerCount > 0 {
+        // --- Stage 2: External reachability via status API ---
+        // Validates port forwarding from the internet side (avoids NAT-hairpin
+        // false negatives that a self-ping from inside the LAN would hit).
+        guard let host = host, !host.isEmpty, host != "unknown" else {
+            return portResultLocalOnly(port: port, isUDP: isUDP)
+        }
+
+        if let result = await queryServerStatus(host: host, port: port, isUDP: isUDP) {
+            if result.online {
+                writePortCheckRecord(serverDir, reachable: true, port: port)
+                var lines = [
+                    "Port \(port) (\(proto))",
+                    "Listening locally \u{2713}",
+                    "Reachable from internet \u{2713}",
+                ]
+                if let on = result.playersOnline, let mx = result.playersMax {
+                    lines.append("Players: \(on)/\(mx)")
+                }
+                if let motd = result.motd, !motd.isEmpty {
+                    lines.append("MOTD: \(motd)")
+                }
+                lines.append("Host: \(host)")
+                return HealthCardResult(id: cardID, status: .green, detectedValue: lines.joined(separator: "\n"), actionLabel: nil, actionType: nil)
+            }
+
+            // API reports offline.
+            if inGracePeriod {
+                return HealthCardResult(
+                    id: cardID,
+                    status: .gray,
+                    detectedValue: "Port \(port) (\(proto))\nListening locally \u{2713}\nServer starting up — checking external reachability…",
+                    actionLabel: nil,
+                    actionType: nil
+                )
+            }
+            // UDP fallback: a connected player proves the port is open even if the API can't see it.
+            if isUDP && onlinePlayerCount > 0 {
+                writePortCheckRecord(serverDir, reachable: true, port: port)
                 let s = onlinePlayerCount == 1 ? "" : "s"
                 return HealthCardResult(
                     id: cardID,
@@ -522,62 +612,105 @@ extension AppViewModel {
                     actionType: nil
                 )
             }
+            writePortCheckRecord(serverDir, reachable: false, port: port)
             return HealthCardResult(
                 id: cardID,
                 status: .yellow,
-                detectedValue: "Port \(port) (UDP)\nListening locally \u{2713}\nUDP cannot be verified externally\nWill turn green when a player connects.",
+                detectedValue: "Port \(port) (\(proto))\nListening locally \u{2713}\nNot reachable from the internet \u{2717}\nHost: \(host)\nCheck your router's port forwarding.",
                 actionLabel: "View Port Setup Guide",
                 actionType: .openRouterPortForwardGuide
             )
         }
 
-        // --- Step 2: External TCP check ---
-        guard let url = URL(string: "https://portchecker.io/api/v1/query") else {
-            return portResultLocalOnly(port: port)
+        // API unreachable/inconclusive — fall back to a local-only result.
+        if isUDP && onlinePlayerCount > 0 {
+            let s = onlinePlayerCount == 1 ? "" : "s"
+            return HealthCardResult(
+                id: cardID,
+                status: .green,
+                detectedValue: "Port \(port) (UDP)\nListening locally \u{2713}\n\(onlinePlayerCount) player\(s) connected \u{2713}\nPort is reachable.",
+                actionLabel: nil,
+                actionType: nil
+            )
         }
+        return portResultLocalOnly(port: port, isUDP: isUDP)
+    }
 
-        let publicIP = await MainActor.run { cachedPublicIPAddress } ?? "unknown"
+    // MARK: - External status API (mcsrvstat.us)
 
-        var request = URLRequest(url: url, timeoutInterval: 8)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["host": publicIP, "ports": [port]]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    private struct ExternalPingResult {
+        let online: Bool
+        let playersOnline: Int?
+        let playersMax: Int?
+        let motd: String?
+    }
+
+    /// Pings the public-facing host via mcsrvstat.us from the internet side.
+    /// Uses the Bedrock endpoint for UDP (RakNet) and the Java endpoint otherwise (SLP).
+    /// Returns nil on transport/parse failure so the caller can fall back gracefully.
+    private func queryServerStatus(host: String, port: Int, isUDP: Bool) async -> ExternalPingResult? {
+        let base = isUDP ? "https://api.mcsrvstat.us/bedrock/3/" : "https://api.mcsrvstat.us/3/"
+        guard let encodedHost = host.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+              let url = URL(string: "\(base)\(encodedHost):\(port)") else { return nil }
+
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                return portResultLocalOnly(port: port)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+
+            let online = (json["online"] as? Bool) ?? false
+            var playersOnline: Int? = nil
+            var playersMax: Int? = nil
+            if let players = json["players"] as? [String: Any] {
+                playersOnline = players["online"] as? Int
+                playersMax = players["max"] as? Int
             }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let checks = json["check"] as? [[String: Any]],
-               let first = checks.first,
-               let status = first["status"] as? String {
-                switch status {
-                case "open":
-                    return HealthCardResult(
-                        id: cardID,
-                        status: .green,
-                        detectedValue: "Port \(port) (TCP)\nListening locally \u{2713}\nReachable from internet \u{2713}\nPublic IP \(publicIP)",
-                        actionLabel: nil,
-                        actionType: nil
-                    )
-                case "closed":
-                    return HealthCardResult(
-                        id: cardID,
-                        status: .yellow,
-                        detectedValue: "Port \(port) (TCP)\nListening locally \u{2713}\nNot reachable externally \u{2717}\nPublic IP \(publicIP)\nCheck router port forwarding.",
-                        actionLabel: "View Port Setup Guide",
-                        actionType: .openRouterPortForwardGuide
-                    )
-                default:
-                    break
-                }
+            var motd: String? = nil
+            if let motdObj = json["motd"] as? [String: Any], let clean = motdObj["clean"] as? [String] {
+                motd = clean.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
             }
-            return portResultLocalOnly(port: port)
+            return ExternalPingResult(online: online, playersOnline: playersOnline, playersMax: playersMax, motd: motd)
         } catch {
-            return portResultLocalOnly(port: port)
+            return nil
         }
+    }
+
+    private func portResultLocalOnly(port: Int, isUDP: Bool) -> HealthCardResult {
+        HealthCardResult(
+            id: "port",
+            status: .yellow,
+            detectedValue: "Port \(port) (\(isUDP ? "UDP" : "TCP"))\nListening locally \u{2713}\nExternal check inconclusive\nTest from another network to verify.",
+            actionLabel: "View Port Setup Guide",
+            actionType: .openRouterPortForwardGuide
+        )
+    }
+
+    // MARK: - Last known-good port check (persisted to {serverDir}/last_port_check.json)
+
+    private func portCheckRecordPath(_ serverDir: String) -> String {
+        (serverDir as NSString).appendingPathComponent("last_port_check.json")
+    }
+
+    private func readPortCheckRecord(_ serverDir: String) -> PortCheckRecord? {
+        let path = portCheckRecordPath(serverDir)
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+        return try? JSONDecoder().decode(PortCheckRecord.self, from: data)
+    }
+
+    private func writePortCheckRecord(_ serverDir: String, reachable: Bool, port: Int) {
+        let record = PortCheckRecord(checkedAt: Date(), wasReachable: reachable, port: port)
+        if let data = try? JSONEncoder().encode(record) {
+            try? data.write(to: URL(fileURLWithPath: portCheckRecordPath(serverDir)))
+        }
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .full
+        return f.localizedString(for: date, relativeTo: Date())
     }
 
     /// Probes 127.0.0.1 on the given port to see if anything is listening.

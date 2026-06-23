@@ -1071,6 +1071,9 @@ enum WorldSlotManager {
         var seed: String? = nil
         var difficulty: String? = nil
         var gamemode: String? = nil
+        /// Cumulative world day-time in ticks (DayTime). day = dayTime / 24000,
+        /// time-of-day = dayTime % 24000. Used for the Overview clock when offline.
+        var dayTime: Int64? = nil
     }
 
     private struct NBTReader {
@@ -1245,8 +1248,21 @@ enum WorldSlotManager {
         return ImportedWorldMetadata(
             seed: extractSeedString(fromNBT: root, preferJavaPaths: serverType == .java),
             difficulty: extractDifficultyString(fromNBT: root),
-            gamemode: extractGamemodeString(fromNBT: root)
+            gamemode: extractGamemodeString(fromNBT: root),
+            dayTime: extractDayTime(fromNBT: root, preferJavaPaths: serverType == .java)
         )
+    }
+
+    private static func extractDayTime(fromNBT root: NBTValue, preferJavaPaths: Bool) -> Int64? {
+        if preferJavaPaths {
+            if let v = nbtInteger(atPath: ["Data", "DayTime"], in: root) { return v }
+            if let v = nbtInteger(atPath: ["Data", "Time"], in: root) { return v }
+        }
+        if let v = nbtInteger(atPath: ["DayTime"], in: root) { return v }
+        if let v = nbtInteger(atPath: ["Time"], in: root) { return v }
+        if let v = findInteger(named: "DayTime", in: root) { return v }
+        if let v = findInteger(named: "Time", in: root) { return v }
+        return nil
     }
 
     private static func readAdjacentBackupMetadata(forZIP zipURL: URL) -> ImportedWorldMetadata? {

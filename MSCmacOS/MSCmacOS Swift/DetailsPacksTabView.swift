@@ -15,6 +15,8 @@ struct DetailsPacksTabView: View {
     @State private var isDragTargeted: Bool = false
     @State private var pendingRemovePack: InstalledResourcePack? = nil
     @State private var showRemoveConfirm: Bool = false
+    @State private var pendingRemoveGeyserPack: InstalledResourcePack? = nil
+    @State private var showGeyserRemoveConfirm: Bool = false
 
     private var cfg: ConfigServer? {
         guard let s = viewModel.selectedServer else { return nil }
@@ -46,7 +48,7 @@ struct DetailsPacksTabView: View {
                         viewModel.setJavaActivePack(nil)
                     }
                     .buttonStyle(MSCSecondaryButtonStyle())
-                    .disabled(packs.allSatisfy { !$0.isRequired })
+                    .disabled(packs.allSatisfy { !$0.isActive })
                 }
             }
 
@@ -68,6 +70,10 @@ struct DetailsPacksTabView: View {
 
             } else {
                 packList
+            }
+
+            if isJava && viewModel.isGeyserAvailable {
+                geyserSection
             }
         }
         .padding(MSC.Spacing.md)
@@ -98,6 +104,18 @@ struct DetailsPacksTabView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("The file will be permanently deleted from the server folder.")
+        }
+        .confirmationDialog(
+            "Remove \"\(pendingRemoveGeyserPack?.name ?? "")\"?",
+            isPresented: $showGeyserRemoveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Pack", role: .destructive) {
+                if let pack = pendingRemoveGeyserPack { viewModel.removeGeyserPack(pack) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The Bedrock pack will be permanently deleted from Geyser's folder.")
         }
     }
 
@@ -188,15 +206,15 @@ struct DetailsPacksTabView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if isJava, let req = pack.requirementLabel {
-                Text(req)
+            if isJava {
+                Text(pack.isActive ? "Active" : "Off")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(pack.isRequired ? MSC.Colors.success : .secondary)
+                    .foregroundStyle(pack.isActive ? MSC.Colors.success : .secondary)
                     .padding(.horizontal, MSC.Spacing.sm)
                     .padding(.vertical, 2)
-                    .background(Capsule().fill((pack.isRequired ? MSC.Colors.success : Color.secondary).opacity(0.10)))
+                    .background(Capsule().fill((pack.isActive ? MSC.Colors.success : Color.secondary).opacity(0.10)))
                     .frame(width: 90, alignment: .center)
-            } else if !isJava {
+            } else {
                 Text(pack.typeLabel)
                     .font(MSC.Typography.caption)
                     .foregroundStyle(.secondary)
@@ -209,13 +227,109 @@ struct DetailsPacksTabView: View {
                 .frame(width: 72, alignment: .trailing)
 
             HStack(spacing: MSC.Spacing.xs) {
-                if isJava && !pack.isRequired {
-                    Button("Set Active") { viewModel.setJavaActivePack(pack) }
-                        .buttonStyle(MSCSecondaryButtonStyle())
+                if isJava {
+                    Toggle("", isOn: Binding(
+                        get: { pack.isActive },
+                        set: { viewModel.setJavaPackActive(pack, active: $0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
                 }
                 Button {
                     pendingRemovePack = pack
                     showRemoveConfirm = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .foregroundStyle(MSC.Colors.error)
+            }
+            .frame(width: 80, alignment: .trailing)
+        }
+        .padding(.vertical, MSC.Spacing.sm)
+    }
+
+    // MARK: - Geyser section (Bedrock packs for Bedrock/Xbox players on a Java server)
+
+    private var geyserSection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Divider().padding(.vertical, MSC.Spacing.xs)
+
+            HStack {
+                Label("Bedrock Players (Geyser)", systemImage: "cube.transparent")
+                    .font(MSC.Typography.cardTitle)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    viewModel.presentGeyserPackPicker()
+                } label: {
+                    Label("Add Bedrock Pack\u{2026}", systemImage: "plus")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+            }
+
+            Text("Bedrock and Xbox players (including those who join via Xbox broadcast) receive packs through Geyser, not the Java packs above. These must be Bedrock-format packs (.mcpack). Restart the server after changes.")
+                .font(MSC.Typography.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if viewModel.geyserResourcePacks.isEmpty {
+                Text("No Bedrock packs added for Geyser.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, MSC.Spacing.sm)
+            } else {
+                ForEach(viewModel.geyserResourcePacks) { pack in
+                    geyserRow(pack)
+                    Divider()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func geyserRow(_ pack: InstalledResourcePack) -> some View {
+        HStack(spacing: MSC.Spacing.md) {
+            Image(systemName: "cube.fill")
+                .font(.system(size: 16))
+                .foregroundStyle(pack.isActive ? MSC.Colors.success : .secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(pack.name)
+                    .font(MSC.Typography.cardTitle)
+                    .lineLimit(1)
+                Text(pack.fileName)
+                    .font(MSC.Typography.monoSmall)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(pack.isActive ? "Enabled" : "Disabled")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(pack.isActive ? MSC.Colors.success : .secondary)
+                .padding(.horizontal, MSC.Spacing.sm)
+                .padding(.vertical, 2)
+                .background(Capsule().fill((pack.isActive ? MSC.Colors.success : Color.secondary).opacity(0.10)))
+                .frame(width: 90, alignment: .center)
+
+            Text(pack.fileSizeDisplay)
+                .font(MSC.Typography.monoSmall)
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .trailing)
+
+            HStack(spacing: MSC.Spacing.xs) {
+                Toggle("", isOn: Binding(
+                    get: { pack.isActive },
+                    set: { viewModel.setGeyserPackEnabled(pack, enabled: $0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+
+                Button {
+                    pendingRemoveGeyserPack = pack
+                    showGeyserRemoveConfirm = true
                 } label: {
                     Image(systemName: "trash")
                 }

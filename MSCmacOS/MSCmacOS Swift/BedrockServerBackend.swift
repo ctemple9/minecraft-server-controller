@@ -254,6 +254,13 @@ final class BedrockServerBackend: ServerBackend {
     /// Serialises access to pendingOutput and the log process from the output handler thread.
     private let outputLock = NSLock()
 
+    /// Ensures `onDidTerminate` fires exactly once per run. Multiple paths can detect
+    /// termination (explicit stop(), log-stream EOF, and the log process's terminationHandler)
+    /// and they race. Without this guard, the second invocation runs after the first has
+    /// already reset the lifecycle flags — making a clean manual stop look like a crash.
+    /// Reset to false at the start of every run.
+    private var hasFiredTerminate = false
+
     // MARK: - Container name helpers
 
     /// Derives a deterministic container name from the server ID.
@@ -268,6 +275,11 @@ final class BedrockServerBackend: ServerBackend {
     // MARK: - Start
 
     func start(config: ConfigServer, appConfig: AppConfig) throws {
+        // Arm the termination guard for this run.
+        outputLock.lock()
+        hasFiredTerminate = false
+        outputLock.unlock()
+
         // 1. Resolve Docker binary — fail fast with a clear error if missing.
         guard let docker = DockerUtility.dockerPath() else {
             throw ServerBackendError.failedToStart(makeError(
@@ -620,6 +632,15 @@ final class BedrockServerBackend: ServerBackend {
     }
 
     private func fireDidTerminate() {
+        // Fire exactly once per run — multiple termination-detection paths race here.
+        outputLock.lock()
+        if hasFiredTerminate {
+            outputLock.unlock()
+            return
+        }
+        hasFiredTerminate = true
+        outputLock.unlock()
+
         DispatchQueue.main.async { [weak self] in
             self?.onDidTerminate?()
         }

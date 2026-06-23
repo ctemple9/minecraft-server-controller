@@ -21,17 +21,16 @@ struct ServerNotesSectionView: View {
     private var serverNotesSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
 
-            // Header row
+            // Header row (the section heading is provided above the card now)
             HStack(spacing: MSC.Spacing.sm) {
                 HStack(spacing: MSC.Spacing.xs) {
                     Image(systemName: "note.text")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(MSC.Colors.tertiary)
-                    MSCOverline("Notes")
+                    Text("For this server")
+                        .font(.caption2)
+                        .foregroundStyle(MSC.Colors.tertiary)
                 }
-                Text("· for this server")
-                    .font(.caption2)
-                    .foregroundStyle(MSC.Colors.tertiary)
                 Spacer()
                 if !serverNotesText.isEmpty {
                     Button("Save") {

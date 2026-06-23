@@ -188,7 +188,8 @@ struct DetailsView: View {
                             serverNotesText: $serverNotesText,
                             messageTarget: $messageTarget,
                             messageText: $messageText,
-                            onOpenComponentsTab: { detailsTab = .components }
+                            onOpenComponentsTab: { detailsTab = .components },
+                            onOpenWorldsTab: { detailsTab = .worlds }
                         )
 
                     case .players:

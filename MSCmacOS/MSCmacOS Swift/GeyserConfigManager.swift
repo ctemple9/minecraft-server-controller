@@ -21,22 +21,49 @@ struct GeyserConfigManager {
         let url = configURL(for: serverDir)
         guard let contents = try? String(contentsOf: url, encoding: .utf8) else { return nil }
 
-        let dict = YAMLHelper.parseYAML(contents)
-        guard let bedrock = dict["bedrock"] as? [String: Any] else { return nil }
+        // Scan the first top-level `bedrock:` block by indentation. Geyser configs also
+        // contain a NESTED `bedrock:` deeper in the file (e.g. under another section), so a
+        // flat key/value parser would conflate the two and lose the real port.
+        let lines = contents.components(separatedBy: .newlines)
+        guard let start = lines.firstIndex(where: { line in
+            guard line.first != " ", line.first != "\t" else { return false }   // top-level only
+            let t = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t == "bedrock:" || t.hasPrefix("bedrock: ")
+        }) else { return nil }
 
-        let address = bedrock["address"] as? String ?? "0.0.0.0"
+        var address = "0.0.0.0"
+        var port: Int? = nil
 
-        let port: Int?
-        if let p = bedrock["port"] as? Int {
-            port = p
-        } else if let s = bedrock["port"] as? String,
-                  let p = Int(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            port = p
-        } else {
-            port = nil
+        var i = start + 1
+        while i < lines.count {
+            let line = lines[i]
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Stop when we reach the next top-level key (non-indented, not blank/comment).
+            if !trimmed.isEmpty, !trimmed.hasPrefix("#"),
+               line.first != " ", line.first != "\t" {
+                break
+            }
+
+            if trimmed.hasPrefix("address:") {
+                let value = bareValue(String(trimmed.dropFirst("address:".count)))
+                if !value.isEmpty { address = value }
+            } else if trimmed.hasPrefix("port:") {
+                let value = bareValue(String(trimmed.dropFirst("port:".count)))
+                port = Int(value)
+            }
+            i += 1
         }
 
         return GeyserConfig(address: address, port: port)
+    }
+
+    /// Strips an inline `# comment`, surrounding whitespace, and wrapping quotes from a YAML value.
+    private static func bareValue(_ raw: String) -> String {
+        let noComment = raw.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? raw
+        return noComment
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
     }
 
     static func writeConfig(serverDir: String, config: GeyserConfig) throws {

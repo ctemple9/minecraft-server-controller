@@ -89,6 +89,7 @@ extension AppViewModel {
             isMetricsPaused = false
             logAppMessage("[App] Starting REAL server: \(server.name)")
             refreshHealthCardsForSelectedServer()
+            startResourcePackHostIfNeeded(for: cfgServer)
 
             if !wasFirstRun {
                 fireNotificationIfEnabled(event: .serverStarted,
@@ -117,6 +118,8 @@ extension AppViewModel {
                 self.updateResourceUsageMetrics()
                 guard self.lifecycle.serverReadyForAutoMetrics else { return }
                 self.refreshPlayersAndTps()
+                self.refreshWorldTime()
+                self.refreshFeaturedPlayerHealth()
             }
 
             // First-run / Initiate UX
@@ -197,6 +200,8 @@ extension AppViewModel {
         lifecycle.isStopRequested = true
         stopBroadcastIfRunning()
         stopBedrockBroadcastIfRunning()
+        resourcePackHostServer.stop()
+        clearLiveWorldTime()
 
         guard activeBackend?.isRunning == true else {
             logAppMessage("[App] Server is not running.")
@@ -296,6 +301,43 @@ extension AppViewModel {
         guard cfgServer.serverType == .java else { return }
         sendCommand("list", origin: .auto)
         sendCommand("tps", origin: .auto)
+    }
+
+    /// Polls the running Java server for the in-game day and time-of-day.
+    /// `/time query day` and `/time query daytime` both reply "The time is X",
+    /// so we record the expected response order and attribute them in `parseWorldTime`.
+    /// Re-seeding the expectation list each cycle keeps it self-healing.
+    func refreshWorldTime() {
+        guard activeBackend?.isRunning == true else { return }
+        guard let server = selectedServer,
+              let cfgServer = configServer(for: server),
+              cfgServer.serverType == .java else { return }
+        pendingTimeQueryKinds = [.day, .daytime]
+        sendCommand("time query day", origin: .auto)
+        sendCommand("time query daytime", origin: .auto)
+    }
+
+    /// Polls the featured player's current health from the running Java server,
+    /// so the hearts under the Overview character render update live. Only the one
+    /// featured (and online) player is queried, keeping it to a single command.
+    func refreshFeaturedPlayerHealth() {
+        guard activeBackend?.isRunning == true else { return }
+        guard let server = selectedServer,
+              let cfg = configServer(for: server),
+              cfg.serverType == .java else { return }
+        guard let name = featuredPlayerName,
+              onlinePlayers.contains(where: { $0.name == name }) else { return }
+        sendCommand("data get entity \(name) Health", origin: .auto)
+    }
+
+    /// Clears live world-time state (used on stop / server switch) so a stale
+    /// clock doesn't linger after the server is no longer running.
+    func clearLiveWorldTime() {
+        worldTimeOfDayTicks = nil
+        worldDayNumber = nil
+        worldTimeIsLive = false
+        pendingTimeQueryKinds = []
+        featuredPlayerHealth = nil
     }
 
     // MARK: - Quick commands
@@ -417,6 +459,43 @@ extension AppViewModel {
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedMessage.isEmpty else { return }
         sendQuickCommand("tell \(name) \(trimmedMessage)")
+    }
+
+    /// Max-players for the selected server, read from properties. Used by the
+    /// Overview Players strip header ("3 / 20 online"). Defaults to 20 if unknown.
+    var serverMaxPlayersForOverview: Int {
+        guard let server = selectedServer,
+              let cfg = configServer(for: server) else { return 20 }
+        if cfg.isBedrock {
+            return BedrockPropertiesManager.readModel(serverDir: cfg.serverDir).maxPlayers
+        }
+        let dict = ServerPropertiesManager.readProperties(serverDir: cfg.serverDir)
+        return ServerPropertiesModel(from: dict, fallbackMotd: cfg.displayName).maxPlayers
+    }
+
+    /// Teleports one online player to another. Same `tp` syntax works on Java and BDS.
+    func teleportPlayer(named name: String, toPlayer target: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTarget = target.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmedTarget.isEmpty else { return }
+        sendQuickCommand("tp \(trimmed) \(trimmedTarget)")
+    }
+
+    /// Adds or removes a player from the server allowlist.
+    /// Java uses the `whitelist` command; Bedrock edits allowlist.json (and reloads)
+    /// through the existing allowlist helpers so the on-disk file stays in sync.
+    func whitelistPlayer(named name: String, add: Bool) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if selectedServerIsBedrock {
+            if add {
+                addToBedrockAllowlist(gamertag: trimmed)
+            } else {
+                removeFromBedrockAllowlist(gamertag: trimmed)
+            }
+        } else {
+            sendQuickCommand(add ? "whitelist add \(trimmed)" : "whitelist remove \(trimmed)")
+        }
     }
 
     // MARK: - Bedrock player management

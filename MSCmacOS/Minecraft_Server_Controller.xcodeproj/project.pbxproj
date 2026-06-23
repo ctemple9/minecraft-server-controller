@@ -119,12 +119,17 @@
 		9A5632E42F65AD6D00FB8246 /* AppViewModel+FinderTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */; };
 		9A5632E52F65AD6D00FB8246 /* ReplaceWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */; };
 		9A5632E62F65AD6D00FB8246 /* ResourcePackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */; };
+		9AFE01010000000000000002 /* ResourcePackHostServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE01010000000000000001 /* ResourcePackHostServer.swift */; };
 		9A5632E72F65AD6D00FB8246 /* SessionLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632642F65AD6C00FB8246 /* SessionLogManager.swift */; };
 		9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */; };
 		9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */; };
 		9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */; };
 		9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */; };
 		9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */; };
+		9AFE02010000000000000002 /* OverviewPlayersStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02010000000000000001 /* OverviewPlayersStripView.swift */; };
+		9AFE02020000000000000002 /* OverviewActiveWorldCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */; };
+		9AFE02030000000000000002 /* OverviewChatCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02030000000000000001 /* OverviewChatCardView.swift */; };
+		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */; };
 		9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */; };
 		9A5632EF2F65AD6D00FB8246 /* DetailsPerformanceComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632182F65AD6C00FB8246 /* DetailsPerformanceComponents.swift */; };
@@ -288,6 +293,10 @@
 		9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHealthHelpers.swift; sourceTree = "<group>"; };
 		9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayerRowHelpers.swift; sourceTree = "<group>"; };
 		9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersCardView.swift; sourceTree = "<group>"; };
+		9AFE02010000000000000001 /* OverviewPlayersStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersStripView.swift; sourceTree = "<group>"; };
+		9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewActiveWorldCardView.swift; sourceTree = "<group>"; };
+		9AFE02030000000000000001 /* OverviewChatCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewChatCardView.swift; sourceTree = "<group>"; };
+		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewQuickActionsCardView.swift; sourceTree = "<group>"; };
 		9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewServerStatusBarView.swift; sourceTree = "<group>"; };
 		9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperDownloader.swift; sourceTree = "<group>"; };
@@ -309,6 +318,7 @@
 		9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenameWorldView.swift; sourceTree = "<group>"; };
 		9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceWorldView.swift; sourceTree = "<group>"; };
 		9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackManager.swift; sourceTree = "<group>"; };
+		9AFE01010000000000000001 /* ResourcePackHostServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackHostServer.swift; sourceTree = "<group>"; };
 		9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePacksView.swift; sourceTree = "<group>"; };
 		9A5632512F65AD6C00FB8246 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
 		9A5632522F65AD6C00FB8246 /* ServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerBackend.swift; sourceTree = "<group>"; };
@@ -520,6 +530,10 @@
 				9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */,
 				9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */,
 				9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */,
+				9AFE02010000000000000001 /* OverviewPlayersStripView.swift */,
+				9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */,
+				9AFE02030000000000000001 /* OverviewChatCardView.swift */,
+				9AFE02040000000000000001 /* JavaHiddenProfiles.swift */,
 				9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */,
 				9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */,
 				9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */,
@@ -550,6 +564,7 @@
 				9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */,
 				9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */,
 				9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */,
+				9AFE01010000000000000001 /* ResourcePackHostServer.swift */,
 				9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */,
 				9AAF276D2F6A3EE100F752CA /* RouterPortForwardGuideTroubleshootingScreen.swift */,
 				9AC4CEB62F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift */,
@@ -850,12 +865,17 @@
 				9A5632E42F65AD6D00FB8246 /* AppViewModel+FinderTools.swift in Sources */,
 				9A5632E52F65AD6D00FB8246 /* ReplaceWorldView.swift in Sources */,
 				9A5632E62F65AD6D00FB8246 /* ResourcePackManager.swift in Sources */,
+				9AFE01010000000000000002 /* ResourcePackHostServer.swift in Sources */,
 				9A5632E72F65AD6D00FB8246 /* SessionLogManager.swift in Sources */,
 				9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */,
 				9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */,
 				9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */,
 				9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */,
 				9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */,
+				9AFE02010000000000000002 /* OverviewPlayersStripView.swift in Sources */,
+				9AFE02020000000000000002 /* OverviewActiveWorldCardView.swift in Sources */,
+				9AFE02030000000000000002 /* OverviewChatCardView.swift in Sources */,
+				9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */,
 				9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */,
 				9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */,
 				9A5632EF2F65AD6D00FB8246 /* DetailsPerformanceComponents.swift in Sources */,
@@ -1044,7 +1064,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.7;
+				MARKETING_VERSION = 1.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1083,7 +1103,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.7;
+				MARKETING_VERSION = 1.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

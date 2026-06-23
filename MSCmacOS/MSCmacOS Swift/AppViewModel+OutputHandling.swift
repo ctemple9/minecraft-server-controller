@@ -58,6 +58,8 @@ extension AppViewModel {
         }
 
         parseTps(from: line)
+        parseWorldTime(from: line)
+        parseFeaturedHealth(from: line)
         parsePlayerList(from: line)
         parseBedrockVersion(from: line)
         parseBedrockPlayerEvent(from: line)
@@ -155,6 +157,46 @@ extension AppViewModel {
         latestTps15m = t15
         tpsHistory1m.append(t1)
         if tpsHistory1m.count > 30 { tpsHistory1m.removeFirst() }
+    }
+
+    // MARK: - World time parsing
+
+    /// Parses responses to `/time query day` and `/time query daytime`. Both reply
+    /// with "The time is X", so we attribute each response to the next expected kind
+    /// recorded by `refreshWorldTime()` (submission order is preserved by the server).
+    private func parseWorldTime(from line: String) {
+        guard !pendingTimeQueryKinds.isEmpty else { return }
+        let clean = AppUtilities.sanitized(line)
+        guard let range = clean.range(of: "The time is ") else { return }
+        let tail = clean[range.upperBound...]
+        let digits = tail.prefix { $0.isNumber || $0 == "-" }
+        guard let value = Int(digits) else { return }
+
+        let kind = pendingTimeQueryKinds.removeFirst()
+        switch kind {
+        case .day:
+            worldDayNumber = value
+        case .daytime:
+            // daytime is reported 0–23999; normalize defensively.
+            worldTimeOfDayTicks = ((value % 24000) + 24000) % 24000
+            worldTimeIsLive = true
+        }
+    }
+
+    // MARK: - Featured player health parsing
+
+    /// Parses the response to `/data get entity <name> Health`, e.g.
+    /// "camkage has the following entity data: 19.5f", for the featured player.
+    private func parseFeaturedHealth(from line: String) {
+        guard let name = featuredPlayerName else { return }
+        let clean = AppUtilities.sanitized(line)
+        guard clean.contains("\(name) has the following entity data:"),
+              let r = clean.range(of: "entity data:") else { return }
+        let tail = clean[r.upperBound...].trimmingCharacters(in: .whitespaces)
+        let digits = tail.prefix { $0.isNumber || $0 == "." || $0 == "-" }
+        if let value = Double(digits) {
+            featuredPlayerHealth = max(0, value)
+        }
     }
 
     // MARK: - Player list parsing

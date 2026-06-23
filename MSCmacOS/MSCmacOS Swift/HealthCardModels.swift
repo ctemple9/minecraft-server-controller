@@ -48,3 +48,14 @@ struct LastStartupResult: Codable {
     var warnings: [String]
 }
 
+// MARK: - PortCheckRecord (persisted to {serverDir}/last_port_check.json)
+//
+// Caches the most recent external reachability result so the port health card can
+// show "last verified reachable …" while the server is off, instead of looking broken.
+
+struct PortCheckRecord: Codable {
+    var checkedAt: Date
+    var wasReachable: Bool
+    var port: Int
+}
+

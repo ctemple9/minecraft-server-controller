@@ -26,6 +26,11 @@ struct HealthCardsGridView: View {
     var onOpenComponentsTab: (() -> Void)? = nil
 
     @State private var flippedCardID: String? = nil
+    /// Whether the secondary (rarely-broken) checks are expanded. Persisted.
+    @AppStorage("msc.overview.showAllHealth") private var showAllChecks: Bool = false
+
+    /// The three checks always shown — the ones that actually break day-to-day.
+    private let essentialIDs: [String] = ["jar", "port", "lastStartup"]
 
     private let columns = [
         GridItem(.flexible(), spacing: MSC.Spacing.sm),
@@ -33,18 +38,30 @@ struct HealthCardsGridView: View {
         GridItem(.flexible(), spacing: MSC.Spacing.sm)
     ]
 
+    /// Essential cards in canonical order (Components, Port, Last Start).
+    private var essentialCards: [HealthCardResult] {
+        essentialIDs.compactMap { id in viewModel.healthCards.first { $0.id == id } }
+    }
+
+    /// Everything else — directory, runtime, RAM, world data, etc.
+    private var secondaryCards: [HealthCardResult] {
+        viewModel.healthCards.filter { !essentialIDs.contains($0.id) }
+    }
+
+    /// True when a hidden secondary check needs attention — surfaced as a dot on
+    /// the "Show all" control so problems are never silently buried.
+    private var secondaryHasIssue: Bool {
+        secondaryCards.contains { $0.status == .red || $0.status == .yellow }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
 
-            HStack {
-                MSCOverline("Server Health")
-
-                Spacer()
-            }
+            header
 
             if viewModel.healthCards.isEmpty {
                 LazyVGrid(columns: columns, spacing: MSC.Spacing.sm) {
-                    ForEach(0..<6, id: \.self) { _ in
+                    ForEach(0..<3, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
                             .fill(MSC.Colors.tierContent.opacity(0.6))
                             .frame(height: 95)
@@ -52,24 +69,22 @@ struct HealthCardsGridView: View {
                     }
                 }
             } else {
+                // Essential row — always visible.
                 LazyVGrid(columns: columns, spacing: MSC.Spacing.sm) {
-                    ForEach(Array(viewModel.healthCards.enumerated()), id: \.element.id) { index, card in
-                        let isDimmed = shouldDimCard(at: index)
-
-                        HealthGridCardTile(
-                            card: card,
-                            isFlipped: flippedCardID == card.id,
-                            onTap: {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                                    flippedCardID = flippedCardID == card.id ? nil : card.id
-                                }
-                            },
-                            onAction: { action in handleAction(action) }
-                        )
-                        .opacity(isDimmed ? 0.4 : 1.0)
-                        .help(isDimmed ? "Address earlier issues first" : "")
-                        .animation(.easeInOut(duration: 0.2), value: isDimmed)
+                    ForEach(Array(essentialCards.enumerated()), id: \.element.id) { index, card in
+                        cardTile(card, dimmed: shouldDim(card, within: essentialCards, at: index))
                     }
+                }
+
+                // Secondary checks — collapsed by default, quieter when shown.
+                if showAllChecks {
+                    LazyVGrid(columns: columns, spacing: MSC.Spacing.sm) {
+                        ForEach(Array(secondaryCards.enumerated()), id: \.element.id) { _, card in
+                            cardTile(card, dimmed: false)
+                                .opacity(0.85)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
@@ -85,9 +100,59 @@ struct HealthCardsGridView: View {
         }
     }
 
-    private func shouldDimCard(at index: Int) -> Bool {
+    private var header: some View {
+        HStack {
+            MSCOverline("Server Health")
+            Spacer()
+            if !viewModel.healthCards.isEmpty && !secondaryCards.isEmpty {
+                showAllButton
+            }
+        }
+    }
+
+    private var showAllButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.22)) { showAllChecks.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                if secondaryHasIssue && !showAllChecks {
+                    Circle()
+                        .fill(MSC.Colors.warning)
+                        .frame(width: 5, height: 5)
+                }
+                Text(showAllChecks ? "Hide" : "Show all")
+                Image(systemName: showAllChecks ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(MSC.Colors.tertiary)
+        }
+        .buttonStyle(.plain)
+        .help(showAllChecks ? "Hide the secondary checks"
+                            : "Show directory, runtime and other checks")
+    }
+
+    @ViewBuilder
+    private func cardTile(_ card: HealthCardResult, dimmed: Bool) -> some View {
+        HealthGridCardTile(
+            card: card,
+            isFlipped: flippedCardID == card.id,
+            onTap: {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    flippedCardID = flippedCardID == card.id ? nil : card.id
+                }
+            },
+            onAction: { action in handleAction(action) }
+        )
+        .opacity(dimmed ? 0.4 : 1.0)
+        .help(dimmed ? "Address earlier issues first" : "")
+        .animation(.easeInOut(duration: 0.2), value: dimmed)
+    }
+
+    /// Dims a card when an earlier card in the same group is in error.
+    private func shouldDim(_ card: HealthCardResult, within group: [HealthCardResult], at index: Int) -> Bool {
         guard index > 0 else { return false }
-        return viewModel.healthCards.prefix(index).contains(where: { $0.status == .red })
+        return group.prefix(index).contains(where: { $0.status == .red })
     }
 
     private func handleAction(_ action: HealthCardAction) {
@@ -157,41 +222,61 @@ fileprivate struct HealthGridCardFront: View {
     let card: HealthCardResult
 
     var body: some View {
-        HStack(spacing: MSC.Spacing.sm) {
+        ZStack(alignment: .leading) {
 
-            ZStack {
-                Circle()
-                    .fill(statusColor.opacity(0.12))
-                    .frame(width: 36, height: 36)
+            // Large faded status icon — fills the right-side grey and adds character.
+            HStack {
+                Spacer()
                 Image(systemName: iconName)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(iconColor)
+                    .font(.system(size: 78, weight: .semibold))
+                    .foregroundStyle(statusColor.opacity(0.07))
+                    .offset(x: 16)
             }
 
-            VStack(alignment: .leading, spacing: MSC.Spacing.xxs) {
-                Text(shortLabel)
-                    .font(MSC.Typography.captionBold)
-                    .foregroundStyle(MSC.Colors.heading)
-                    .lineLimit(1)
+            HStack(spacing: MSC.Spacing.md) {
 
-                HStack(spacing: MSC.Spacing.xs) {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 6, height: 6)
-                    Text(statusLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(statusColor)
+                ZStack {
+                    RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                        .fill(statusColor.opacity(0.14))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: iconName)
+                        .font(.system(size: 23, weight: .semibold))
+                        .foregroundStyle(iconColor)
                 }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(shortLabel)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(MSC.Colors.heading)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(statusColor)
+                            .frame(width: 7, height: 7)
+                        Text(statusLabel)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(statusColor)
+                    }
+
+                    if let frontDetail {
+                        Text(frontDetail)
+                            .font(.system(size: 11))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(MSC.Colors.tertiary)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(MSC.Colors.tertiary)
+            .padding(.horizontal, MSC.Spacing.md)
+            .padding(.vertical, MSC.Spacing.sm)
         }
-        .padding(.horizontal, MSC.Spacing.md)
-        .padding(.vertical, MSC.Spacing.sm)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
@@ -207,6 +292,16 @@ fileprivate struct HealthGridCardFront: View {
         // Outer 1pt stroke omitted intentionally — accent bar + Tier C fill provide sufficient card identity.
         .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
         .shadow(color: .black.opacity(0.22), radius: 5, x: 0, y: 2)
+    }
+
+    /// One-line summary shown on the front (first line of the card's detail value),
+    /// so the card carries useful info instead of empty space.
+    private var frontDetail: String? {
+        guard let raw = card.detectedValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else { return nil }
+        let firstLine = raw.components(separatedBy: "\n").first?
+            .trimmingCharacters(in: .whitespaces) ?? raw
+        return firstLine.isEmpty ? nil : firstLine
     }
 
     private var statusColor: Color {

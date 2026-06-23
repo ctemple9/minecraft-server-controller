@@ -366,6 +366,7 @@ struct PlayerProfileDetailSheet: View {
                 bedrockActionsNote
             } else {
                 javaActionsButtons
+                hidePlayerView
             }
         }
     }
@@ -438,11 +439,10 @@ struct PlayerProfileDetailSheet: View {
         flash(success: "Identified as \(trimmed). Skin will load shortly.")
     }
 
-    // MARK: - Hide / unhide (Bedrock)
+    // MARK: - Hide / unhide (Java + Bedrock)
 
     private var isHidden: Bool {
-        guard let xuid = localProfile.xuid else { return false }
-        return viewModel.hiddenBedrockXUIDs.contains(xuid)
+        viewModel.isProfileHidden(localProfile)
     }
 
     private var hidePlayerView: some View {
@@ -454,7 +454,7 @@ struct PlayerProfileDetailSheet: View {
                     icon: "eye",
                     color: MSC.Colors.accent
                 ) {
-                    viewModel.unhideBedrockPlayer(profile: localProfile)
+                    viewModel.unhideProfile(localProfile)
                 }
             } else {
                 actionButton(
@@ -463,7 +463,7 @@ struct PlayerProfileDetailSheet: View {
                     icon: "eye.slash",
                     color: .secondary
                 ) {
-                    viewModel.hideBedrockPlayer(profile: localProfile)
+                    viewModel.hideProfile(localProfile)
                     dismiss()
                 }
             }

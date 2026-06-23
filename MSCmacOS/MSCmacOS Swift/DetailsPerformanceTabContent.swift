@@ -15,7 +15,8 @@ extension DetailsPerformanceTabView {
         HStack(alignment: .top, spacing: 0) {
 
             // MARK: — Main content (centred, capped width)
-            ScrollView(.vertical, showsIndicators: false) {
+            GeometryReader { contentGeo in
+                ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
 
                     LazyVGrid(
@@ -153,6 +154,7 @@ extension DetailsPerformanceTabView {
                             }
                         }
                         .padding(14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(MSC.Colors.tierContent)
@@ -179,11 +181,13 @@ extension DetailsPerformanceTabView {
                             }
                         }
                         .padding(14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(MSC.Colors.tierContent)
                         )
                     }
+                    .frame(maxHeight: .infinity)
 
                     HStack(spacing: 12) {
                         compactInfoTile(
@@ -211,7 +215,6 @@ extension DetailsPerformanceTabView {
                         .foregroundStyle(viewModel.isServerRunning ? .green : .secondary)
                     }
 
-                    Spacer(minLength: 20)
                 }
                 .padding(.horizontal, 4)
                 .padding(.bottom, MSC.Spacing.md)
@@ -219,6 +222,10 @@ extension DetailsPerformanceTabView {
                                 // further to fill the reclaimed space.
                                 .frame(maxWidth: sidebarCollapsed ? 1300 : 1200)
                                 .frame(maxWidth: .infinity)
+                                // Fill at least the viewport height so dashboard content
+                                // stretches to the bottom instead of leaving empty space.
+                                .frame(minHeight: contentGeo.size.height, alignment: .top)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 

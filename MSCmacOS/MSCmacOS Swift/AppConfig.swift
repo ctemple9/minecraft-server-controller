@@ -138,6 +138,9 @@ struct ConfigServer: Codable, Identifiable {
     /// Optional override for the Bedrock port Broadcaster should use.
     var xboxBroadcastPortOverride: Int? = nil
 
+    /// Port the app's resource-pack HTTP host serves on for Java clients (Option B hosting).
+    var resourcePackHostPort: Int = 8123
+
     /// Stored absolute path to this server’s MCXboxBroadcast config directory.
     var xboxBroadcastConfigPath: String? = nil
 
@@ -199,6 +202,7 @@ struct ConfigServer: Codable, Identifiable {
         case xboxBroadcastEnabled = "xbox_broadcast_enabled"
         case xboxBroadcastHostOverride = "xbox_broadcast_host_override"
         case xboxBroadcastPortOverride = "xbox_broadcast_port_override"
+        case resourcePackHostPort = "resource_pack_host_port"
         case xboxBroadcastConfigPath = "xbox_broadcast_config_path"
         case xboxBroadcastAltEmail = "xbox_broadcast_alt_email"
         case xboxBroadcastAltGamertag = "xbox_broadcast_alt_gamertag"
@@ -255,6 +259,7 @@ extension ConfigServer {
         xboxBroadcastEnabled        = try c.decodeIfPresent(Bool.self,   forKey: .xboxBroadcastEnabled)        ?? false
         xboxBroadcastHostOverride   = try c.decodeIfPresent(String.self, forKey: .xboxBroadcastHostOverride)
         xboxBroadcastPortOverride   = try c.decodeIfPresent(Int.self,    forKey: .xboxBroadcastPortOverride)
+        resourcePackHostPort        = try c.decodeIfPresent(Int.self,    forKey: .resourcePackHostPort)        ?? 8123
         xboxBroadcastConfigPath     = try c.decodeIfPresent(String.self, forKey: .xboxBroadcastConfigPath)
         xboxBroadcastAltEmail       = try c.decodeIfPresent(String.self, forKey: .xboxBroadcastAltEmail)
         xboxBroadcastAltGamertag    = try c.decodeIfPresent(String.self, forKey: .xboxBroadcastAltGamertag)
@@ -296,6 +301,7 @@ extension ConfigServer {
         try c.encode(xboxBroadcastEnabled,              forKey: .xboxBroadcastEnabled)
         try c.encodeIfPresent(xboxBroadcastHostOverride, forKey: .xboxBroadcastHostOverride)
         try c.encodeIfPresent(xboxBroadcastPortOverride, forKey: .xboxBroadcastPortOverride)
+        try c.encode(resourcePackHostPort,         forKey: .resourcePackHostPort)
         try c.encodeIfPresent(xboxBroadcastConfigPath,   forKey: .xboxBroadcastConfigPath)
         try c.encodeIfPresent(xboxBroadcastAltEmail,     forKey: .xboxBroadcastAltEmail)
         try c.encodeIfPresent(xboxBroadcastAltGamertag,  forKey: .xboxBroadcastAltGamertag)

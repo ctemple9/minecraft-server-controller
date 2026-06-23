@@ -138,6 +138,19 @@ struct ContentView: View {
     // Draggable console split
     @State private var consoleSplitFraction: CGFloat = 0.7
 
+    // Collapsible / resizable panels (persisted across launches)
+    @AppStorage("msc.isSidebarCollapsed") private var isSidebarCollapsed = false
+    @AppStorage("msc.sidebarWidth") private var sidebarWidth: Double = 280
+    @AppStorage("msc.isConsoleHidden") private var isConsoleHidden = false
+
+    // Per-drag baselines (captured at gesture start so translation isn't double-counted)
+    @State private var sidebarWidthAtDragStart: CGFloat? = nil
+    @State private var consoleFractionAtDragStart: CGFloat? = nil
+
+    private let minSidebarWidth: CGFloat = 220
+    private let maxSidebarWidth: CGFloat = 360
+    private let sidebarCollapseThreshold: CGFloat = 190
+
     private var prerequisitesBinding: Binding<Bool> {
         Binding(
             get: { viewModel.isShowingPrerequisites },
@@ -177,6 +190,140 @@ struct ContentView: View {
         Binding(
             get: { viewModel.isShowingCrossPlatformGuide },
             set: { viewModel.isShowingCrossPlatformGuide = $0 }
+        )
+    }
+
+    // MARK: - Collapsible panel helpers
+
+    private var detailsPane: some View {
+        DetailsView(
+            isShowingManageServers: $isShowingManageServers,
+            isShowingPluginTemplates: $isShowingPluginTemplates,
+            isShowingPaperTemplate: $isShowingPaperTemplates,
+            bannerColor: bannerColor
+        )
+        .environmentObject(viewModel)
+    }
+
+    /// Draggable divider between the sidebar and the main content.
+    /// Resizes within [min, max]; dragging well past the minimum collapses the sidebar.
+    private var sidebarResizeHandle: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(width: 1)
+            .frame(maxHeight: .infinity)
+            .overlay(
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(width: 7)
+                    .contentShape(Rectangle())
+            )
+            .cursor(.resizeLeftRight)
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        if sidebarWidthAtDragStart == nil { sidebarWidthAtDragStart = CGFloat(sidebarWidth) }
+                        let base = sidebarWidthAtDragStart ?? CGFloat(sidebarWidth)
+                        let proposed = base + value.translation.width
+                        sidebarWidth = Double(min(maxSidebarWidth, max(minSidebarWidth, proposed)))
+                    }
+                    .onEnded { value in
+                        let base = sidebarWidthAtDragStart ?? CGFloat(sidebarWidth)
+                        let proposed = base + value.translation.width
+                        sidebarWidthAtDragStart = nil
+                        if proposed < sidebarCollapseThreshold {
+                            withAnimation(.easeInOut(duration: 0.2)) { isSidebarCollapsed = true }
+                        }
+                    }
+            )
+    }
+
+    /// Slim rail shown in place of the sidebar when collapsed — click to bring it back.
+    private var sidebarRestoreRail: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { isSidebarCollapsed = false }
+        } label: {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white.opacity(0.55))
+                .frame(width: 18)
+                .frame(maxHeight: .infinity)
+                .background(MSC.Colors.tierChrome)
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(Color(nsColor: .separatorColor)).frame(width: 1)
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Show sidebar (⌥⌘S)")
+        .cursor(.pointingHand)
+    }
+
+    /// Slim bar shown in place of the console when hidden — click to bring it back.
+    private var consoleRestoreBar: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { isConsoleHidden = false }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 10, weight: .semibold))
+                Text("Console")
+                    .font(.system(size: 11, weight: .medium))
+                Spacer()
+            }
+            .foregroundColor(.white.opacity(0.55))
+            .padding(.horizontal, 12)
+            .frame(height: 24)
+            .frame(maxWidth: .infinity)
+            .background(MSC.Colors.tierChrome)
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 1)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Show console (⌥⌘J)")
+        .cursor(.pointingHand)
+    }
+
+    /// Draggable divider between the main content and the console.
+    /// Resizes the split; dragging well past the console minimum hides it entirely.
+    private func consoleDivider(totalHeight: CGFloat, minDetailsHeight: CGFloat, minConsoleHeight: CGFloat) -> some View {
+        ZStack {
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor))
+                .frame(height: 1)
+            Capsule()
+                .fill(Color(nsColor: .tertiaryLabelColor))
+                .frame(width: 36, height: 4)
+        }
+        .frame(height: 8)
+        .contentShape(Rectangle())
+        .cursor(.resizeUpDown)
+        .onboardingAnchor(.consoleDividerHandle)
+        .gesture(
+            DragGesture(minimumDistance: 1)
+                .onChanged { value in
+                    if consoleFractionAtDragStart == nil { consoleFractionAtDragStart = consoleSplitFraction }
+                    let baseFraction = consoleFractionAtDragStart ?? consoleSplitFraction
+                    let clampedBase = max(minDetailsHeight / totalHeight, min(1.0 - minConsoleHeight / totalHeight, baseFraction))
+                    let baseDetails = totalHeight * clampedBase
+                    let newFraction = (baseDetails + value.translation.height) / totalHeight
+                    consoleSplitFraction = max(
+                        minDetailsHeight / totalHeight,
+                        min(1.0 - minConsoleHeight / totalHeight, newFraction)
+                    )
+                }
+                .onEnded { value in
+                    let baseFraction = consoleFractionAtDragStart ?? consoleSplitFraction
+                    consoleFractionAtDragStart = nil
+                    let clampedBase = max(minDetailsHeight / totalHeight, min(1.0 - minConsoleHeight / totalHeight, baseFraction))
+                    let baseDetails = totalHeight * clampedBase
+                    let proposedConsole = totalHeight - (baseDetails + value.translation.height)
+                    if proposedConsole < minConsoleHeight * 0.5 {
+                        withAnimation(.easeInOut(duration: 0.2)) { isConsoleHidden = true }
+                    }
+                }
         )
     }
 
@@ -247,6 +394,32 @@ struct ContentView: View {
                     }
 
                     HStack(spacing: 10) {
+                        // Layout toggles — kept on the left
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { isSidebarCollapsed.toggle() }
+                        } label: {
+                            Image(systemName: "sidebar.left")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .buttonStyle(MSCGhostIconButtonStyle(size: 30))
+                        .keyboardShortcut("s", modifiers: [.command, .option])
+                        .help(isSidebarCollapsed ? "Show sidebar (⌥⌘S)" : "Hide sidebar (⌥⌘S)")
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { isConsoleHidden.toggle() }
+                        } label: {
+                            Image(systemName: "square.bottomthird.inset.filled")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .buttonStyle(MSCGhostIconButtonStyle(size: 30))
+                        .keyboardShortcut("j", modifiers: [.command, .option])
+                        .help(isConsoleHidden ? "Show console (⌥⌘J)" : "Hide console (⌥⌘J)")
+
+                        // Divider between layout toggles and server-scope
+                        Rectangle()
+                            .fill(Color.white.opacity(0.14))
+                            .frame(width: 0.5, height: 16)
+
                         // Server-scope actions
                         Button {
                             viewModel.isShowingRouterPortForwardGuide = true
@@ -316,7 +489,9 @@ struct ContentView: View {
             // Main split
             HStack(spacing: 0) {
 
-                // Pass bannerColor into SidebarView for selector accent tinting
+                // Sidebar — fixed intrinsic width on the inside, revealed by an outer
+                // frame that animates to 0 on collapse. This clips (rather than compresses)
+                // the content, so the avatar slides out at full size instead of smooshing.
                 SidebarView(
                     isShowingPluginTemplates: $isShowingPluginTemplates,
                     isShowingPaperTemplate: $isShowingPaperTemplates,
@@ -324,59 +499,50 @@ struct ContentView: View {
                     bannerColor: bannerColor
                 )
                 .environmentObject(viewModel)
-                .frame(minWidth: 260, idealWidth: 280, maxWidth: 320)
+                .frame(width: CGFloat(sidebarWidth), alignment: .leading)
+                .frame(width: isSidebarCollapsed ? 0 : CGFloat(sidebarWidth), alignment: .leading)
+                .clipped()
+                .allowsHitTesting(!isSidebarCollapsed)
 
-                Divider()
+                if isSidebarCollapsed {
+                    sidebarRestoreRail
+                } else {
+                    sidebarResizeHandle
+                }
 
                 GeometryReader { geo in
                     let minDetailsHeight: CGFloat = 320
                     let compactConsoleHeight: CGFloat = 125
                     let minConsoleHeight: CGFloat = compactConsoleHeight
                     let totalHeight = geo.size.height
-                    let clampedFraction = max(
-                        minDetailsHeight / totalHeight,
-                        min(1.0 - minConsoleHeight / totalHeight, consoleSplitFraction)
-                    )
-                    let detailsHeight = totalHeight * clampedFraction
-                    let consoleHeight = totalHeight - detailsHeight
-                    let consoleIsCollapsed = consoleHeight <= compactConsoleHeight
 
                     VStack(spacing: 0) {
-                        DetailsView(
-                            isShowingManageServers: $isShowingManageServers,
-                            isShowingPluginTemplates: $isShowingPluginTemplates,
-                            isShowingPaperTemplate: $isShowingPaperTemplates,
-                            bannerColor: bannerColor
-                        )
-                        .environmentObject(viewModel)
-                        .frame(height: detailsHeight)
+                        if isConsoleHidden {
+                            detailsPane
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            consoleRestoreBar
+                        } else {
+                            let clampedFraction = max(
+                                minDetailsHeight / totalHeight,
+                                min(1.0 - minConsoleHeight / totalHeight, consoleSplitFraction)
+                            )
+                            let detailsHeight = totalHeight * clampedFraction
+                            let consoleHeight = totalHeight - detailsHeight
+                            let consoleIsCollapsed = consoleHeight <= compactConsoleHeight
 
-                        ZStack {
-                            Rectangle()
-                                .fill(Color(nsColor: .separatorColor))
-                                .frame(height: 1)
-                            Capsule()
-                                .fill(Color(nsColor: .tertiaryLabelColor))
-                                .frame(width: 36, height: 4)
+                            detailsPane
+                                .frame(height: detailsHeight)
+
+                            consoleDivider(
+                                totalHeight: totalHeight,
+                                minDetailsHeight: minDetailsHeight,
+                                minConsoleHeight: minConsoleHeight
+                            )
+
+                            ConsoleView(isCollapsed: consoleIsCollapsed)
+                                .environmentObject(viewModel)
+                                .frame(height: consoleHeight - 8)
                         }
-                        .frame(height: 8)
-                        .contentShape(Rectangle())
-                        .cursor(.resizeUpDown)
-                        .onboardingAnchor(.consoleDividerHandle)
-                        .gesture(
-                            DragGesture(minimumDistance: 1)
-                                .onChanged { value in
-                                    let newFraction = (detailsHeight + value.translation.height) / totalHeight
-                                    consoleSplitFraction = max(
-                                        minDetailsHeight / totalHeight,
-                                        min(1.0 - minConsoleHeight / totalHeight, newFraction)
-                                    )
-                                }
-                        )
-
-                        ConsoleView(isCollapsed: consoleIsCollapsed)
-                            .environmentObject(viewModel)
-                            .frame(height: consoleHeight - 8)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
