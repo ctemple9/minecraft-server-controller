@@ -66,6 +66,7 @@ struct ServerEditorView: View {
     @State var showImportZIPSheet: Bool = false
     @State var showReplaceWorldSheet: Bool = false
     @State var showRepairWorldSheet: Bool = false
+    @State var conversionContextEditor: WorldConversionContext? = nil
 
     // World tab — P6 slot admin
     @State var selectedSlotForEditor: WorldSlot? = nil
@@ -399,7 +400,7 @@ struct ServerEditorView: View {
                 helpStep(
                     id: "world.scope",
                     title: "World is where you manage reusable world states",
-                    body: "Think in slots first. The live world is whatever is currently active; slots are saved copies you can activate, duplicate, export, or delete.",
+                    body: "Think in slots first. The live world is whatever is currently active; slots are saved copies you can activate, duplicate, export, or delete. You can even convert world types (Java <-> Bedrock)",
                     anchorID: tabAnchorID(.world)
                 ),
                 helpStep(

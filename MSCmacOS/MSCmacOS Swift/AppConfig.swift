@@ -177,6 +177,16 @@ struct ConfigServer: Codable, Identifiable {
     /// Nil for old configs — treated as empty (all plugins unmanaged).
     var pluginSources: [String: PluginSourceConfig]? = nil
 
+    // MARK: - playit.gg tunnel
+
+    /// When true, the app starts the playit agent alongside this server so friends
+    /// can join without the server owner needing to configure port forwarding.
+    var playitEnabled: Bool = false
+
+    /// When true, a second UDP tunnel is opened for Simple Voice Chat on the standard
+    /// voice chat port (24454). Requires playitEnabled to be true.
+    var playitVoiceChatEnabled: Bool = false
+
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
@@ -215,6 +225,9 @@ struct ConfigServer: Codable, Identifiable {
 
                         case notificationPrefs   = "notification_prefs"
                         case pluginSources       = "plugin_sources"
+
+        case playitEnabled          = "playit_enabled"
+        case playitVoiceChatEnabled = "playit_voice_chat_enabled"
             }
         }
 
@@ -271,6 +284,9 @@ extension ConfigServer {
 
                         notificationPrefs  = try c.decodeIfPresent(ServerNotificationPrefs.self, forKey: .notificationPrefs) ?? ServerNotificationPrefs()
                         pluginSources      = try c.decodeIfPresent([String: PluginSourceConfig].self, forKey: .pluginSources)
+
+        playitEnabled          = try c.decodeIfPresent(Bool.self, forKey: .playitEnabled)          ?? false
+        playitVoiceChatEnabled = try c.decodeIfPresent(Bool.self, forKey: .playitVoiceChatEnabled) ?? false
             }
 
     func encode(to encoder: Encoder) throws {
@@ -313,6 +329,9 @@ extension ConfigServer {
 
                 try c.encode(notificationPrefs, forKey: .notificationPrefs)
                 try c.encodeIfPresent(pluginSources, forKey: .pluginSources)
+
+        try c.encode(playitEnabled,          forKey: .playitEnabled)
+        try c.encode(playitVoiceChatEnabled, forKey: .playitVoiceChatEnabled)
             }
 }
 
@@ -391,6 +410,12 @@ struct AppConfig: Codable {
 
     var duckdnsHostname: String?
 
+    // MARK: - playit.gg tunnel addresses (global — one agent, fixed addresses)
+    /// Public Java tunnel address e.g. "something.joinmc.link". Set once in Server Settings.
+    var playitJavaAddress: String?
+    /// Public Bedrock tunnel address e.g. "something.ply.gg:35803". Set once in Server Settings.
+    var playitBedrockAddress: String?
+
     /// Tracks whether the Welcome Guide has been shown at least once.
     var hasShownWelcomeGuide: Bool
 
@@ -437,6 +462,8 @@ struct AppConfig: Codable {
         case remoteAPISharedAccess = "remote_api_shared_access"
 
         case duckdnsHostname = "duckdns_hostname"
+        case playitJavaAddress    = "playit_java_address"
+        case playitBedrockAddress = "playit_bedrock_address"
         case hasShownWelcomeGuide = "has_shown_welcome_guide"
 
         case xboxBroadcastJarPath = "xbox_broadcast_jar_path"
@@ -493,6 +520,8 @@ struct AppConfig: Codable {
             remoteAPISharedAccess: [],
 
             duckdnsHostname: nil,
+            playitJavaAddress: nil,
+            playitBedrockAddress: nil,
             hasShownWelcomeGuide: false,
             xboxBroadcastJarPath: nil,
             xboxBroadcastAutoStartEnabled: true,
@@ -585,6 +614,8 @@ extension AppConfig {
         self.duckdnsHostname =
             try container.decodeIfPresent(String.self, forKey: .duckdnsHostname)
                 ?? defaults.duckdnsHostname
+        self.playitJavaAddress    = try container.decodeIfPresent(String.self, forKey: .playitJavaAddress)
+        self.playitBedrockAddress = try container.decodeIfPresent(String.self, forKey: .playitBedrockAddress)
 
         self.hasShownWelcomeGuide =
             try container.decodeIfPresent(Bool.self, forKey: .hasShownWelcomeGuide)
@@ -634,7 +665,9 @@ extension AppConfig {
         try container.encodeIfPresent(remoteAPIPreferredPairingHost, forKey: .remoteAPIPreferredPairingHost)
         try container.encode(remoteAPISharedAccess, forKey: .remoteAPISharedAccess)
 
-        try container.encodeIfPresent(duckdnsHostname, forKey: .duckdnsHostname)
+        try container.encodeIfPresent(duckdnsHostname,      forKey: .duckdnsHostname)
+        try container.encodeIfPresent(playitJavaAddress,    forKey: .playitJavaAddress)
+        try container.encodeIfPresent(playitBedrockAddress, forKey: .playitBedrockAddress)
 
         try container.encode(hasShownWelcomeGuide, forKey: .hasShownWelcomeGuide)
         try container.encodeIfPresent(xboxBroadcastJarPath, forKey: .xboxBroadcastJarPath)

@@ -289,7 +289,7 @@ struct DetailsView: View {
 
     private func onboardingTab(for step: OnboardingStep) -> DetailsInnerTab? {
         switch step {
-        case .acceptEula, .startButton, .console, .continueDetails, .expandDetails, .detailsOverviewTab, .portForwardGuide:
+        case .acceptEula, .startButton, .console, .continueDetails, .expandDetails, .detailsOverviewTab:
             return .overview
         case .detailsPlayersTab:
             return .players

@@ -547,6 +547,8 @@ struct MSCSettingsView: View {
         .environmentObject(viewModel)
     }
 
+    @State private var isShowingPlayitGuideFromSettings: Bool = false
+
     private var learnHelpCard: some View {
         PreferencesLearnHelpSection(
             onShowWelcomeGuide: {
@@ -564,10 +566,20 @@ struct MSCSettingsView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     OnboardingManager.shared.reset()
                 }
+            },
+            onOpenPortForwardGuide: {
+                viewModel.isShowingRouterPortForwardGuide = true
+                dismiss()
+            },
+            onOpenPlayitGuide: {
+                isShowingPlayitGuideFromSettings = true
             }
         )
         .id(learnHelpCardAnchorID)
         .contextualHelpAnchor(learnHelpCardAnchorID)
+        .sheet(isPresented: $isShowingPlayitGuideFromSettings) {
+            PlayitSetupGuideSheet(localPort: 25565, bedrockPort: 19132)
+        }
     }
 
     // MARK: - Logic (unchanged from original)

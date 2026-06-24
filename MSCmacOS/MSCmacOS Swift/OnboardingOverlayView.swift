@@ -118,7 +118,19 @@ struct OnboardingOverlayView: View {
     @ViewBuilder
     private func tooltipCard(in size: CGSize) -> some View {
         let step = manager.currentStep
-        if step == .welcome || step == .done {
+        if !step.showsCard {
+            // No info card — user interacts freely; show only Skip tour.
+            if step != .dismissManage && step != .continueDetails {
+                Button("Skip tour") { manager.complete() }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.45))
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.vertical, MSC.Spacing.xs)
+                    .background(Capsule().fill(Color.white.opacity(0.08)))
+                    .buttonStyle(.plain)
+                    .position(x: size.width - 70, y: 52)
+            }
+        } else if step == .welcome || step == .done {
             fullScreenCard(step: step, in: size)
         } else {
             anchoredCard(step: step, in: size)
@@ -202,10 +214,19 @@ struct OnboardingOverlayView: View {
         // Continue or Create Server), park the card at the top so it doesn't block
         // the content the user needs to read or fill in.
         let isBottomAnchored = spotlight.midY > size.height * 0.65
+        // When the spotlight is so tall it covers most of the screen, park the card
+        // INSIDE the spotlight near its top edge so it stays fully visible.
+        let isTallSpotlight = !isBottomAnchored && spotlight.height > size.height * 0.65
+
         let cardY: CGFloat = isBottomAnchored
             ? cardEstimatedHeight / 2 + 80
-            : idealY
-        let cardX: CGFloat = isBottomAnchored
+            : isTallSpotlight
+                // Sit just above the footer (estimated ~70 pts from spotlight bottom),
+                // leaving content fields visible above the card.
+                ? spotlight.maxY - cardEstimatedHeight / 2 - 70
+                : idealY
+
+        let cardX: CGFloat = (isBottomAnchored || isTallSpotlight)
             ? size.width / 2
             : max(cardWidth / 2 + 16, min(size.width - cardWidth / 2 - 16, spotlight.midX))
 
@@ -315,17 +336,19 @@ struct OnboardingOverlayView: View {
         case .wizardChoosePath:      return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .serverName:            return f[OnboardingAnchorID.serverNameField.rawValue] ?? .zero
         case .serverType:            return f[OnboardingAnchorID.serverTypeSelector.rawValue] ?? .zero
-        case .serverSettings:        return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
-        case .firstWorld:            return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
-        case .createButton:          return f[OnboardingAnchorID.createSaveButton.rawValue] ?? .zero
+        case .serverSettings:          return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
+        case .serverConnectivity:      return f[OnboardingAnchorID.serverConnectivityArea.rawValue] ?? .zero
+        case .serverConnectivityPorts: return f[OnboardingAnchorID.serverConnectivityPortsArea.rawValue] ?? .zero
+        case .serverNetworkContinue:   return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
+        case .firstWorld:              return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
+        case .firstWorldFill:          return f[OnboardingAnchorID.wizardBodyArea.rawValue] ?? .zero
+        case .createButton:            return f[OnboardingAnchorID.wizardBodyArea.rawValue] ?? .zero
         case .dismissManage:         return f[OnboardingAnchorID.manageServersDoneButton.rawValue] ?? .zero
         case .acceptEula:            return f[OnboardingAnchorID.acceptEulaButton.rawValue] ?? .zero
         case .startButton:           return f[OnboardingAnchorID.startButton.rawValue] ?? .zero
         case .console:               return f[OnboardingAnchorID.consolePanel.rawValue] ?? .zero
         case .continueDetails:       return f[OnboardingAnchorID.consolePanel.rawValue] ?? .zero
         case .expandDetails:         return f[OnboardingAnchorID.consoleDividerHandle.rawValue] ?? .zero
-        case .portForwardGuide:
-            return f[OnboardingAnchorID.portForwardGuideButton.rawValue] ?? .zero
         case .detailsOverviewTab,
              .detailsPlayersTab,
              .detailsWorldsTab,

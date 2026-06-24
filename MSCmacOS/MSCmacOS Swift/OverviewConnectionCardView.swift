@@ -106,10 +106,53 @@ struct OverviewConnectionCardView: View {
         return viewModel.bedrockPropertiesModel(for: cfg).serverPortV6
     }
 
-    /// Effective public address — substitutes DuckDNS hostname when duck toggle is active
+    /// Effective public address — substitutes DuckDNS, playit Java tunnel, or WAN IP
     private var effectivePublicAddress: String {
         if useDuckDNS && duckDNSAvailable { return duckDNSHost }
+        // When playit is active and a Java tunnel address is stored, use it
+        if isPlayitActive, let javaAddr = viewModel.playitJavaAddress,
+           let host = javaAddr.components(separatedBy: ":").first, !host.isEmpty {
+            return host
+        }
         return viewModel.cachedPublicIPAddress ?? "Fetching…"
+    }
+
+    /// Effective public port — uses stored playit Java tunnel port when active
+    private var effectivePublicPort: String? {
+        guard isPlayitActive, let javaAddr = viewModel.playitJavaAddress else { return nil }
+        let parts = javaAddr.components(separatedBy: ":")
+        return parts.count == 2 ? parts[1] : nil
+    }
+
+    /// Effective public Bedrock address for playit tunnel
+    private var effectivePlayitBedrockAddress: String? {
+        guard isPlayitActive, let addr = viewModel.playitBedrockAddress,
+              let host = addr.components(separatedBy: ":").first, !host.isEmpty else { return nil }
+        return host
+    }
+
+    /// Effective public Bedrock port for playit tunnel
+    private var effectivePlayitBedrockPort: String? {
+        guard isPlayitActive, let addr = viewModel.playitBedrockAddress else { return nil }
+        let parts = addr.components(separatedBy: ":")
+        return parts.count == 2 ? parts[1] : nil
+    }
+
+    private func tunnelHost(from address: String) -> String {
+        String(address.split(separator: ":").first ?? Substring(address))
+    }
+
+    private func tunnelPort(from address: String) -> String? {
+        let parts = address.split(separator: ":")
+        guard parts.count == 2 else { return nil }
+        return String(parts[1])
+    }
+
+    private var isPlayitActive: Bool {
+        // Active if the container is running AND we have stored tunnel addresses.
+        // (playitTunnelAddress is the legacy parsed value; playitJavaAddress is the API-fetched one)
+        viewModel.isPlayitRunning &&
+        (viewModel.playitTunnelAddress != nil || viewModel.playitJavaAddress != nil)
     }
 
     private var effectiveJavaAddress: String {
@@ -134,6 +177,23 @@ struct OverviewConnectionCardView: View {
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(MSC.Colors.tertiary)
                     MSCOverline("Connection Info")
+
+                    if isPlayitActive {
+                        HStack(spacing: 3) {
+                            Circle()
+                                .fill(MSC.Colors.connectionOnline)
+                                .frame(width: 5, height: 5)
+                            Text("TUNNEL")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(MSC.Colors.connectionOnline)
+                                .tracking(0.6)
+                        }
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule().fill(MSC.Colors.connectionOnline.opacity(0.12))
+                        )
+                    }
                 }
 
                 Spacer()
@@ -269,20 +329,37 @@ struct OverviewConnectionCardView: View {
     @ViewBuilder
     private var javaColumns: some View {
         let jAddr = effectiveJavaAddress
+        let jPort = (showPublicIP && isPlayitActive) ? (effectivePublicPort ?? viewModel.javaPortForDisplay) : viewModel.javaPortForDisplay
+        let platformLabel = (showPublicIP && isPlayitActive) ? "Tunnel · PC / Mac" : "Java · PC / Mac"
         HStack(alignment: .top, spacing: MSC.Spacing.sm) {
             endpointCell(
-                platformLabel: "Java · PC / Mac",
-                dotColor: MSC.Colors.connectionWarning,
+                platformLabel: platformLabel,
+                dotColor: isPlayitActive && showPublicIP ? MSC.Colors.connectionOnline : MSC.Colors.connectionWarning,
                 address: jAddr,
-                port: viewModel.javaPortForDisplay,
+                port: jPort,
                 copyLabel: "Copy Java",
                 onCopy: {
-                    copyToPasteboard("\(jAddr):\(viewModel.javaPortForDisplay)")
-                    showHUDMessage(showPublicIP ? "Public Java address copied" : "Java address copied")
+                    copyToPasteboard("\(jAddr):\(jPort)")
+                    showHUDMessage(showPublicIP && isPlayitActive ? "Tunnel address copied" : showPublicIP ? "Public Java address copied" : "Java address copied")
                 }
             )
 
-            if let rawBedAddr = resolvedBedrockAddress, let bedPort = resolvedBedrockPort {
+            if showPublicIP && isPlayitActive,
+               let playitBedAddr = effectivePlayitBedrockAddress,
+               let playitBedPort = effectivePlayitBedrockPort {
+                // Show playit Bedrock tunnel in Public mode
+                endpointCell(
+                    platformLabel: "Tunnel · Bedrock",
+                    dotColor: MSC.Colors.connectionOnline,
+                    address: playitBedAddr,
+                    port: playitBedPort,
+                    copyLabel: "Copy Bedrock",
+                    onCopy: {
+                        copyToPasteboard("\(playitBedAddr):\(playitBedPort)")
+                        showHUDMessage("Bedrock tunnel address copied")
+                    }
+                )
+            } else if let rawBedAddr = resolvedBedrockAddress, let bedPort = resolvedBedrockPort {
                 let bedAddr = effectiveBedrockAddress(fallback: rawBedAddr)
                 endpointCell(
                     platformLabel: "Bedrock (Geyser)",
@@ -344,6 +421,18 @@ struct OverviewConnectionCardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Connection source tag
+
+    private var connectionSourceTag: (label: String, color: Color) {
+        if !showPublicIP {
+            return ("LAN", Color.secondary)
+        }
+        if selectedConfigServer?.playitEnabled == true {
+            return ("playit.gg", MSC.Colors.connectionOnline)
+        }
+        return ("Router", Color.secondary)
+    }
+
     // MARK: - Endpoint cell
 
     @ViewBuilder
@@ -356,6 +445,7 @@ struct OverviewConnectionCardView: View {
         onCopy: @escaping () -> Void,
         isSecondary: Bool = false
     ) -> some View {
+        let (tagLabel, tagColor) = connectionSourceTag
         VStack(alignment: .leading, spacing: 0) {
 
             // Platform label row
@@ -368,6 +458,14 @@ struct OverviewConnectionCardView: View {
                     .foregroundStyle(MSC.Colors.tertiary)
                     .tracking(0.8)
                     .textCase(.uppercase)
+                Spacer()
+                Text(tagLabel)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(tagColor)
+                    .tracking(0.4)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(tagColor.opacity(0.12)))
             }
 
             Spacer()

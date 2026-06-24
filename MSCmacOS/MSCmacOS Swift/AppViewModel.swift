@@ -122,6 +122,15 @@ final class AppViewModel: ObservableObject {
     @Published var isXboxBroadcastRunning: Bool = false
     @Published var isBedrockBroadcastRunning: Bool = false
 
+    // MARK: - playit.gg tunnel
+    @Published var isPlayitRunning: Bool = false
+    /// The public tunnel address (e.g. "abc.joinmc.link:25565") once the agent is connected.
+    @Published var playitTunnelAddress: String? = nil
+    /// True when the user needs to enter their playit.gg secret key for the first time.
+    @Published var isShowingPlayitSecretSetup: Bool = false
+    /// Transient flag: true for one log line after "tunnel setup" is printed.
+    var playitExpectingAddressLine: Bool = false
+
     // MARK: - Bedrock / Docker state
 
     @Published var dockerDaemonRunning: Bool = false
@@ -186,7 +195,7 @@ final class AppViewModel: ObservableObject {
     /// in submission order (responses share the same "The time is X" text).
     var pendingTimeQueryKinds: [TimeQueryKind] = []
 
-    enum TimeQueryKind { case day, daytime }
+    enum TimeQueryKind { case gametime, daytime }
 
     /// The player whose full-body render is featured in the Overview Players card.
     /// Drives the live health query so we only poll the one shown character.
@@ -286,6 +295,7 @@ final class AppViewModel: ObservableObject {
 
     let broadcastManager = XboxBroadcastProcessManager()
     let bedrockBroadcastManager = BedrockBroadcastManager()
+    let playitDockerManager = PlayitDockerManager()
 
     static var sharedRemoteAPIServer: RemoteAPIServer?
     var remoteAPIServer: RemoteAPIServer?

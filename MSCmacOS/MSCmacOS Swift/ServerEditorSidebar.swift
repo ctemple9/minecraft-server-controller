@@ -115,7 +115,7 @@ struct ServerEditorSidebarView: View {
 
                     Divider().opacity(0.4).padding(.vertical, 6)
 
-                    if let cfg = editingConfigServer {
+                    if data.serverType == .java, let cfg = editingConfigServer {
                         let summary = viewModel.jarSummary(for: cfg)
                         sbRow("JARs") {
                             Text(summary.paperFilename != nil ? "✓ Found" : "Missing")

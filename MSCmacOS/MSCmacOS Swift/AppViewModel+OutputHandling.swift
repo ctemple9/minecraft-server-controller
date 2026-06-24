@@ -161,23 +161,37 @@ extension AppViewModel {
 
     // MARK: - World time parsing
 
-    /// Parses responses to `/time query day` and `/time query daytime`. Both reply
-    /// with "The time is X", so we attribute each response to the next expected kind
-    /// recorded by `refreshWorldTime()` (submission order is preserved by the server).
+    /// Parses responses to `time query gametime` and `time query day`.
+    /// Handles both response formats:
+    ///   - Legacy (pre-1.21.4):  "The time is X"
+    ///   - New (1.21.4+ Paper):  "Timeline minecraft:X is at Y tick(s)"
     private func parseWorldTime(from line: String) {
         guard !pendingTimeQueryKinds.isEmpty else { return }
         let clean = AppUtilities.sanitized(line)
-        guard let range = clean.range(of: "The time is ") else { return }
-        let tail = clean[range.upperBound...]
-        let digits = tail.prefix { $0.isNumber || $0 == "-" }
-        guard let value = Int(digits) else { return }
+
+        let value: Int
+        if let atRange = clean.range(of: " is at "),
+           let tickRange = clean.range(of: " tick", range: atRange.upperBound..<clean.endIndex) {
+            // New Paper format: "Timeline minecraft:day is at 35 tick(s)"
+            let digits = String(clean[atRange.upperBound..<tickRange.lowerBound])
+                .trimmingCharacters(in: .whitespaces)
+            guard let v = Int(digits) else { return }
+            value = v
+        } else if let range = clean.range(of: "The time is ") {
+            // Legacy format: "The time is 1234"
+            let tail = clean[range.upperBound...]
+            let digits = tail.prefix { $0.isNumber || $0 == "-" }
+            guard let v = Int(digits) else { return }
+            value = v
+        } else {
+            return
+        }
 
         let kind = pendingTimeQueryKinds.removeFirst()
         switch kind {
-        case .day:
-            worldDayNumber = value
+        case .gametime:
+            worldDayNumber = value / 24000
         case .daytime:
-            // daytime is reported 0–23999; normalize defensively.
             worldTimeOfDayTicks = ((value % 24000) + 24000) % 24000
             worldTimeIsLive = true
         }

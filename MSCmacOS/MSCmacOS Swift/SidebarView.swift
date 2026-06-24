@@ -354,7 +354,7 @@ struct SidebarView: View {
                                         isShowingPaperTemplate = true
                                     }
                                 }
-                                MaintenanceButton(icon: "folder", label: "Server Folder") {
+                                MaintenanceButton(icon: "folder", label: "Directory") {
                                     viewModel.openSelectedServerFolder()
                                 }
                                 .disabled(viewModel.selectedServer == nil)

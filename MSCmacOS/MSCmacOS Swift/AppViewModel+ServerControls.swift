@@ -170,6 +170,7 @@ extension AppViewModel {
                 } else {
                     startBroadcastIfNeeded(for: cfgServer)
                 }
+                startPlayitIfNeeded(for: cfgServer)
                 if cfgServer.autoBackupEnabled {
                     startAutoBackupTimer(for: cfgServer)
                 }
@@ -200,6 +201,7 @@ extension AppViewModel {
         lifecycle.isStopRequested = true
         stopBroadcastIfRunning()
         stopBedrockBroadcastIfRunning()
+        stopPlayitIfRunning()
         resourcePackHostServer.stop()
         clearLiveWorldTime()
 
@@ -304,17 +306,20 @@ extension AppViewModel {
     }
 
     /// Polls the running Java server for the in-game day and time-of-day.
-    /// `/time query day` and `/time query daytime` both reply "The time is X",
-    /// so we record the expected response order and attribute them in `parseWorldTime`.
+    /// Paper 1.21.4+ changed the response format to "Timeline minecraft:X is at Y tick(s)"
+    /// and removed `time query daytime`. We now use:
+    ///   - `time query gametime` → total ticks → divide by 24000 for day number
+    ///   - `time query day`      → daytime ticks (0-23999) in newer Paper
+    /// Both old ("The time is X") and new format responses are handled by `parseWorldTime`.
     /// Re-seeding the expectation list each cycle keeps it self-healing.
     func refreshWorldTime() {
         guard activeBackend?.isRunning == true else { return }
         guard let server = selectedServer,
               let cfgServer = configServer(for: server),
               cfgServer.serverType == .java else { return }
-        pendingTimeQueryKinds = [.day, .daytime]
+        pendingTimeQueryKinds = [.gametime, .daytime]
+        sendCommand("time query gametime", origin: .auto)
         sendCommand("time query day", origin: .auto)
-        sendCommand("time query daytime", origin: .auto)
     }
 
     /// Polls the featured player's current health from the running Java server,

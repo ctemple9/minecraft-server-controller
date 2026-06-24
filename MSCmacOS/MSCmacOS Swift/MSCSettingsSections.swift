@@ -766,6 +766,8 @@ struct PreferencesLearnHelpSection: View {
     let onShowWelcomeGuide: () -> Void
     let onShowPrerequisites: () -> Void
     let onRestartSetupTour: () -> Void
+    let onOpenPortForwardGuide: () -> Void
+    let onOpenPlayitGuide: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
@@ -782,6 +784,14 @@ struct PreferencesLearnHelpSection: View {
                 .buttonStyle(MSCSecondaryButtonStyle())
 
             Button("Restart Setup Tour…", action: onRestartSetupTour)
+                .buttonStyle(MSCSecondaryButtonStyle())
+
+            Divider()
+
+            Button("Port Forwarding Guide…", action: onOpenPortForwardGuide)
+                .buttonStyle(MSCSecondaryButtonStyle())
+
+            Button("playit.gg Tunnel Setup Guide…", action: onOpenPlayitGuide)
                 .buttonStyle(MSCSecondaryButtonStyle())
         }
         .pscCard()

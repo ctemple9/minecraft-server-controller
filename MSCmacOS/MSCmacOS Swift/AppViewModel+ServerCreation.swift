@@ -132,6 +132,7 @@ extension AppViewModel {
         port: Int,
         enableCrossPlay: Bool,
         crossPlayBedrockPort: Int? = nil,
+        enablePlayit: Bool = false,
         difficulty: String,
         gamemode: String,
         worldSeed: String?,
@@ -239,6 +240,7 @@ extension AppViewModel {
             var cfgServer = ConfigServer(id: newId, displayName: safeName, serverDir: newDir.path,
                                          paperJarPath: jarDest.path, minRamGB: 2, maxRamGB: 4, notes: "")
             cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
+            cfgServer.playitEnabled = enablePlayit
             if enableCrossPlay, let bedrockPort = crossPlayBedrockPort {
                 cfgServer.bedrockPort = bedrockPort
             }
@@ -276,6 +278,7 @@ extension AppViewModel {
         bedrockVersion: String,
         port: Int,
         maxPlayers: Int,
+        enablePlayit: Bool = false,
         difficulty: String,
         gamemode: String,
         worldSeed: String?,
@@ -370,6 +373,7 @@ extension AppViewModel {
             var cfgServer = ConfigServer(id: newId, displayName: safeName, serverDir: newDir.path,
                                          paperJarPath: "", minRamGB: 0, maxRamGB: 0, notes: "")
             cfgServer.serverType = .bedrock
+            cfgServer.playitEnabled = enablePlayit
             cfgServer.bedrockDockerImage = dockerImage.isEmpty ? "itzg/minecraft-bedrock-server" : dockerImage
             cfgServer.bedrockVersion = {
                 let trimmed = bedrockVersion.trimmingCharacters(in: .whitespacesAndNewlines)

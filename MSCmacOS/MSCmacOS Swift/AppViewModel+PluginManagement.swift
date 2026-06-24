@@ -118,6 +118,49 @@ extension AppViewModel {
         refreshDiscoveredPlugins()
     }
 
+    // MARK: - One-step check + download (used from JARs tab in Edit Server)
+
+    /// Fetches the download URL (if needed) and then downloads the plugin.
+    /// For direct-URL sources this skips the network check and downloads immediately.
+    func downloadPluginWithSourceCheck(entry: PluginEntry) {
+        guard let source = entry.sourceConfig else { return }
+        guard !downloadingPlugins.contains(entry.jarStem) else { return }
+
+        if source.type == .direct {
+            guard let url = URL(string: source.url) else {
+                logAppMessage("[Plugins] Invalid download URL for \(entry.displayName).")
+                return
+            }
+            var e = entry
+            e.onlineDownloadURL = url
+            e.onlineVersion = "(direct)"
+            downloadLatestForPlugin(entry: e)
+        } else {
+            downloadingPlugins.insert(entry.jarStem)
+            let mcVersion = componentsSnapshot.paper.local?.split(separator: " ").first.map(String.init) ?? "1.21"
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                do {
+                    let (version, url) = try await self.fetchOnlineVersion(for: source, mcVersion: mcVersion)
+                    self.discoveredPlugins = self.discoveredPlugins.map { e in
+                        guard e.jarStem == entry.jarStem else { return e }
+                        var updated = e
+                        updated.onlineVersion = version
+                        updated.onlineDownloadURL = url
+                        return updated
+                    }
+                    self.downloadingPlugins.remove(entry.jarStem)
+                    if let fresh = self.discoveredPlugins.first(where: { $0.jarStem == entry.jarStem }) {
+                        self.downloadLatestForPlugin(entry: fresh)
+                    }
+                } catch {
+                    self.downloadingPlugins.remove(entry.jarStem)
+                    self.logAppMessage("[Plugins] Check for update failed (\(entry.displayName)): \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     // MARK: - Download latest for a user-sourced plugin
 
     /// Downloads the latest version of a user-sourced plugin from its `onlineDownloadURL`.

@@ -213,6 +213,32 @@ struct ServerSettingsView: View {
                                     .padding(.horizontal, MSC.Spacing.md)
                                     .padding(.top, 2)
                                     .padding(.bottom, MSC.Spacing.sm)
+                SettingsRow(label: "Tunnel (playit.gg)") {
+                    Toggle("", isOn: Binding(
+                        get: { configServer.playitEnabled },
+                        set: { viewModel.setPlayitEnabled($0, for: configServer.id) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+                if configServer.playitEnabled {
+                    SettingsRow(label: "Voice Chat Tunnel") {
+                        Toggle("", isOn: Binding(
+                            get: { configServer.playitVoiceChatEnabled },
+                            set: { viewModel.setPlayitEnabled(configServer.playitEnabled, voiceChat: $0, for: configServer.id) }
+                        ))
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                    }
+                    Text("Opens a second UDP tunnel on port 24454 for Simple Voice Chat. Requires the Simple Voice Chat plugin.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, MSC.Spacing.md)
+                        .padding(.top, 2)
+                        .padding(.bottom, MSC.Spacing.sm)
+                }
+                playitDownloadRow
             }
             .contextualHelpAnchor("serverEditor.settings.java.network")
         }
@@ -331,6 +357,15 @@ struct ServerSettingsView: View {
                                     .padding(.horizontal, MSC.Spacing.md)
                                     .padding(.top, 2)
                                     .padding(.bottom, MSC.Spacing.sm)
+                SettingsRow(label: "Tunnel (playit.gg)") {
+                    Toggle("", isOn: Binding(
+                        get: { configServer.playitEnabled },
+                        set: { viewModel.setPlayitEnabled($0, for: configServer.id) }
+                    ))
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                }
+                playitDownloadRow
             }
             .contextualHelpAnchor("serverEditor.settings.bedrock.network")
         }
@@ -344,6 +379,83 @@ struct ServerSettingsView: View {
 
     private var bedrockDraft: BedrockServerSettingsDraft {
         BedrockServerSettingsDraft(model: bedrockModel, bedrockPortV6Text: bedrockPortV6Text)
+    }
+
+    // MARK: - playit.gg download row
+
+    @ViewBuilder
+    private var playitDownloadRow: some View {
+        if configServer.playitEnabled {
+            // Tunnel addresses — auto-detected from playit.gg API on each server start
+            if let java = viewModel.playitJavaAddress {
+                SettingsRow(label: "Java Tunnel") {
+                    Text(java)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            if let bedrock = viewModel.playitBedrockAddress {
+                SettingsRow(label: "Bedrock Tunnel") {
+                    Text(bedrock)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+            if viewModel.playitJavaAddress == nil && viewModel.playitBedrockAddress == nil {
+                Text("Tunnel addresses are fetched automatically when the server starts.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
+            }
+
+            let hasKey = viewModel.playitSecretKey != nil
+            SettingsRow(label: "Secret Key") {
+                if hasKey {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(MSC.Colors.success)
+                            .font(.system(size: 12))
+                        Text("Configured")
+                            .font(MSC.Typography.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Change") {
+                            viewModel.isShowingPlayitSecretSetup = true
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                    }
+                } else {
+                    Button("Set up Secret Key…") {
+                        viewModel.isShowingPlayitSecretSetup = true
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+                }
+            }
+            if viewModel.isPlayitRunning {
+                Text("Tunnel active. Public address shown in Overview.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.success)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
+            } else {
+                Text("Tunnel starts automatically with the server via Docker. Requires a playit.gg secret key (free).")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
+            }
+        }
     }
 
     // MARK: - Validation

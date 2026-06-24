@@ -287,20 +287,12 @@ private struct PaperListRow: View {
                     online: viewModel.componentsSnapshot.paper.online
                 )
 
-                Button { onReveal() } label: {
-                    Image(systemName: "folder")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.mini)
-
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
                 } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .animation(.easeInOut(duration: 0.18), value: isExpanded)
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.accentColor.opacity(0.65))
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
                 .controlSize(.mini)
@@ -724,7 +716,7 @@ private func componentBadge(_ label: String, color: Color) -> some View {
 
 // MARK: - Plugin Source Popover (unchanged)
 
-private struct PluginSourcePopover: View {
+struct PluginSourcePopover: View {
     @EnvironmentObject var viewModel: AppViewModel
     let entry: PluginEntry
     @Binding var isPresented: Bool

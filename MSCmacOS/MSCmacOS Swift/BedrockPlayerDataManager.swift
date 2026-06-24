@@ -123,6 +123,7 @@ enum BedrockPlayerDataManager {
     /// Resolves a Bedrock gamertag to the Floodgate UUID used by mc-heads.net
     /// for Bedrock player head/body rendering.
     /// The Geyser endpoint accepts the gamertag with a leading dot prefix.
+    /// Retries once after 0.5 s to handle transient network failures.
     static func resolveFloodgateUUID(gamertag: String) async -> UUID? {
         let dotted = gamertag.hasPrefix(".") ? gamertag : ".\(gamertag)"
         let encoded = dotted.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? dotted
@@ -131,19 +132,21 @@ enum BedrockPlayerDataManager {
         guard let url = URL(string: "https://api.geysermc.org/v2/utils/uuid/bedrock_or_java/\(encoded)?prefix=.") else {
             return nil
         }
-        var request = URLRequest(url: url)
-        request.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 10
-
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
 
         struct GeyserIdentity: Decodable { let id: String }
-        guard let identity = try? JSONDecoder().decode(GeyserIdentity.self, from: data) else {
-            return nil
+
+        for attempt in 0..<2 {
+            if attempt > 0 { try? await Task.sleep(nanoseconds: 500_000_000) }
+            var request = URLRequest(url: url)
+            request.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
+            request.timeoutInterval = 10
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  (response as? HTTPURLResponse)?.statusCode == 200,
+                  let identity = try? JSONDecoder().decode(GeyserIdentity.self, from: data)
+            else { continue }
+            return uuidFromNoDashes(identity.id)
         }
-        // GeyserMC returns UUIDs without dashes; insert them.
-        return uuidFromNoDashes(identity.id)
+        return nil
     }
 
     // MARK: - Helpers

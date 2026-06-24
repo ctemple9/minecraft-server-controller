@@ -41,6 +41,10 @@ struct CreateServerView: View {
     @State private var isDownloadingCrossPlayJars = false
     @State private var crossPlayDownloadStatus: String? = nil
 
+    // MARK: - Connectivity
+
+    @State private var enablePlayit: Bool = false
+
     // MARK: - Bedrock-specific state
 
     @State private var bedrockDockerImage: String = "itzg/minecraft-bedrock-server"
@@ -256,6 +260,8 @@ struct CreateServerView: View {
                     .foregroundStyle(.secondary)
             }
 
+            connectivitySection
+
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Toggle(isOn: $enableCrossPlay) {
                     Text("Enable Bedrock cross-play (Geyser + Floodgate)")
@@ -345,6 +351,8 @@ struct CreateServerView: View {
                     .foregroundStyle(.secondary)
             }
 
+            connectivitySection
+
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("Max Players")
                     .font(MSC.Typography.sectionHeader)
@@ -353,6 +361,83 @@ struct CreateServerView: View {
                     .frame(maxWidth: 160)
             }
         }
+    }
+
+    // MARK: - Connectivity section
+
+    private var connectivitySection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            Text("Public Access")
+                .font(MSC.Typography.sectionHeader)
+
+            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                HStack(alignment: .top, spacing: MSC.Spacing.sm) {
+                    connectivityCard(
+                        title: "Port Forwarding",
+                        subtitle: "Forward a port on your router",
+                        systemImage: "network",
+                        isSelected: !enablePlayit
+                    ) { enablePlayit = false }
+
+                    connectivityCard(
+                        title: "Tunnel (playit.gg)",
+                        subtitle: "No router access needed · Free",
+                        systemImage: "arrow.triangle.2.circlepath",
+                        isSelected: enablePlayit
+                    ) { enablePlayit = true }
+                }
+
+                if enablePlayit {
+                    Text("Game traffic is relayed through playit.gg's servers. Friends connect to a public address — no router config needed. Adds 10–50 ms of latency. A free playit.gg account is required on first start.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("You'll need to forward the port above on your router so friends can connect from outside your network.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func connectivityCard(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: MSC.Spacing.sm) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15))
+                    .foregroundStyle(isSelected ? .white : .secondary)
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(isSelected ? .white.opacity(0.8) : .secondary)
+                }
+                Spacer()
+            }
+            .padding(MSC.Spacing.sm)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - World source section
@@ -549,6 +634,7 @@ struct CreateServerView: View {
                     port: port,
                     enableCrossPlay: enableCrossPlay,
                     crossPlayBedrockPort: enableCrossPlay ? (Int(crossPlayBedrockPort) ?? 19132) : nil,
+                    enablePlayit: enablePlayit,
                     difficulty: initialWorldDifficulty.rawValue,
                     gamemode: initialWorldGamemode.rawValue,
                     worldSeed: normalizedInitialWorldSeed,
@@ -574,6 +660,7 @@ struct CreateServerView: View {
                     bedrockVersion: version.isEmpty ? "LATEST" : version,
                     port: port,
                     maxPlayers: maxPlayers,
+                    enablePlayit: enablePlayit,
                     difficulty: initialWorldDifficulty.rawValue,
                     gamemode: initialWorldGamemode.rawValue,
                     worldSeed: normalizedInitialWorldSeed,

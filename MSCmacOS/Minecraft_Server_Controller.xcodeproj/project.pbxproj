@@ -9,6 +9,11 @@
 /* Begin PBXBuildFile section */
 		9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */; };
 		9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */; };
+		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
+		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
+		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
+		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
+		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
 		9A0B6F002F6F94C800CCA17C /* CrossPlatformGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */; };
 		9A4F742A2F6CBB92008FF39A /* OnboardingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */; };
 		9A4F742B2F6CBB92008FF39A /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */; };
@@ -82,6 +87,10 @@
 		9A5632BB2F65AD6D00FB8246 /* ConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320C2F65AD6C00FB8246 /* ConsoleView.swift */; };
 		9A5632BC2F65AD6D00FB8246 /* AppViewModel+Broadcasting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */; };
 		9A5632BD2F65AD6D00FB8246 /* XboxBroadcastProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */; };
+		CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */; };
+		CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */; };
+		CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */; };
+		CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */; };
 		9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */; };
 		9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632242F65AD6C00FB8246 /* HealthCardModels.swift */; };
 		9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */; };
@@ -119,17 +128,12 @@
 		9A5632E42F65AD6D00FB8246 /* AppViewModel+FinderTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */; };
 		9A5632E52F65AD6D00FB8246 /* ReplaceWorldView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */; };
 		9A5632E62F65AD6D00FB8246 /* ResourcePackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */; };
-		9AFE01010000000000000002 /* ResourcePackHostServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE01010000000000000001 /* ResourcePackHostServer.swift */; };
 		9A5632E72F65AD6D00FB8246 /* SessionLogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632642F65AD6C00FB8246 /* SessionLogManager.swift */; };
 		9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */; };
 		9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */; };
 		9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */; };
 		9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */; };
 		9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */; };
-		9AFE02010000000000000002 /* OverviewPlayersStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02010000000000000001 /* OverviewPlayersStripView.swift */; };
-		9AFE02020000000000000002 /* OverviewActiveWorldCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */; };
-		9AFE02030000000000000002 /* OverviewChatCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02030000000000000001 /* OverviewChatCardView.swift */; };
-		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */; };
 		9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */; };
 		9A5632EF2F65AD6D00FB8246 /* DetailsPerformanceComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632182F65AD6C00FB8246 /* DetailsPerformanceComponents.swift */; };
@@ -190,6 +194,11 @@
 		9AC4CEBC2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC4CEBB2F69FA50002B5564 /* RouterPortForwardGuideMaintenance.swift */; };
 		9ADA84802F6CC8B50079CA9B /* CreateWorldSlotSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */; };
 		9AF0000B2F65AD6D00FB8246 /* BedrockBroadcastManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */; };
+		9AFE01010000000000000002 /* ResourcePackHostServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE01010000000000000001 /* ResourcePackHostServer.swift */; };
+		9AFE02010000000000000002 /* OverviewPlayersStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02010000000000000001 /* OverviewPlayersStripView.swift */; };
+		9AFE02020000000000000002 /* OverviewActiveWorldCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */; };
+		9AFE02030000000000000002 /* OverviewChatCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02030000000000000001 /* OverviewChatCardView.swift */; };
+		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -208,6 +217,11 @@
 /* Begin PBXFileReference section */
 		9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerWizardView.swift; sourceTree = "<group>"; };
 		9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerImport.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ServerTransferView.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChunkerManager.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorldConversionWizardView.swift"; sourceTree = "<group>"; };
 		9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPlatformGuideSheet.swift; sourceTree = "<group>"; };
 		9A4F74272F6CBB92008FF39A /* CreateServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateServerView.swift; sourceTree = "<group>"; };
 		9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
@@ -293,10 +307,6 @@
 		9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHealthHelpers.swift; sourceTree = "<group>"; };
 		9A5632372F65AD6C00FB8246 /* OverviewPlayerRowHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayerRowHelpers.swift; sourceTree = "<group>"; };
 		9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersCardView.swift; sourceTree = "<group>"; };
-		9AFE02010000000000000001 /* OverviewPlayersStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersStripView.swift; sourceTree = "<group>"; };
-		9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewActiveWorldCardView.swift; sourceTree = "<group>"; };
-		9AFE02030000000000000001 /* OverviewChatCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewChatCardView.swift; sourceTree = "<group>"; };
-		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewQuickActionsCardView.swift; sourceTree = "<group>"; };
 		9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewServerStatusBarView.swift; sourceTree = "<group>"; };
 		9A56323B2F65AD6C00FB8246 /* PaperDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperDownloader.swift; sourceTree = "<group>"; };
@@ -318,7 +328,6 @@
 		9A56324D2F65AD6C00FB8246 /* RenameWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenameWorldView.swift; sourceTree = "<group>"; };
 		9A56324E2F65AD6C00FB8246 /* ReplaceWorldView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceWorldView.swift; sourceTree = "<group>"; };
 		9A56324F2F65AD6C00FB8246 /* ResourcePackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackManager.swift; sourceTree = "<group>"; };
-		9AFE01010000000000000001 /* ResourcePackHostServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackHostServer.swift; sourceTree = "<group>"; };
 		9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePacksView.swift; sourceTree = "<group>"; };
 		9A5632512F65AD6C00FB8246 /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
 		9A5632522F65AD6C00FB8246 /* ServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerBackend.swift; sourceTree = "<group>"; };
@@ -352,6 +361,10 @@
 		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
 		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
+		CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitAgentManager.swift; sourceTree = "<group>"; };
+		CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Playit.swift"; sourceTree = "<group>"; };
+		CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitSetupGuideSheet.swift; sourceTree = "<group>"; };
+		CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitDockerManager.swift; sourceTree = "<group>"; };
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
 		9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldRepairView.swift; sourceTree = "<group>"; };
 		9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldRepair.swift"; sourceTree = "<group>"; };
@@ -391,6 +404,11 @@
 		9AC4CEBE2F69FAAB002B5564 /* RouterPortForwardGuideMaintenance.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RouterPortForwardGuideMaintenance.md; sourceTree = "<group>"; };
 		9ADA847F2F6CC8B50079CA9B /* CreateWorldSlotSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateWorldSlotSheet.swift; sourceTree = "<group>"; };
 		9AF0000A2F65AD6C00FB8246 /* BedrockBroadcastManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBroadcastManager.swift; sourceTree = "<group>"; };
+		9AFE01010000000000000001 /* ResourcePackHostServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePackHostServer.swift; sourceTree = "<group>"; };
+		9AFE02010000000000000001 /* OverviewPlayersStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewPlayersStripView.swift; sourceTree = "<group>"; };
+		9AFE02020000000000000001 /* OverviewActiveWorldCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewActiveWorldCardView.swift; sourceTree = "<group>"; };
+		9AFE02030000000000000001 /* OverviewChatCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewChatCardView.swift; sourceTree = "<group>"; };
+		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -423,6 +441,11 @@
 				9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */,
 				9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */,
 				9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */,
+				FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */,
+				FE00000000000000000000B2 /* ServerTransferView.swift */,
+				FE00000000000000000000C2 /* ChunkerManager.swift */,
+				FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */,
+				FE00000000000000000000E2 /* WorldConversionWizardView.swift */,
 				9AAF276F2F6B613B00F752CA /* AppViewModel+JavaProcessCleanup.swift */,
 				9AAF27722F6C000000000002 /* JavaProcessScanner.swift */,
 				9AAF27742F6D000000000004 /* WatchdogRunner.swift */,
@@ -436,6 +459,7 @@
 				9A5631E82F65AD6C00FB8246 /* AppViewModel+BedrockPerformance.swift */,
 				9A5631E92F65AD6C00FB8246 /* AppViewModel+BedrockProperties.swift */,
 				9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */,
+				CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */,
 				9A5631EB2F65AD6C00FB8246 /* AppViewModel+ComponentsVersions.swift */,
 				9A5631EC2F65AD6C00FB8246 /* AppViewModel+ConfigHelpers.swift */,
 				9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */,
@@ -616,6 +640,9 @@
 				9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */,
 				9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */,
 				9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */,
+				CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */,
+				CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */,
+				CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */,
 				9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */,
 			);
 			path = "MSCmacOS Swift";
@@ -762,6 +789,11 @@
 				9A5632912F65AD6D00FB8246 /* AppViewModel+ServerCreation.swift in Sources */,
 				9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */,
 				9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */,
+				FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */,
+				FE00000000000000000000B1 /* ServerTransferView.swift in Sources */,
+				FE00000000000000000000C1 /* ChunkerManager.swift in Sources */,
+				FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */,
+				FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */,
 				9A5632922F65AD6D00FB8246 /* QuickCommandsView.swift in Sources */,
 				9A5632942F65AD6D00FB8246 /* SidebarView.swift in Sources */,
 				9AC4CEB72F69F721002B5564 /* RouterPortForwardFallbackDecisionTree.swift in Sources */,
@@ -813,6 +845,10 @@
 				9AC4CEB52F69F558002B5564 /* RouterPortForwardGuideRuntimeResolver.swift in Sources */,
 				9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */,
 				9A5632BD2F65AD6D00FB8246 /* XboxBroadcastProcessManager.swift in Sources */,
+				CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */,
+				CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */,
+				CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */,
+				CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */,
 				9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */,
 				9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */,
 				9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */,
@@ -1064,7 +1100,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.8;
+				MARKETING_VERSION = 1.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1103,7 +1139,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.8;
+				MARKETING_VERSION = 1.9;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

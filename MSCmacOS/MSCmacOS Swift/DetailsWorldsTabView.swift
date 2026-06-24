@@ -21,6 +21,10 @@ struct DetailsWorldsTabView: View {
     @State private var showRenameSheet: Bool = false
     @State private var pendingSlot: WorldSlot? = nil
 
+    // World conversion — uses sheet(item:) so both values are captured at tap time,
+    // avoiding the blank-sheet bug from sheet(isPresented:) with an if-let inside.
+    @State private var conversionContext: WorldConversionContext? = nil
+
     // Backup actions
     @State private var autoBackupEnabled: Bool = false
     @State private var backupToRestore: BackupItem? = nil
@@ -67,6 +71,18 @@ struct DetailsWorldsTabView: View {
         .sheet(isPresented: $showRepairWorldSheet) {
             WorldRepairView(isPresented: $showRepairWorldSheet)
                 .environmentObject(viewModel)
+        }
+        // World conversion wizard — item-based sheet avoids blank-sheet timing bug
+        .sheet(item: $conversionContext) { ctx in
+            WorldConversionWizardView(
+                isPresented: Binding(
+                    get: { conversionContext != nil },
+                    set: { if !$0 { conversionContext = nil } }
+                ),
+                sourceSlot: ctx.slot,
+                sourceServer: ctx.server
+            )
+            .environmentObject(viewModel)
         }
         // Rename sheet
         .sheet(isPresented: $showRenameSheet) {
@@ -270,6 +286,11 @@ struct DetailsWorldsTabView: View {
                             onDelete: {
                                 pendingSlot = slot
                                 showDeleteSlotConfirm = true
+                            },
+                            onConvert: {
+                                if let server = cfgServer {
+                                    conversionContext = WorldConversionContext(slot: slot, server: server)
+                                }
                             }
                         )
                     }
@@ -524,6 +545,7 @@ private struct WorldSlotCard: View {
     let onActivate: () -> Void
     let onRename: () -> Void
     let onDelete: () -> Void
+    var onConvert: (() -> Void)? = nil
 
     @State private var isHovered = false
 
@@ -644,6 +666,16 @@ private struct WorldSlotCard: View {
                 .controlSize(.small)
                 .disabled(serverIsRunning)
                 .help(serverIsRunning ? "Stop the server before switching worlds" : "Load this world")
+
+                if let onConvert {
+                    Button(action: onConvert) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .disabled(serverIsRunning)
+                    .help(serverIsRunning ? "Stop the server before converting" : "Convert this world to another edition")
+                }
 
                 Spacer()
 

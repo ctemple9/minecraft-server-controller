@@ -394,7 +394,6 @@ struct ContentView: View {
                     }
 
                     HStack(spacing: 10) {
-                        // Layout toggles — kept on the left
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) { isSidebarCollapsed.toggle() }
                         } label: {
@@ -415,27 +414,6 @@ struct ContentView: View {
                         .keyboardShortcut("j", modifiers: [.command, .option])
                         .help(isConsoleHidden ? "Show console (⌥⌘J)" : "Hide console (⌥⌘J)")
 
-                        // Divider between layout toggles and server-scope
-                        Rectangle()
-                            .fill(Color.white.opacity(0.14))
-                            .frame(width: 0.5, height: 16)
-
-                        // Server-scope actions
-                        Button {
-                            viewModel.isShowingRouterPortForwardGuide = true
-                            if OnboardingManager.shared.isActive,
-                               OnboardingManager.shared.currentStep == .portForwardGuide {
-                                OnboardingManager.shared.advance()
-                            }
-                        } label: {
-                            Image(systemName: "wifi.router")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .buttonStyle(MSCGhostIconButtonStyle(size: 30))
-                        .help("Port Forwarding Guide")
-                        .disabled(viewModel.selectedServer == nil)
-                        .onboardingAnchor(.portForwardGuideButton)
-
                         Button {
                             viewModel.triggerExplainWorkspace = true
                         } label: {
@@ -446,12 +424,6 @@ struct ContentView: View {
                         .help("Explain this workspace")
                         .disabled(viewModel.selectedServer == nil)
 
-                        // Divider between server-scope and app-scope
-                        Rectangle()
-                            .fill(Color.white.opacity(0.14))
-                            .frame(width: 0.5, height: 16)
-
-                        // App-scope actions
                         Button {
                             viewModel.isShowingPreferences = true
                         } label: {
@@ -580,7 +552,6 @@ struct ContentView: View {
                     .detailsComponentsTab,
                     .detailsSettingsTab,
                     .detailsFilesTab,
-                    .portForwardGuide,
                     .done
                 ]
             )
@@ -678,6 +649,12 @@ struct ContentView: View {
         // Xbox Broadcast auth sheet
         .sheet(item: $viewModel.pendingBroadcastAuthPrompt) { prompt in
             BroadcastAuthSheet(prompt: prompt).environmentObject(viewModel)
+        }
+
+        // playit.gg secret key setup — shown on first use when no key is stored
+        .sheet(isPresented: $viewModel.isShowingPlayitSecretSetup) {
+            PlayitSecretKeySheet()
+                .environmentObject(viewModel)
         }
 
         // First-start alert
@@ -820,6 +797,64 @@ private struct OrphanedProcessBanner: View {
         .padding(.horizontal, MSC.Spacing.xxl)
         .padding(.vertical, MSC.Spacing.sm)
         .background(Color.orange.opacity(0.10))
+    }
+}
+
+// MARK: - playit.gg Secret Key Setup Sheet
+
+struct PlayitSecretKeySheet: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    @State private var secretKey: String = ""
+
+    private static let setupURL = URL(string: "https://playit.gg/account/setup/wizard/new-account/docker/docker-name")!
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            MSCSheetHeader("Set up playit.gg Tunnel") {
+                viewModel.isShowingPlayitSecretSetup = false
+            }
+
+            Text("One-time setup — takes about 1 minute.")
+                .font(MSC.Typography.sectionHeader)
+
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                Text("1.  Click the button below to open the playit.gg setup page in your browser.")
+                Text("2.  Create a free account (or log in) and follow the Docker setup wizard.")
+                Text("3.  Copy the Secret Key shown at the end and paste it below.")
+                Text("4.  Click Save. The tunnel starts automatically with your server from now on.")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+            Button("Open playit.gg Setup in Browser") {
+                NSWorkspace.shared.open(Self.setupURL)
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                Text("Secret Key")
+                    .font(MSC.Typography.sectionHeader)
+                SecureField("Paste your playit.gg secret key here", text: $secretKey)
+                    .textFieldStyle(.roundedBorder)
+                Text("Stored locally — never sent anywhere by MSC.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Spacer()
+                Button("Save") {
+                    viewModel.savePlayitSecretKey(secretKey)
+                    viewModel.isShowingPlayitSecretSetup = false
+                }
+                .buttonStyle(MSCPrimaryButtonStyle())
+                .disabled(secretKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(MSC.Spacing.xl)
+        .frame(width: 480)
     }
 }
 

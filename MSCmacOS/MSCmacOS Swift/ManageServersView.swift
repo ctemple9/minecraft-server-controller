@@ -24,6 +24,8 @@ struct ManageServersView: View {
     @State private var isShowingDeleteAlert = false
 
     @State private var isShowingAddWizard = false
+    @State private var isShowingTransferExport = false
+    @State private var isShowingTransferImport = false
 
     // MARK: - Body
 
@@ -67,6 +69,23 @@ struct ManageServersView: View {
             VStack(spacing: 0) {
                 Divider()
                 HStack(spacing: MSC.Spacing.sm) {
+                    Button {
+                        isShowingTransferExport = true
+                    } label: {
+                        Label("Export\u{2026}", systemImage: "square.and.arrow.up.on.square")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .disabled(viewModel.configServers.isEmpty)
+                    .help("Bundle all servers, settings & worlds into a transfer file.")
+
+                    Button {
+                        isShowingTransferImport = true
+                    } label: {
+                        Label("Import\u{2026}", systemImage: "square.and.arrow.down.on.square")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .help("Merge in, or replace with, servers from another Mac.")
+
                     Spacer()
 
                     Button {
@@ -121,6 +140,13 @@ struct ManageServersView: View {
         .sheet(isPresented: $isShowingAddWizard) {
             AddServerWizardView(isPresented: $isShowingAddWizard)
                 .environmentObject(viewModel)
+        }
+
+        .sheet(isPresented: $isShowingTransferExport) {
+            ServerTransferExportSheet(viewModel: viewModel, onClose: { isShowingTransferExport = false })
+        }
+        .sheet(isPresented: $isShowingTransferImport) {
+            ServerTransferImportSheet(viewModel: viewModel, onClose: { isShowingTransferImport = false })
         }
 
         .alert(

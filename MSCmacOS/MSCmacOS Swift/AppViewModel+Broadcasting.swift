@@ -23,6 +23,16 @@ extension AppViewModel {
             .trimmingCharacters(in: .whitespacesAndNewlines),
            !override.isEmpty { return override }
 
+        // When playit.gg is enabled and a Bedrock tunnel address is stored, use it so
+        // Xbox Broadcast transfers friends to the correct external address.
+        if server.playitEnabled,
+           let playitAddr = configManager.config.playitBedrockAddress?
+               .trimmingCharacters(in: .whitespacesAndNewlines),
+           !playitAddr.isEmpty {
+            // Strip port if present — host only
+            return playitAddr.components(separatedBy: ":").first ?? playitAddr
+        }
+
         let duck = configManager.config.duckdnsHostname
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .flatMap { $0.isEmpty ? nil : $0 }
@@ -38,6 +48,14 @@ extension AppViewModel {
 
     private func broadcastPortForConfig(for server: ConfigServer) -> Int? {
         if let override = server.xboxBroadcastPortOverride { return override }
+        // Use playit Bedrock tunnel port when active
+        if server.playitEnabled,
+           let playitAddr = configManager.config.playitBedrockAddress?
+               .trimmingCharacters(in: .whitespacesAndNewlines),
+           let portStr = playitAddr.components(separatedBy: ":").last,
+           let port = Int(portStr) {
+            return port
+        }
         return effectiveBedrockPort(for: server)
     }
 

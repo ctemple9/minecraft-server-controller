@@ -19,25 +19,28 @@ enum OnboardingStep: Int, CaseIterable {
     case wizardChoosePath      = 3   // wizard Step 1: path picker
     case serverName            = 4
     case serverType            = 5
-    case serverSettings        = 6
-    case firstWorld            = 7
-    case createButton          = 8
-    case dismissManage         = 9
-    case acceptEula            = 10
-    case startButton           = 11
-    case console               = 12
-    case continueDetails       = 13
-    case expandDetails         = 14
-    case detailsOverviewTab    = 15
-    case detailsPlayersTab     = 16
-    case detailsWorldsTab      = 17
-    case detailsPacksTab       = 18
-    case detailsPerformanceTab = 19
-    case detailsComponentsTab  = 20
-    case detailsSettingsTab    = 21
-    case detailsFilesTab       = 22
-    case portForwardGuide      = 23
-    case done                  = 24
+    case serverSettings          = 6
+    case serverConnectivity        = 7   // network step: connectivity type cards
+    case serverConnectivityPorts   = 8   // network step: port fields (Next button)
+    case serverNetworkContinue     = 9   // network step: spotlight Continue button
+    case firstWorld                = 10  // info card with "Next" button
+    case firstWorldFill            = 11  // no card — user fills the world form
+    case createButton              = 12
+    case dismissManage             = 13
+    case acceptEula                = 14
+    case startButton               = 15
+    case console                   = 16
+    case continueDetails           = 17
+    case expandDetails             = 18
+    case detailsOverviewTab        = 19
+    case detailsPlayersTab         = 20
+    case detailsWorldsTab          = 21
+    case detailsPacksTab           = 22
+    case detailsPerformanceTab     = 23
+    case detailsComponentsTab      = 24
+    case detailsSettingsTab        = 25
+    case detailsFilesTab           = 26
+    case done                      = 27
 
     var totalSteps: Int { OnboardingStep.allCases.count - 2 }
 
@@ -58,9 +61,13 @@ enum OnboardingStep: Int, CaseIterable {
         case .wizardChoosePath:      return "Choose Your Path"
         case .serverName:            return "Name Your Server"
         case .serverType:            return "Pick a Type"
-        case .serverSettings:        return "Review Your Settings"
-        case .firstWorld:            return "Create Your First World"
-        case .createButton:          return "Create It"
+        case .serverSettings:          return "Review Your Settings"
+        case .serverConnectivity:      return "How Will Friends Connect?"
+        case .serverConnectivityPorts: return "Set Your Ports"
+        case .serverNetworkContinue:   return "Ready to Continue"
+        case .firstWorld:              return "Create Your First World"
+        case .firstWorldFill:          return "Create Your First World"
+        case .createButton:            return "Create It"
         case .dismissManage:         return "Back to Home"
         case .acceptEula:            return "Accept the EULA"
         case .startButton:           return "Start Your Server"
@@ -75,7 +82,6 @@ enum OnboardingStep: Int, CaseIterable {
         case .detailsComponentsTab:  return "Components"
         case .detailsSettingsTab:    return "Settings"
         case .detailsFilesTab:       return "Files"
-        case .portForwardGuide:      return "External Players"
         case .done:                  return "You're All Set 🎉"
         }
     }
@@ -96,12 +102,20 @@ enum OnboardingStep: Int, CaseIterable {
             return "Java is for PC players. Bedrock is for mobile, console, and Windows 10/11. Pick whichever fits — you can switch before creating."
         case .serverSettings:
             if OnboardingManager.shared.tourServerType == .java {
-                return "Set the Java port here and turn on Bedrock cross-play if you want console and mobile players to join."
+                return "Set the Paper source and turn on Bedrock cross-play if you want console and mobile players to join. Ports are set on the next step."
             } else {
-                return "Set the Bedrock port here and adjust the image or player limit if needed."
+                return "Choose your Docker image and adjust the player limit if needed. The server port is set on the next step."
             }
+        case .serverConnectivity:
+            return "Choose how friends outside your network will join. Port Forwarding uses your router. Tunnel (playit.gg) works without any router access — a free relay service that adds ~10–50 ms."
+        case .serverConnectivityPorts:
+            return "These are the ports your server listens on. The defaults (25565 for Java, 19132 for Bedrock) work for most setups. Adjust them only if you need to run multiple servers."
+        case .serverNetworkContinue:
+            return "Your connectivity is configured. Tap Continue at the bottom to move on and set up your world."
         case .firstWorld:
             return "Choose \"New world\" for a fresh start, then set the world name, difficulty, game mode, and optional seed. You can add more worlds later from the Worlds tab, but only one world is active at a time."
+        case .firstWorldFill:
+            return ""
         case .createButton:
             return "Check the summary, give your server a display name, then tap Create Server to build it."
         case .dismissManage:
@@ -136,8 +150,6 @@ enum OnboardingStep: Int, CaseIterable {
             return "Settings is where you change core server options. Changes stay local here until you click Save Changes."
         case .detailsFilesTab:
             return "Files lets you browse and preview every file in your server directory — configs, logs, world data, and more. You can also edit text files directly from here."
-        case .portForwardGuide:
-            return "Local players are covered. For friends outside your home network, use the Port Forwarding Guide button in the header to open the router guide and finish external access."
         case .done:
             return "Your server is running. Local players can join now, and the port forwarding guide will help you open it up for friends outside your network. You can restart this tour anytime from Preferences."
         }
@@ -160,12 +172,12 @@ enum OnboardingStep: Int, CaseIterable {
              .createServer,
              .wizardChoosePath,
              .serverSettings,
-             .firstWorld,
+             .serverNetworkContinue,
+             .firstWorldFill,
              .createButton,
              .dismissManage,
              .acceptEula,
-             .startButton,
-             .portForwardGuide:
+             .startButton:
             return true
         default:
             return false
@@ -175,12 +187,17 @@ enum OnboardingStep: Int, CaseIterable {
     /// Custom instruction shown instead of the default "Tap the highlighted element above".
     var instruction: String? {
         switch self {
-        case .wizardChoosePath, .serverSettings, .firstWorld:
+        case .wizardChoosePath, .serverSettings, .serverNetworkContinue, .firstWorldFill:
             return "Tap Continue at the bottom to proceed"
+        case .createButton:
+            return "Give your server a name, then tap Create Server"
         default:
             return nil
         }
     }
+
+    /// When false the overlay renders only the dim/spotlight layer — no card, no blocking content.
+    var showsCard: Bool { self != .firstWorldFill }
 
 }
 
@@ -194,7 +211,11 @@ enum OnboardingAnchorID: String {
     case wizardContinueButton    = "ob_wizard_continue"
     case serverNameField         = "ob_server_name"
     case serverTypeSelector      = "ob_server_type"
-    case serverSettingsArea      = "ob_server_settings"
+    case serverSettingsArea          = "ob_server_settings"
+    case serverConnectivityArea      = "ob_server_connectivity"
+    case serverConnectivityPortsArea = "ob_server_connectivity_ports"
+    case confirmPageArea             = "ob_confirm_page"
+    case wizardBodyArea              = "ob_wizard_body"
     case worldSourceArea         = "ob_world_source"
     case worldCreationArea       = "ob_world_creation"
     case createSaveButton        = "ob_create_save"

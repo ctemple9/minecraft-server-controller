@@ -2,11 +2,11 @@
 //  AddServerWizardView.swift
 //  MinecraftServerController
 //
-//  Four-step wizard unifying "Import Existing" and "Start Fresh" into a single
+//  Five-step wizard unifying "Import Existing" and "Start Fresh" into a single
 //  entry point. Opened from the single "Add Server…" button in ManageServersView.
 //
-//  Import path:  Step 1 (choose) → Step 2 (drop/browse) → Step 3 (review + world) → Step 4 (name + confirm)
-//  Fresh path:   Step 1 (choose) → Step 2 (type + config) → Step 3 (world source) → Step 4 (name + confirm)
+//  Import path:  Step 1 (choose) → Step 2 (drop/browse) → Step 3 (review) → Step 4 (network) → Step 5 (confirm)
+//  Fresh path:   Step 1 (choose) → Step 2 (type + config) → Step 3 (network) → Step 4 (world) → Step 5 (confirm)
 //
 
 import SwiftUI
@@ -70,6 +70,11 @@ struct AddServerWizardView: View {
     @State private var initialWorldDifficulty: ServerDifficulty = .normal
     @State private var initialWorldGamemode: ServerGamemode = .survival
 
+    // MARK: Network step
+    @State private var enablePlayit: Bool        = false
+    @State private var isShowingPlayitGuide: Bool = false
+    @State private var isShowingPortForwardGuide: Bool = false
+
     // MARK: Shared / creation
     @State private var displayName: String       = ""
     @State private var isCreating: Bool          = false
@@ -105,21 +110,27 @@ struct AddServerWizardView: View {
 
             Divider()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    stepContent
-                        .padding(MSC.Spacing.xl)
+            // Wrap scroll content + footer together so firstWorld/createButton
+            // spotlight covers the full page including the action button.
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        stepContent
+                            .padding(MSC.Spacing.xl)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
 
-            footerBar
+                footerBar
+            }
+            .onboardingAnchor(.wizardBodyArea)
         }
         .frame(minWidth: 640, minHeight: 520)
         .overlay {
             OnboardingOverlayView(
                 ownedSteps: [.wizardChoosePath, .serverName, .serverType,
-                             .serverSettings, .firstWorld, .createButton]
+                             .serverSettings, .serverConnectivity, .serverConnectivityPorts,
+                             .serverNetworkContinue, .firstWorld, .firstWorldFill, .createButton]
             )
         }
         .onAppear {
@@ -127,15 +138,26 @@ struct AddServerWizardView: View {
                 wizardPath = .fresh
             }
         }
+        .sheet(isPresented: $isShowingPlayitGuide) {
+            PlayitSetupGuideSheet(
+                localPort: currentNetworkLocalPort,
+                bedrockPort: currentNetworkBedrockPort
+            )
+        }
+        .sheet(isPresented: $isShowingPortForwardGuide) {
+            RouterPortForwardGuideSheet(
+                runtimeContext: networkStepPortForwardContext
+            )
+        }
     }
 
     // MARK: - Step indicator
 
     private var stepIndicator: some View {
         HStack(spacing: 0) {
-            ForEach(1...4, id: \.self) { step in
+            ForEach(1...5, id: \.self) { step in
                 stepItemView(step: step)
-                if step < 4 {
+                if step < 5 {
                     Rectangle()
                         .fill(step < currentStep
                               ? Color.green.opacity(0.5)
@@ -182,8 +204,9 @@ struct AddServerWizardView: View {
             switch step {
             case 1: return "Choose path"
             case 2: return "Configure"
-            case 3: return "World"
-            case 4: return "Confirm"
+            case 3: return "Network"
+            case 4: return "World"
+            case 5: return "Confirm"
             default: return ""
             }
         }
@@ -191,7 +214,8 @@ struct AddServerWizardView: View {
         case 1: return "Choose path"
         case 2: return "Upload"
         case 3: return "Review"
-        case 4: return "Confirm"
+        case 4: return "Network"
+        case 5: return "Confirm"
         default: return ""
         }
     }
@@ -209,9 +233,13 @@ struct AddServerWizardView: View {
         } else if currentStep == 3 && wizardPath == .importExisting {
             step3ImportReview
         } else if currentStep == 3 && wizardPath == .fresh {
-            step3FreshWorld
+            step3Network
+        } else if currentStep == 4 && wizardPath == .importExisting {
+            step3Network
+        } else if currentStep == 4 && wizardPath == .fresh {
+            step4FreshWorld
         } else {
-            step4Confirm
+            step5Confirm
         }
     }
 
@@ -382,13 +410,6 @@ struct AddServerWizardView: View {
                                 Text(info.serverType.displayName)
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(.secondary)
-                            }
-
-                            editInfoRow(key: "Port") {
-                                TextField("25565", text: $importPort)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 90)
-                                    .font(.system(size: 12))
                             }
 
                             editInfoRow(key: "Max players") {
@@ -580,14 +601,6 @@ struct AddServerWizardView: View {
             }
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                Text("Server Port")
-                    .font(MSC.Typography.sectionHeader)
-                TextField("25565", text: $javaPort)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 120)
-            }
-
-            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Toggle("Enable Bedrock cross-play (Geyser + Floodgate)", isOn: $enableCrossPlay)
                     .toggleStyle(.switch)
                     .onChange(of: enableCrossPlay) { _, enabled in
@@ -607,19 +620,9 @@ struct AddServerWizardView: View {
                 } else if let status = crossPlayDownloadStatus {
                     Text(status).font(.caption)
                         .foregroundStyle(status.contains("Failed") ? .red : .green)
-                }
-
-                if enableCrossPlay {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Bedrock Port (Geyser)")
-                                .font(MSC.Typography.sectionHeader)
-                            TextField("19132", text: $crossPlayBedrockPort)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 120)
-                        }
-                    }
-                    .padding(.top, MSC.Spacing.xs)
+                } else {
+                    Text("Port and connectivity options are on the next step.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -644,28 +647,227 @@ struct AddServerWizardView: View {
                     .frame(maxWidth: 200)
             }
 
-            HStack(spacing: MSC.Spacing.xl) {
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                Text("Max Players")
+                    .font(MSC.Typography.sectionHeader)
+                TextField("10", text: $bedrockMaxPlayers)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 120)
+                Text("Port and connectivity options are on the next step.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Step 3/4: Network (shared by both paths)
+
+    private var step3Network: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("How will friends connect?")
+                    .font(MSC.Typography.pageTitle)
+                Text("Choose how players outside your local network will join your server.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+            }
+
+            HStack(spacing: MSC.Spacing.md) {
+                WizardPathCard(
+                    title: "Port Forwarding",
+                    subtitle: "Open a port on your router. Full control, no relay, best latency.",
+                    systemImage: "network",
+                    isSelected: !enablePlayit
+                ) {
+                    enablePlayit = false
+                    // Advance tour from connectivity cards step to ports step
+                    if OnboardingManager.shared.isActive,
+                       OnboardingManager.shared.currentStep == .serverConnectivity {
+                        OnboardingManager.shared.advance()
+                    }
+                }
+
+                WizardPathCard(
+                    title: "Tunnel (playit.gg)",
+                    subtitle: "No router access needed. Free relay service. Adds ~10–50 ms.",
+                    systemImage: "arrow.triangle.2.circlepath",
+                    isSelected: enablePlayit
+                ) {
+                    enablePlayit = true
+                    if OnboardingManager.shared.isActive,
+                       OnboardingManager.shared.currentStep == .serverConnectivity {
+                        OnboardingManager.shared.advance()
+                    }
+                }
+            }
+            .onboardingAnchor(.serverConnectivityArea)
+
+            Divider()
+
+            Group {
+                if enablePlayit {
+                    playitPortSection
+                } else {
+                    portForwardingSection
+                }
+            }
+            .onboardingAnchor(.serverConnectivityPortsArea)
+        }
+    }
+
+    // Port fields + guide for Port Forwarding
+    private var portForwardingSection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            if wizardPath == .fresh && serverType == .java {
+                HStack(spacing: MSC.Spacing.xl) {
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        Text("Java Port (TCP)")
+                            .font(MSC.Typography.sectionHeader)
+                        TextField("25565", text: $javaPort)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                    }
+                    if enableCrossPlay {
+                        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                            Text("Bedrock / Geyser Port (UDP)")
+                                .font(MSC.Typography.sectionHeader)
+                            TextField("19132", text: $crossPlayBedrockPort)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 120)
+                        }
+                    }
+                }
+                Text("Forward these ports on your router so players outside your network can connect.")
+                    .font(.caption).foregroundStyle(.secondary)
+
+            } else if wizardPath == .fresh && serverType == .bedrock {
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Port")
+                    Text("Server Port (UDP)")
                         .font(MSC.Typography.sectionHeader)
                     TextField("19132", text: $bedrockPort)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 120)
                 }
+                Text("Bedrock uses UDP. Forward this port on your router for external access.")
+                    .font(.caption).foregroundStyle(.secondary)
+
+            } else {
+                // Import path — port from scan
+                HStack(spacing: MSC.Spacing.xl) {
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        Text("Server Port")
+                            .font(MSC.Typography.sectionHeader)
+                        TextField("25565", text: $importPort)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                    }
+                }
+                Text("Port was read from your server folder. Change it here if needed, then forward it on your router.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Button {
+                isShowingPortForwardGuide = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.right.circle")
+                        .font(.system(size: 12))
+                    Text("Port Forwarding Guide")
+                        .font(.system(size: 12, weight: .medium))
+                }
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
+        }
+    }
+
+    // Port fields + guide for playit.gg
+    private var playitPortSection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            if wizardPath == .fresh && serverType == .java {
+                HStack(spacing: MSC.Spacing.xl) {
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        Text("Local Port (TCP)")
+                            .font(MSC.Typography.sectionHeader)
+                        TextField("25565", text: $javaPort)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 120)
+                    }
+                    if enableCrossPlay {
+                        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                            Text("Bedrock / Geyser Port (UDP)")
+                                .font(MSC.Typography.sectionHeader)
+                            TextField("19132", text: $crossPlayBedrockPort)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 120)
+                        }
+                    }
+                }
+            } else if wizardPath == .fresh && serverType == .bedrock {
                 VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Max Players")
+                    Text("Local Port (UDP)")
                         .font(MSC.Typography.sectionHeader)
-                    TextField("10", text: $bedrockMaxPlayers)
+                    TextField("19132", text: $bedrockPort)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 120)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    Text("Local Port")
+                        .font(MSC.Typography.sectionHeader)
+                    TextField("25565", text: $importPort)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 120)
                 }
             }
+
+            Text("playit.gg will assign a public address (e.g. abc.joinmc.link:25565) the first time you start your server. Your local port is what the server listens on — no router config needed.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                isShowingPlayitGuide = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 12))
+                    Text("How does this work?")
+                        .font(.system(size: 12, weight: .medium))
+                }
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
         }
     }
 
-    // MARK: - Step 3 (Fresh): World source
+    // Computed helpers for sheet context
+    private var currentNetworkLocalPort: Int {
+        if serverType == .java || wizardPath == .importExisting {
+            return Int(wizardPath == .importExisting ? importPort : javaPort) ?? 25565
+        }
+        return Int(bedrockPort) ?? 19132
+    }
 
-    private var step3FreshWorld: some View {
+    private var currentNetworkBedrockPort: Int? {
+        guard enableCrossPlay, serverType == .java else { return nil }
+        return Int(crossPlayBedrockPort) ?? 19132
+    }
+
+    private var networkStepPortForwardContext: RouterPortForwardGuideRuntimeContext {
+        RouterPortForwardGuideRuntimeContext(
+            selectedServerID: nil,
+            selectedServerName: displayName.isEmpty ? serverName : displayName,
+            detectedLocalIPAddress: AppUtilities.localIPAddress(),
+            detectedGatewayIPAddress: nil,
+            javaPort: serverType == .java ? (Int(javaPort) ?? 25565) : nil,
+            bedrockPort: enableCrossPlay ? (Int(crossPlayBedrockPort) ?? 19132) : (serverType == .bedrock ? (Int(bedrockPort) ?? 19132) : nil),
+            recommendedProtocol: serverType == .java ? "TCP" : "UDP",
+            bedrockEnabled: enableCrossPlay || serverType == .bedrock
+        )
+    }
+
+    // MARK: - Step 4 (Fresh): World source
+
+    private var step4FreshWorld: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
             Text("World Source")
                 .font(MSC.Typography.sectionHeader)
@@ -755,9 +957,9 @@ struct AddServerWizardView: View {
         }
     }
 
-    // MARK: - Step 4: Confirm
+    // MARK: - Step 5: Confirm
 
-    private var step4Confirm: some View {
+    private var step5Confirm: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Name and confirm")
@@ -782,6 +984,7 @@ struct AddServerWizardView: View {
                         infoRow(key: "Method",       value: "Import existing")
                         infoRow(key: "Server type",  value: info.serverType.displayName)
                         infoRow(key: "Port",         value: importPort.isEmpty ? "\(info.port)" : importPort)
+                        infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
                                                 infoRow(key: "Max players",  value: importMaxPlayers.isEmpty ? "\(info.maxPlayers)" : importMaxPlayers)
                         infoRow(key: "Active world",
                                 value: selectedWorldName ?? info.defaultWorldName ?? "—")
@@ -801,8 +1004,8 @@ struct AddServerWizardView: View {
                     } else {
                         infoRow(key: "Method",       value: "Start fresh")
                         infoRow(key: "Server type",  value: serverType.displayName)
-                        infoRow(key: "Port",
-                                value: serverType == .java ? javaPort : bedrockPort)
+                        infoRow(key: "Port",         value: serverType == .java ? javaPort : bedrockPort)
+                        infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
                         infoRow(key: "World source",  value: worldSourceMode.rawValue)
                         if worldSourceMode == .fresh {
                             let wName = initialWorldName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -830,6 +1033,7 @@ struct AddServerWizardView: View {
                     )
             }
         }
+        .onboardingAnchor(.confirmPageArea)
     }
 
     // MARK: - Footer
@@ -848,7 +1052,7 @@ struct AddServerWizardView: View {
 
                 Spacer()
 
-                if currentStep == 4 {
+                if currentStep == 5 {
                     Button("Create Server") { beginCreate() }
                         .buttonStyle(MSCPrimaryButtonStyle())
                         .disabled(!canCreate || isCreating)
@@ -878,17 +1082,25 @@ struct AddServerWizardView: View {
             } else {
                 let nameOk = !serverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 if serverType == .java {
-                    return nameOk
-                        && Int(javaPort) != nil
-                        && (jarSourceMode != .template || selectedTemplateId != nil)
+                    return nameOk && (jarSourceMode != .template || selectedTemplateId != nil)
                 } else {
                     return nameOk
                         && !bedrockDockerImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        && Int(bedrockPort) != nil
                 }
             }
         case 3:
+            // Network step (Fresh) or Review step (Import)
             if wizardPath == .importExisting { return true }
+            // Fresh network step — validate port
+            if serverType == .java { return Int(javaPort) != nil }
+            return Int(bedrockPort) != nil
+        case 4:
+            // Network step (Import) or World step (Fresh)
+            if wizardPath == .importExisting {
+                // Validate the import port
+                return Int(importPort) != nil
+            }
+            // Fresh world step
             switch worldSourceMode {
             case .fresh:     return true
             case .backupZip: return selectedBackupURL != nil
@@ -904,8 +1116,8 @@ struct AddServerWizardView: View {
     }
 
     private func advanceStep() {
-        // Pre-fill display name before reaching step 4
-        if currentStep == 2 && wizardPath == .importExisting {
+        // Pre-fill display name before reaching step 5
+        if currentStep == 3 && wizardPath == .importExisting {
             if displayName.isEmpty, let url = sourceURL {
                 displayName = url.deletingPathExtension().lastPathComponent
                     .replacingOccurrences(of: "_", with: " ")
@@ -914,7 +1126,7 @@ struct AddServerWizardView: View {
                 selectedWorldName = scannedInfo?.defaultWorldName
             }
         }
-        if currentStep == 3 && wizardPath == .fresh && displayName.isEmpty {
+        if currentStep == 4 && wizardPath == .fresh && displayName.isEmpty {
             displayName = serverName
         }
         withAnimation(.easeInOut(duration: 0.18)) { currentStep += 1 }
@@ -924,23 +1136,29 @@ struct AddServerWizardView: View {
         let tourStep = OnboardingManager.shared.currentStep
         switch currentStep {
         case 2 where wizardPath == .fresh:
-            // Entered configure page — advance past wizardChoosePath (or jump if already past)
             if tourStep == .wizardChoosePath {
                 OnboardingManager.shared.advance()    // → .serverName
             } else if tourStep.rawValue < OnboardingStep.serverName.rawValue {
                 OnboardingManager.shared.jumpTo(.serverName)
             }
         case 3 where wizardPath == .fresh:
-            // Entered world page — advance past serverSettings (or jump if already past)
+            // Entered Network page — advance from serverSettings to serverConnectivity
             if tourStep == .serverSettings {
+                OnboardingManager.shared.advance()    // → .serverConnectivity
+            } else if tourStep.rawValue < OnboardingStep.serverConnectivity.rawValue {
+                OnboardingManager.shared.jumpTo(.serverConnectivity)
+            }
+        case 4 where wizardPath == .fresh:
+            // Entered World page — advance from serverNetworkContinue to firstWorld
+            if tourStep == .serverNetworkContinue {
                 OnboardingManager.shared.advance()    // → .firstWorld
             } else if tourStep.rawValue < OnboardingStep.firstWorld.rawValue {
                 OnboardingManager.shared.jumpTo(.firstWorld)
             }
-        case 4:
-            // Entered confirm page — advance past firstWorld (or jump if already past)
-            if tourStep == .firstWorld {
-                OnboardingManager.shared.advance()    // → .createButton
+        case 5:
+            // Entered Confirm page — jump to createButton regardless of which world sub-step we're on
+            if tourStep == .firstWorldFill {
+                OnboardingManager.shared.advance()    // 11 → 12 (.createButton)
             } else if tourStep.rawValue < OnboardingStep.createButton.rawValue {
                 OnboardingManager.shared.jumpTo(.createButton)
             }
@@ -971,7 +1189,8 @@ struct AddServerWizardView: View {
                                     activeWorldName: selectedWorldName ?? info.defaultWorldName,
                                     portOverride: Int(importPort) ?? info.port,
                                     maxPlayersOverride: Int(importMaxPlayers) ?? info.maxPlayers,
-                                    eulaOverride: importEulaAccepted
+                                    eulaOverride: importEulaAccepted,
+                                    enablePlayit: enablePlayit
                                 )
                 await MainActor.run {
                     isCreating = false
@@ -1030,6 +1249,7 @@ struct AddServerWizardView: View {
                         port: port,
                         enableCrossPlay: enableCrossPlay,
                         crossPlayBedrockPort: crossPort,
+                        enablePlayit: enablePlayit,
                         difficulty: initialWorldDifficulty.rawValue,
                         gamemode: initialWorldGamemode.rawValue,
                         worldSeed: seedOpt,
@@ -1057,6 +1277,7 @@ struct AddServerWizardView: View {
                         bedrockVersion: version.isEmpty ? "LATEST" : version,
                         port: port,
                         maxPlayers: maxP,
+                        enablePlayit: enablePlayit,
                         difficulty: initialWorldDifficulty.rawValue,
                         gamemode: initialWorldGamemode.rawValue,
                         worldSeed: seedOpt,

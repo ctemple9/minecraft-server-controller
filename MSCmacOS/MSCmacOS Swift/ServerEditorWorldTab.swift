@@ -49,6 +49,18 @@ var worldTab: some View {
     }
     // Slot Duplicate sheet
     .sheet(isPresented: $showDuplicateSlotSheet) { duplicateSlotSheetView }
+    // World conversion wizard
+    .sheet(item: $conversionContextEditor) { ctx in
+        WorldConversionWizardView(
+            isPresented: Binding(
+                get: { conversionContextEditor != nil },
+                set: { if !$0 { conversionContextEditor = nil } }
+            ),
+            sourceSlot: ctx.slot,
+            sourceServer: ctx.server
+        )
+        .environmentObject(viewModel)
+    }
     .contextualHelpAnchor(worldSlotsAnchorID)
 }
 
@@ -247,6 +259,12 @@ func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
                     .lineLimit(1)
                 Spacer()
                 Button {
+                    exportSlot(slot, cfg: cfg)
+                } label: {
+                    Label("Export…", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                Button {
                     slotRenameText = slot.name
                     showSlotRenameId = slot.id
                 } label: {
@@ -331,8 +349,8 @@ func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
                 showDuplicateSlotSheet = true
             }
 
-            WorldActionButton(icon: "square.and.arrow.up", label: "Export as ZIP…", style: .normal) {
-                exportSlot(slot, cfg: cfg)
+            WorldActionButton(icon: "arrow.2.squarepath", label: "Convert World…", style: .normal) {
+                conversionContextEditor = WorldConversionContext(slot: slot, server: cfg)
             }
 
             WorldActionButton(icon: "arrow.triangle.2.circlepath", label: "Replace World…", style: .normal) {

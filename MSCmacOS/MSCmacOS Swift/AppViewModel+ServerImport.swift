@@ -64,7 +64,8 @@ extension AppViewModel {
             activeWorldName: String?,
             portOverride: Int? = nil,
             maxPlayersOverride: Int? = nil,
-            eulaOverride: Bool? = nil
+            eulaOverride: Bool? = nil,
+            enablePlayit: Bool = false
         ) async -> ImportServerResult {
 
         let safeName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -171,6 +172,7 @@ extension AppViewModel {
         cfgServer.serverType     = serverType
         cfgServer.bedrockPort    = serverType == .bedrock ? port : nil
         cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
+        cfgServer.playitEnabled  = enablePlayit
 
         // Create initial world slot from whatever world data is in the server folder
         let logLine: (String) -> Void = { [weak self] msg in

@@ -68,7 +68,7 @@ struct OverviewServerStatusBarView: View {
                 Button {
                     viewModel.openSelectedServerFolder()
                 } label: {
-                    Label("Server Folder", systemImage: "folder")
+                    Label("Directory", systemImage: "folder")
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
                 .controlSize(.small)

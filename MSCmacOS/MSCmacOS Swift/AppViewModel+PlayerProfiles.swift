@@ -162,16 +162,19 @@ extension AppViewModel {
                 await self.resolveBedrockXUIDs(unresolved, serverDir: serverDir)
             }
 
-            // 5. Resolve Floodgate UUIDs for server_* profiles that already have a name
-            //    (from cache or manual identification). Without this, their imageIdentifier
-            //    falls back to the Realm UUID which mc-heads.net can't render.
-            let namedServerProfiles = profiles.filter {
+            // 5. Resolve Floodgate UUIDs for all Bedrock profiles that have a name but
+            //    no floodgateUUID yet. This includes server_* (Realm/Floodgate) entries
+            //    AND numeric-XUID profiles whose gamertag was restored from cache —
+            //    those skip step 4 (username already set) so their floodgateUUID would
+            //    otherwise stay nil every session after the first, causing the wrong skin.
+            let needsFloodgate = profiles.filter {
                 guard let x = $0.xuid else { return false }
                 let hasName = $0.username != nil && $0.username != "Unknown Player"
-                return x.hasPrefix("server_") && hasName
+                let isResolvable = x.allSatisfy({ $0.isNumber }) || x.hasPrefix("server_")
+                return hasName && isResolvable
             }
-            if !namedServerProfiles.isEmpty {
-                await self.resolveServerProfileFloodgateUUIDs(namedServerProfiles)
+            if !needsFloodgate.isEmpty {
+                await self.resolveServerProfileFloodgateUUIDs(needsFloodgate)
             }
         }
     }
