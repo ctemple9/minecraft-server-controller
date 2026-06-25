@@ -17,178 +17,169 @@ struct MSCSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var contextualHelpManager = ContextualHelpManager.shared
 
+    // MARK: - Draft state (persisted on Save, spans all tabs)
+
     @State private var javaPath: String = ""
     @State private var extraFlags: String = ""
     @State private var remoteAPIExposeOnLAN: Bool = false
-
-    // Preferred pairing host + shared access
     @State private var preferredPairingHostInput: String = ""
     @State private var newSharedAccessLabel: String = ""
     @State private var newSharedAccessRole: String = "admin"
-
-    // Pairing UI state
     @State private var showPairingQR: Bool = false
     @State private var pairingLinkForQR: String = ""
     @State private var showCopiedAlert: Bool = false
     @State private var copiedMessage: String = ""
-
-    // Token regeneration
     @State private var showRegenerateTokenConfirm: Bool = false
-
-    // Warnings
     @AppStorage(MSCSuppressQuitWarningKey) private var suppressQuitWarning: Bool = false
-
-    // Appearance
-        @State private var bannerColorDraft: Color = Color(red: 30/255, green: 30/255, blue: 30/255)
-
-        // Reset MSC flow
-        @State private var showResetStepOne: Bool = false
+    @State private var bannerColorDraft: Color = Color(red: 30/255, green: 30/255, blue: 30/255)
+    @State private var showResetStepOne: Bool = false
     @State private var showResetStepTwo: Bool = false
     @State private var showResetStepThree: Bool = false
     @State private var showResetStepFour: Bool = false
     @State private var showResetCompleted: Bool = false
     @State private var showResetFailed: Bool = false
     @State private var resetFailureMessage: String = ""
-
-    // Storage usage
     @State private var storageAppSupportBytes: Int64? = nil
     @State private var storageServersRootBytes: Int64? = nil
     @State private var storageIsLoading: Bool = false
+    @State private var isShowingPlayitGuideFromSettings: Bool = false
+
+    // MARK: - Tab state
+
+    @State private var selectedTab: PrefsTab = .general
+
+    enum PrefsTab {
+        case general, remote, data, help
+    }
+
+    // MARK: - Contextual help anchor IDs
 
     private let contextualHelpGuideIDs: Set<String> = [
-        "preferences.page",
-        "preferences.remote-access"
+        "preferences.general",
+        "preferences.remote-access",
+        "preferences.data",
+        "preferences.help"
     ]
 
-    private let preferencesHeaderAnchorID = "preferences.header"
-    private let appearanceCardAnchorID = "preferences.appearance"
-    private let javaCardAnchorID = "preferences.java"
-    private let processManagementCardAnchorID = "preferences.processManagement"
-    private let remoteAccessCardAnchorID = "preferences.remoteAccess"
-    private let remoteAccessToggleAnchorID = "preferences.remoteAccess.toggle"
-    private let remoteAccessURLBoxAnchorID = "preferences.remoteAccess.urlBox"
+    private let appearanceCardAnchorID            = "preferences.appearance"
+    private let javaCardAnchorID                  = "preferences.java"
+    private let processManagementCardAnchorID     = "preferences.processManagement"
+    private let remoteAccessCardAnchorID          = "preferences.remoteAccess"
+    private let remoteAccessToggleAnchorID        = "preferences.remoteAccess.toggle"
+    private let remoteAccessURLBoxAnchorID        = "preferences.remoteAccess.urlBox"
     private let remoteAccessPreferredHostAnchorID = "preferences.remoteAccess.preferredHost"
-    private let remoteAccessActionsAnchorID = "preferences.remoteAccess.actions"
-    private let dataFoldersCardAnchorID = "preferences.dataFolders"
-    private let storageCardAnchorID = "preferences.storage"
-    private let portsCardAnchorID = "preferences.ports"
-    private let learnHelpCardAnchorID = "preferences.learnHelp"
-    private let saveButtonAnchorID = "preferences.saveButton"
+    private let remoteAccessActionsAnchorID       = "preferences.remoteAccess.actions"
+    private let dataFoldersCardAnchorID           = "preferences.dataFolders"
+    private let storageCardAnchorID               = "preferences.storage"
+    private let portsCardAnchorID                 = "preferences.ports"
+    private let learnHelpCardAnchorID             = "preferences.learnHelp"
+    private let saveButtonAnchorID                = "preferences.saveButton"
 
-    private var preferencesPageHelpGuide: ContextualHelpGuide {
-        ContextualHelpGuide(
-            id: "preferences.page",
-            steps: [
-                helpStep(
-                    id: "preferences.page.overview",
-                    title: "Settings is app-level setup",
-                    body: "This page controls app-wide behavior like the Java runtime, Remote Access, appearance, and utility folders. It is not the place for per-server gameplay changes.",
-                    anchorID: preferencesHeaderAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.appearance",
-                    title: "Appearance controls the app header accent",
-                    body: "Use Appearance to choose the banner color accent used by the app header. This is a visual preference only, and the change is saved when you press Save.",
-                    anchorID: appearanceCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.java",
-                    title: "Java affects how Java servers launch",
-                    body: "Use the Java section to point MSC at the Java executable and add optional JVM flags. Most people leave the flags blank unless they are intentionally tuning launch behavior.",
-                    anchorID: javaCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.processManagement",
-                    title: "Process Management handles orphans and crash recovery",
-                    body: "If MSC crashes while a Java server is running, that server process keeps going. Use Scan for Orphaned Processes to find and clean them up. The Relaunch MSC on crash toggle installs a launchd watchdog so MSC automatically restarts after an unexpected quit — a normal Cmd+Q does not trigger it.",
-                    anchorID: processManagementCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.remote",
-                    title: "Remote Access is for MSCRemoteiOS pairing",
-                    body: "This section controls whether the Remote API stays local to this Mac or is reachable from your iPhone over LAN or VPN. The deeper help here explains pairing links, QR, and shared access tokens.",
-                    anchorID: remoteAccessCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.data",
-                    title: "Data & Folders is utility space",
-                    body: "These buttons are maintenance shortcuts so you can jump straight to the app support folder or the selected server folder without digging through Finder.",
-                    anchorID: dataFoldersCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.storage",
-                    title: "Storage shows how much disk space MSC uses",
-                    body: "The Storage card breaks down disk usage between the MSC app support folder and your servers root. Hit Refresh to recalculate. This is informational — nothing is deleted from here.",
-                    anchorID: storageCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.ports",
-                    title: "Network Ports lists every port MSC uses",
-                    body: "This is a reference of all the ports the app and your servers listen on — the iOS Remote API, each server's game port, Geyser's Bedrock port, and the resource-pack host. The status dot shows what's actually listening right now. Game, Geyser, and pack-host ports must be forwarded in your router for outside players, and the Port Forwarding Guide button takes you straight there.",
-                    anchorID: portsCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.learnHelp",
-                    title: "Learn & Help reopens the guided tours",
-                    body: "Use this section to bring back the onboarding material at any time — the welcome guide, the prerequisites checklist, and the setup tour. Nothing here changes your configuration; it just relaunches the walkthroughs.",
-                    anchorID: learnHelpCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.page.save",
-                    title: "Save commits the page drafts",
-                    body: "Java path, extra flags, LAN/VPN exposure, the preferred pairing host, and appearance changes all commit when you press Save. Remote Access token actions are different: regenerate, add shared access, and revoke shared access apply immediately because they change live credentials.",
-                    anchorID: saveButtonAnchorID,
-                    nextLabel: "Done"
-                )
-            ]
-        )
+    // MARK: - Per-tab contextual help guides
+
+    private var generalTabHelpGuide: ContextualHelpGuide {
+        ContextualHelpGuide(id: "preferences.general", steps: [
+            helpStep(
+                id: "preferences.general.appearance",
+                title: "Appearance controls the app header accent",
+                body: "Choose the banner color used by the app header. The change is saved when you press Save.",
+                anchorID: appearanceCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.general.java",
+                title: "Java affects how Java servers launch",
+                body: "Point MSC at the Java executable and add optional JVM flags. Most people leave flags blank unless intentionally tuning launch behavior.",
+                anchorID: javaCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.general.processManagement",
+                title: "Process Management handles orphans and crash recovery",
+                body: "If MSC crashes while a Java server is running, that server process keeps going. Use Scan for Orphaned Processes to find and clean them up. The Relaunch MSC on crash toggle installs a launchd watchdog so MSC automatically restarts after an unexpected quit — a normal Cmd+Q does not trigger it.",
+                anchorID: processManagementCardAnchorID,
+                nextLabel: "Done"
+            )
+        ])
     }
 
     private var remoteAccessHelpGuide: ContextualHelpGuide {
-        ContextualHelpGuide(
-            id: "preferences.remote-access",
-            steps: [
-                helpStep(
-                    id: "preferences.remote.overview",
-                    title: "Remote Access powers iPhone control",
-                    body: "This card is where you prepare MSC for MSCRemoteiOS. It covers whether the Remote API is reachable off this Mac, what host the iPhone should use, and which tokens are allowed to control the app.",
-                    anchorID: remoteAccessCardAnchorID
-                ),
-                helpStep(
-                    id: "preferences.remote.toggle",
-                    title: "This toggle changes who can reach the API",
-                    body: "OFF keeps the Remote API on 127.0.0.1 so only this Mac can reach it. ON tells MSC to bind across LAN or VPN interfaces, which is what you need for an iPhone on the same Wi-Fi or on a VPN like Tailscale.",
-                    anchorID: remoteAccessToggleAnchorID
-                ),
-                helpStep(
-                    id: "preferences.remote.url",
-                    title: "The URL box is a preview, not the saved pairing state",
-                    body: "This box helps you see the local URL and the best pairing host for the draft state on screen. The actual Copy Pairing Link and QR actions still use the saved Remote Access settings, so press Save first after changing the toggle or preferred host.",
-                    anchorID: remoteAccessURLBoxAnchorID
-                ),
-                helpStep(
-                    id: "preferences.remote.host",
-                    title: "Preferred pairing host keeps links cleaner",
-                    body: "Set a MagicDNS or other stable host here when you have one. That value becomes the saved base host for pairing links and QR after you press Save, which is usually nicer than handing out a raw IP.",
-                    anchorID: remoteAccessPreferredHostAnchorID
-                ),
-                helpStep(
-                    id: "preferences.remote.actions",
-                    title: "Pairing and shared access control the actual secrets",
-                    body: "Copy Pairing Link and Show Pairing QR produce the MSCRemoteiOS pairing payload. Regenerate Token replaces the owner secret immediately, and Shared Access entries create or revoke additional full-control tokens immediately too.",
-                    anchorID: remoteAccessActionsAnchorID,
-                    nextLabel: "Done"
-                )
-            ]
-        )
+        ContextualHelpGuide(id: "preferences.remote-access", steps: [
+            helpStep(
+                id: "preferences.remote.overview",
+                title: "Remote Access powers iPhone control",
+                body: "This is where you prepare MSC for MSCRemoteiOS. It covers whether the Remote API is reachable off this Mac, what host the iPhone should use, and which tokens are allowed to control the app.",
+                anchorID: remoteAccessCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.remote.toggle",
+                title: "This toggle changes who can reach the API",
+                body: "OFF keeps the Remote API on 127.0.0.1 so only this Mac can reach it. ON tells MSC to bind across LAN or VPN interfaces, which is what you need for an iPhone on the same Wi-Fi or on a VPN like Tailscale.",
+                anchorID: remoteAccessToggleAnchorID
+            ),
+            helpStep(
+                id: "preferences.remote.url",
+                title: "The URL box is a preview, not the saved pairing state",
+                body: "This box helps you see the local URL and the best pairing host for the draft state on screen. Press Save first after changing the toggle or preferred host — Copy Pairing Link and QR use the saved settings.",
+                anchorID: remoteAccessURLBoxAnchorID
+            ),
+            helpStep(
+                id: "preferences.remote.host",
+                title: "Preferred pairing host keeps links cleaner",
+                body: "Set a MagicDNS or other stable host here when you have one. That value becomes the saved base host for pairing links and QR after you press Save.",
+                anchorID: remoteAccessPreferredHostAnchorID
+            ),
+            helpStep(
+                id: "preferences.remote.actions",
+                title: "Pairing and shared access control the actual secrets",
+                body: "Copy Pairing Link and Show Pairing QR produce the MSCRemoteiOS pairing payload. Regenerate Token replaces the owner secret immediately, and Shared Access entries create or revoke additional tokens immediately too.",
+                anchorID: remoteAccessActionsAnchorID,
+                nextLabel: "Done"
+            )
+        ])
     }
 
-    private func presentPreferencesHelp() {
-        ContextualHelpManager.shared.start(preferencesPageHelpGuide)
+    private var dataTabHelpGuide: ContextualHelpGuide {
+        ContextualHelpGuide(id: "preferences.data", steps: [
+            helpStep(
+                id: "preferences.data.folders",
+                title: "Data & Folders are maintenance shortcuts",
+                body: "These buttons jump straight to the app support folder or the selected server folder in Finder, without digging through directories manually.",
+                anchorID: dataFoldersCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.data.storage",
+                title: "Storage shows how much disk space MSC uses",
+                body: "Breaks down disk usage between the MSC app support folder and your servers root. Hit Refresh to recalculate. Nothing is deleted from here — it's informational only.",
+                anchorID: storageCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.data.ports",
+                title: "Network Ports lists every port MSC uses",
+                body: "A reference of all ports the app and your servers listen on — the iOS Remote API, each server's game port, Geyser's Bedrock port, and the resource-pack host. The status dot shows what's actually listening right now. The Port Forwarding Guide button takes you through router setup.",
+                anchorID: portsCardAnchorID,
+                nextLabel: "Done"
+            )
+        ])
     }
 
-    private func presentRemoteAccessHelp() {
-        ContextualHelpManager.shared.start(remoteAccessHelpGuide)
+    private var helpTabHelpGuide: ContextualHelpGuide {
+        ContextualHelpGuide(id: "preferences.help", steps: [
+            helpStep(
+                id: "preferences.help.learnHelp",
+                title: "Learn & Help reopens the guided tours",
+                body: "Use this section to bring back the onboarding material at any time — the welcome guide, the prerequisites checklist, the setup tour, and the port forwarding guide. Nothing here changes your configuration; it just relaunches the walkthroughs.",
+                anchorID: learnHelpCardAnchorID,
+                nextLabel: "Done"
+            )
+        ])
+    }
+
+    private func presentCurrentTabHelp() {
+        switch selectedTab {
+        case .general: ContextualHelpManager.shared.start(generalTabHelpGuide)
+        case .remote:  ContextualHelpManager.shared.start(remoteAccessHelpGuide)
+        case .data:    ContextualHelpManager.shared.start(dataTabHelpGuide)
+        case .help:    ContextualHelpManager.shared.start(helpTabHelpGuide)
+        }
     }
 
     private func helpStep(
@@ -198,50 +189,24 @@ struct MSCSettingsView: View {
         anchorID: String?,
         nextLabel: String = "Next"
     ) -> ContextualHelpStep {
-        ContextualHelpStep(
-            id: id,
-            title: title,
-            body: body,
-            anchorID: anchorID,
-            nextLabel: nextLabel
-        )
+        ContextualHelpStep(id: id, title: title, body: body, anchorID: anchorID, nextLabel: nextLabel)
     }
+
+    // MARK: - Scroll coordination
 
     private func scrollContextualHelpIfNeeded(using proxy: ScrollViewProxy) {
         guard contextualHelpManager.isActive,
               let anchorID = contextualHelpManager.currentStep?.anchorID,
-              isScrollableContextualHelpAnchor(anchorID) else { return }
+              anchorID != saveButtonAnchorID else { return }
 
         DispatchQueue.main.async {
             withAnimation(.easeInOut(duration: 0.24)) {
-                proxy.scrollTo(anchorID, anchor: preferredScrollAnchor(for: anchorID))
+                proxy.scrollTo(anchorID, anchor: anchorID == dataFoldersCardAnchorID || anchorID == remoteAccessActionsAnchorID ? .center : .top)
             }
         }
     }
 
-    private func isScrollableContextualHelpAnchor(_ anchorID: String) -> Bool {
-        anchorID == appearanceCardAnchorID ||
-        anchorID == javaCardAnchorID ||
-        anchorID == processManagementCardAnchorID ||
-        anchorID == remoteAccessCardAnchorID ||
-        anchorID == remoteAccessToggleAnchorID ||
-        anchorID == remoteAccessURLBoxAnchorID ||
-        anchorID == remoteAccessPreferredHostAnchorID ||
-        anchorID == remoteAccessActionsAnchorID ||
-        anchorID == dataFoldersCardAnchorID ||
-        anchorID == storageCardAnchorID ||
-        anchorID == portsCardAnchorID ||
-        anchorID == learnHelpCardAnchorID
-    }
-
-    private func preferredScrollAnchor(for anchorID: String) -> UnitPoint {
-        switch anchorID {
-        case dataFoldersCardAnchorID, remoteAccessActionsAnchorID:
-            return .center
-        default:
-            return .top
-        }
-    }
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -259,58 +224,34 @@ struct MSCSettingsView: View {
                 Spacer()
 
                 Button {
-                    presentPreferencesHelp()
+                    presentCurrentTabHelp()
                 } label: {
-                    Label("Explain this page", systemImage: "questionmark.circle")
+                    Label("Explain this tab", systemImage: "questionmark.circle")
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
-                .help("Explains the main Settings sections and save behavior.")
+                .help("Walk through the sections on this tab.")
             }
             .padding(.horizontal, MSC.Spacing.xl)
             .padding(.top, MSC.Spacing.xl)
             .padding(.bottom, MSC.Spacing.lg)
-            .contextualHelpAnchor(preferencesHeaderAnchorID)
 
             Divider()
 
-            // ── SCROLLABLE BODY ────────────────────────────────────────────
+            // ── TAB BAR ────────────────────────────────────────────────────
+            prefsTabBar
+
+            // ── TAB CONTENT ────────────────────────────────────────────────
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-
-                        // ── APPEARANCE ──────────────────────────────────────────
-                                                appearanceCard
-
-                                                // ── JAVA ────────────────────────────────────────────────
-                                                javaCard
-
-                        // ── PROCESS MANAGEMENT ──────────────────────────────────
-                        PreferencesProcessCleanupSection()
-                            .environmentObject(viewModel)
-                            .id(processManagementCardAnchorID)
-                            .contextualHelpAnchor(processManagementCardAnchorID)
-
-                        // ── REMOTE ACCESS ───────────────────────────────────────
-                        remoteAccessCard
-
-                        // ── DATA & FOLDERS ──────────────────────────────────────
-                        dataFoldersCard
-
-                        // ── STORAGE ─────────────────────────────────────────────
-                        storageCard
-
-                        // ── NETWORK PORTS ───────────────────────────────────────
-                        portsCard
-
-                        // ── LEARN & HELP ────────────────────────────────────────
-                        learnHelpCard
-
-                        
+                        tabContent
                     }
                     .padding(.horizontal, MSC.Spacing.xl)
                     .padding(.vertical, MSC.Spacing.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxHeight: .infinity)
+                .id(selectedTab) // resets scroll to top on tab switch
                 .onAppear {
                     scrollContextualHelpIfNeeded(using: proxy)
                 }
@@ -334,25 +275,24 @@ struct MSCSettingsView: View {
                 .buttonStyle(MSCSecondaryButtonStyle())
 
                 Button("Save") {
-                                    persistPreferredPairingHost()
-                                    viewModel.updatePreferences(
-                                        javaPath: javaPath,
-                                        extraFlags: extraFlags,
-                                        remoteAPIExposeOnLAN: remoteAPIExposeOnLAN
-                                    )
-                                    // Save banner color
-                                    let adjusted = bannerColorDraft.clampedAwayFromWhite().clampedAwayFromBlack()
-                                    let newHex = adjusted.hexRGBString()
-                                    if let server = viewModel.selectedServer,
-                                       let idx = viewModel.configManager.config.servers.firstIndex(where: { $0.id == server.id }) {
-                                        viewModel.configManager.config.servers[idx].bannerColorHex = newHex
-                                    } else {
-                                        viewModel.configManager.config.defaultBannerColorHex = newHex
-                                    }
-                                    viewModel.configManager.save()
-                                    viewModel.syncTourAccentColor()
-                                    dismiss()
-                                }
+                    persistPreferredPairingHost()
+                    viewModel.updatePreferences(
+                        javaPath: javaPath,
+                        extraFlags: extraFlags,
+                        remoteAPIExposeOnLAN: remoteAPIExposeOnLAN
+                    )
+                    let adjusted = bannerColorDraft.clampedAwayFromWhite().clampedAwayFromBlack()
+                    let newHex = adjusted.hexRGBString()
+                    if let server = viewModel.selectedServer,
+                       let idx = viewModel.configManager.config.servers.firstIndex(where: { $0.id == server.id }) {
+                        viewModel.configManager.config.servers[idx].bannerColorHex = newHex
+                    } else {
+                        viewModel.configManager.config.defaultBannerColorHex = newHex
+                    }
+                    viewModel.configManager.save()
+                    viewModel.syncTourAccentColor()
+                    dismiss()
+                }
                 .buttonStyle(MSCPrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .contextualHelpAnchor(saveButtonAnchorID)
@@ -361,26 +301,7 @@ struct MSCSettingsView: View {
             .padding(.vertical, MSC.Spacing.lg)
         }
         .frame(minWidth: 560, minHeight: 480)
-        .onAppear {
-                    let cfg = viewModel.configManager.config
-                    javaPath = cfg.javaPath
-                    extraFlags = cfg.extraFlags
-                    remoteAPIExposeOnLAN = cfg.remoteAPIExposeOnLAN
-                    preferredPairingHostInput = cfg.remoteAPIPreferredPairingHost ?? ""
-
-                    // Load banner color: per-server if one is selected, else global default
-                    if let server = viewModel.selectedServer,
-                       let cfgServer = viewModel.configServer(for: server),
-                       let hex = cfgServer.bannerColorHex,
-                       let color = Color(hexRGB: hex) {
-                        bannerColorDraft = color.clampedAwayFromWhite().clampedAwayFromBlack()
-                    } else if let hex = cfg.defaultBannerColorHex,
-                              let color = Color(hexRGB: hex) {
-                        bannerColorDraft = color.clampedAwayFromWhite().clampedAwayFromBlack()
-                    }
-
-                    computeStorageSizes()
-                }
+        .onAppear { loadSettings() }
         .alert("Copied", isPresented: $showCopiedAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -391,40 +312,30 @@ struct MSCSettingsView: View {
         }
         .alert("Are you sure?", isPresented: $showResetStepOne) {
             Button("Cancel", role: .cancel) { }
-            Button("Yeah, keep going", role: .destructive) {
-                showResetStepTwo = true
-            }
+            Button("Yeah, keep going", role: .destructive) { showResetStepTwo = true }
         } message: {
             Text("This is the dramatic option. There are calmer ways to troubleshoot MSC.")
         }
         .alert("Seriously?", isPresented: $showResetStepTwo) {
             Button("Never mind", role: .cancel) { }
-            Button("I am serious", role: .destructive) {
-                showResetStepThree = true
-            }
+            Button("I am serious", role: .destructive) { showResetStepThree = true }
         } message: {
             Text("This will delete MSC app data and your configured server folder from disk.")
         }
         .alert("Last chance to back out", isPresented: $showResetStepThree) {
             Button("Back out", role: .cancel) { }
-            Button("Show final warning", role: .destructive) {
-                showResetStepFour = true
-            }
+            Button("Show final warning", role: .destructive) { showResetStepFour = true }
         } message: {
             Text("Application Support, the configured servers root, and saved controller secrets in Keychain will all be removed.")
         }
         .alert("Do it for real?", isPresented: $showResetStepFour) {
             Button("Cancel", role: .cancel) { }
-            Button("Delete everything", role: .destructive) {
-                runFullReset()
-            }
+            Button("Delete everything", role: .destructive) { runFullReset() }
         } message: {
             Text("MSC will reset to a fresh-install state, then ask you to quit immediately.")
         }
         .alert("Reset complete", isPresented: $showResetCompleted) {
-            Button("Quit Now") {
-                quitApplicationAfterReset()
-            }
+            Button("Quit Now") { quitApplicationAfterReset() }
         } message: {
             Text("MSC finished deleting its stored data. Quit now to complete the reset.")
         }
@@ -436,29 +347,47 @@ struct MSCSettingsView: View {
         .contextualHelpHost(guideIDs: contextualHelpGuideIDs)
     }
 
-    private func runFullReset() {
-        do {
-            try viewModel.resetApplicationForTesting()
-            showResetCompleted = true
-        } catch {
-            resetFailureMessage = error.localizedDescription
-            showResetFailed = true
-        }
-    }
+    // MARK: - Tab bar
 
-    private func quitApplicationAfterReset() {
-        dismiss()
-
-        DispatchQueue.main.async {
-            NSApplication.shared.terminate(nil)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                if NSApplication.shared.isRunning {
-                    exit(0)
-                }
+    private var prefsTabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                PrefsTabButton(icon: "gearshape.fill",           label: "General", isSelected: selectedTab == .general) { selectedTab = .general }
+                PrefsTabButton(icon: "iphone",                   label: "Remote",  isSelected: selectedTab == .remote)  { selectedTab = .remote }
+                PrefsTabButton(icon: "externaldrive.fill",       label: "Data",    isSelected: selectedTab == .data)    { selectedTab = .data }
+                PrefsTabButton(icon: "questionmark.circle.fill", label: "Help",    isSelected: selectedTab == .help)    { selectedTab = .help }
             }
+            .padding(.horizontal, MSC.Spacing.xl)
+            .padding(.vertical, MSC.Spacing.sm)
+        }
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    // MARK: - Tab content
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .general:
+            appearanceCard
+            javaCard
+            PreferencesProcessCleanupSection()
+                .environmentObject(viewModel)
+                .id(processManagementCardAnchorID)
+                .contextualHelpAnchor(processManagementCardAnchorID)
+        case .remote:
+            remoteAccessCard
+        case .data:
+            dataFoldersCard
+            storageCard
+            portsCard
+        case .help:
+            learnHelpCard
         }
     }
+
+    // MARK: - Section cards
 
     private var javaCard: some View {
         PreferencesJavaSection(
@@ -494,7 +423,6 @@ struct MSCSettingsView: View {
             urlBoxAnchorID: remoteAccessURLBoxAnchorID,
             preferredHostAnchorID: remoteAccessPreferredHostAnchorID,
             actionsAnchorID: remoteAccessActionsAnchorID,
-            onPresentHelp: presentRemoteAccessHelp,
             onCopyToClipboard: copyToClipboard,
             onBuildPairingLink: buildPairingLink,
             onAddSharedAccessEntry: addSharedAccessEntry,
@@ -529,7 +457,7 @@ struct MSCSettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-                        private var dataFoldersCard: some View {
+    private var dataFoldersCard: some View {
         PreferencesDataFoldersSection(
             isServerFolderButtonDisabled: viewModel.selectedServer == nil,
             showResetStepOne: $showResetStepOne,
@@ -540,14 +468,9 @@ struct MSCSettingsView: View {
     }
 
     private var portsCard: some View {
-        PreferencesPortsSection(anchorID: portsCardAnchorID) {
-            viewModel.isShowingRouterPortForwardGuide = true
-            dismiss()
-        }
-        .environmentObject(viewModel)
+        PreferencesPortsSection(anchorID: portsCardAnchorID)
+            .environmentObject(viewModel)
     }
-
-    @State private var isShowingPlayitGuideFromSettings: Bool = false
 
     private var learnHelpCard: some View {
         PreferencesLearnHelpSection(
@@ -582,15 +505,67 @@ struct MSCSettingsView: View {
         }
     }
 
-    // MARK: - Logic (unchanged from original)
+    private var storageCard: some View {
+        PreferencesStorageSection(
+            appSupportBytes: storageAppSupportBytes,
+            serversRootBytes: storageServersRootBytes,
+            isLoading: storageIsLoading,
+            anchorID: storageCardAnchorID,
+            onRefresh: computeStorageSizes
+        )
+    }
+
+    // MARK: - Load
+
+    private func loadSettings() {
+        let cfg = viewModel.configManager.config
+        javaPath = cfg.javaPath
+        extraFlags = cfg.extraFlags
+        remoteAPIExposeOnLAN = cfg.remoteAPIExposeOnLAN
+        preferredPairingHostInput = cfg.remoteAPIPreferredPairingHost ?? ""
+
+        if let server = viewModel.selectedServer,
+           let cfgServer = viewModel.configServer(for: server),
+           let hex = cfgServer.bannerColorHex,
+           let color = Color(hexRGB: hex) {
+            bannerColorDraft = color.clampedAwayFromWhite().clampedAwayFromBlack()
+        } else if let hex = cfg.defaultBannerColorHex,
+                  let color = Color(hexRGB: hex) {
+            bannerColorDraft = color.clampedAwayFromWhite().clampedAwayFromBlack()
+        }
+
+        computeStorageSizes()
+    }
+
+    // MARK: - Reset
+
+    private func runFullReset() {
+        do {
+            try viewModel.resetApplicationForTesting()
+            showResetCompleted = true
+        } catch {
+            resetFailureMessage = error.localizedDescription
+            showResetFailed = true
+        }
+    }
+
+    private func quitApplicationAfterReset() {
+        dismiss()
+        DispatchQueue.main.async {
+            NSApplication.shared.terminate(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                if NSApplication.shared.isRunning { exit(0) }
+            }
+        }
+    }
+
+    // MARK: - Remote API logic
 
     private func buildPairingLink(token: String) -> String {
         let cfg = viewModel.configManager.config
         let port = cfg.remoteAPIPort
-
         let baseHost = preferredPairingHost(exposeOnLAN: cfg.remoteAPIExposeOnLAN) ?? "127.0.0.1"
         let baseURL = "http://\(baseHost):\(port)"
-
         var comps = URLComponents()
         comps.scheme = "mscremote"
         comps.host = "pair"
@@ -598,48 +573,33 @@ struct MSCSettingsView: View {
             URLQueryItem(name: "base", value: baseURL),
             URLQueryItem(name: "token", value: token)
         ]
-
         return comps.url?.absoluteString ?? "mscremote://pair"
     }
 
     private func preferredPairingHost(exposeOnLAN: Bool) -> String? {
         guard exposeOnLAN else { return nil }
-
         let preferred = preferredPairingHostInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if !preferred.isEmpty { return preferred }
-
         let ips = candidateIPv4Addresses()
-
-        if let ts = ips.first(where: { $0.hasPrefix("100.") }) {
-            return ts
-        }
-
-        if let lan = ips.first(where: { isLocalOrPrivateHost($0) && $0 != "127.0.0.1" }) {
-            return lan
-        }
-
+        if let ts = ips.first(where: { $0.hasPrefix("100.") }) { return ts }
+        if let lan = ips.first(where: { isLocalOrPrivateHost($0) && $0 != "127.0.0.1" }) { return lan }
         return nil
     }
 
     private func isLocalOrPrivateHost(_ host: String) -> Bool {
         let h = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !h.isEmpty else { return false }
-
         if h == "localhost" || h == "127.0.0.1" { return true }
         if h.hasSuffix(".local") { return true }
-
         if h.hasPrefix("10.") { return true }
         if h.hasPrefix("192.168.") { return true }
-
         if h.hasPrefix("172.") {
             let parts = h.split(separator: ".")
             if parts.count >= 2, let second = Int(parts[1]) {
                 if (16...31).contains(second) { return true }
             }
         }
-
         if h.hasPrefix("169.254.") { return true }
-
         return false
     }
 
@@ -647,29 +607,21 @@ struct MSCSettingsView: View {
         #if os(macOS)
         var results: [String] = []
         var ifaddr: UnsafeMutablePointer<ifaddrs>? = nil
-
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return [] }
         defer { freeifaddrs(ifaddr) }
-
         for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
             let flags = Int32(ptr.pointee.ifa_flags)
             let addr = ptr.pointee.ifa_addr
-
             if (flags & IFF_UP) == 0 { continue }
             guard let addr else { continue }
             guard addr.pointee.sa_family == UInt8(AF_INET) else { continue }
-
             var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-            let len = socklen_t(addr.pointee.sa_len)
-
-            let res = getnameinfo(addr, len, &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST)
-
+            let res = getnameinfo(addr, socklen_t(addr.pointee.sa_len), &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST)
             if res == 0 {
                 let ip = String(cString: hostname)
                 if !ip.isEmpty { results.append(ip) }
             }
         }
-
         var seen = Set<String>()
         return results.filter { seen.insert($0).inserted }
         #else
@@ -688,9 +640,7 @@ struct MSCSettingsView: View {
     private func addSharedAccessEntry(label: String) {
         let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedLabel.isEmpty else { return }
-
         var cfg = viewModel.configManager.config
-
         var token = AppConfig.generateRemoteAPIToken()
         var attempts = 0
         let existingTokens = Set(cfg.remoteAPISharedAccess.map { $0.token })
@@ -698,15 +648,11 @@ struct MSCSettingsView: View {
             token = AppConfig.generateRemoteAPIToken()
             attempts += 1
         }
-
         let entry = RemoteAPISharedAccessEntry.make(label: trimmedLabel, token: token, role: newSharedAccessRole)
         cfg.remoteAPISharedAccess.append(entry)
-
         viewModel.configManager.config = cfg
         viewModel.configManager.save()
-
         viewModel.logAppMessage("[Remote API] Added shared access (\(newSharedAccessRole)): \(trimmedLabel).")
-
         newSharedAccessLabel = ""
         newSharedAccessRole = "admin"
         copiedMessage = "Shared access added. Use Copy Pairing Link / Show QR to share."
@@ -723,17 +669,12 @@ struct MSCSettingsView: View {
 
     private func revokeSharedAccessEntry(id: String) {
         var cfg = viewModel.configManager.config
-        let beforeCount = cfg.remoteAPISharedAccess.count
+        let before = cfg.remoteAPISharedAccess.count
         cfg.remoteAPISharedAccess.removeAll { $0.id == id }
-        let afterCount = cfg.remoteAPISharedAccess.count
-
-        guard beforeCount != afterCount else { return }
-
+        guard cfg.remoteAPISharedAccess.count != before else { return }
         viewModel.configManager.config = cfg
         viewModel.configManager.save()
-
         viewModel.logAppMessage("[Remote API] Revoked shared access entry.")
-
         copiedMessage = "Shared access revoked."
         showCopiedAlert = true
     }
@@ -741,12 +682,9 @@ struct MSCSettingsView: View {
     private func regenerateRemoteAPIToken() {
         var cfg = viewModel.configManager.config
         cfg.remoteAPIToken = AppConfig.generateRemoteAPIToken()
-
         viewModel.configManager.config = cfg
         viewModel.configManager.save()
-
         viewModel.logAppMessage("[Remote API] Regenerated bearer token.")
-
         copiedMessage = "New token generated. Re-pair iOS (or copy token again)."
         showCopiedAlert = true
     }
@@ -759,25 +697,15 @@ struct MSCSettingsView: View {
         #endif
     }
 
-    private var storageCard: some View {
-        PreferencesStorageSection(
-            appSupportBytes: storageAppSupportBytes,
-            serversRootBytes: storageServersRootBytes,
-            isLoading: storageIsLoading,
-            anchorID: storageCardAnchorID,
-            onRefresh: computeStorageSizes
-        )
-    }
+    // MARK: - Storage
 
     private func computeStorageSizes() {
         guard !storageIsLoading else { return }
         storageIsLoading = true
         storageAppSupportBytes = nil
         storageServersRootBytes = nil
-
         let appSupportURL = viewModel.configManager.appDirectoryURL
         let serversRootURL = viewModel.configManager.serversRootURL
-
         Task.detached(priority: .utility) {
             let appSize = Self.directorySize(at: appSupportURL)
             let serversSize = Self.directorySize(at: serversRootURL)
@@ -806,7 +734,35 @@ struct MSCSettingsView: View {
     }
 }
 
-// MARK: - Pairing QR Sheet (unchanged layout, polished footer)
+// MARK: - PrefsTabButton
+
+private struct PrefsTabButton: View {
+    let icon: String
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+            }
+            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+            .padding(.horizontal, MSC.Spacing.sm)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Pairing QR Sheet
 
 #if os(macOS)
 private struct PairingQRCodeSheet: View {
@@ -842,10 +798,8 @@ private struct PairingQRCodeSheet: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
-                Button("Copy Pairing Link") {
-                    copyToClipboard(pairingLink)
-                }
-                .controlSize(.small)
+                Button("Copy Pairing Link") { copyToClipboard(pairingLink) }
+                    .controlSize(.small)
             }
 
             HStack {
@@ -869,13 +823,8 @@ private struct PairingQRCodeSheet: View {
         let filter = CIFilter.qrCodeGenerator()
         filter.setValue(data, forKey: "inputMessage")
         filter.setValue("M", forKey: "inputCorrectionLevel")
-
         guard let ciImage = filter.outputImage else { return nil }
-
-        let transform = CGAffineTransform(scaleX: 10, y: 10)
-        let scaled = ciImage.transformed(by: transform)
-
-        let rep = NSCIImageRep(ciImage: scaled)
+        let rep = NSCIImageRep(ciImage: ciImage.transformed(by: CGAffineTransform(scaleX: 10, y: 10)))
         let nsImage = NSImage(size: rep.size)
         nsImage.addRepresentation(rep)
         return nsImage
@@ -884,8 +833,7 @@ private struct PairingQRCodeSheet: View {
 #endif
 
 // MARK: - Inline Destructive Button Style
-// Same shape/size as MSCSecondaryButtonStyle but with red text.
-// Useful when a destructive action lives in a row alongside secondary actions.
+
 struct MSCDestructiveInlineButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.controlSize) private var controlSize
@@ -913,4 +861,3 @@ struct MSCDestructiveInlineButtonStyle: ButtonStyle {
     MSCSettingsView()
         .environmentObject(AppViewModel())
 }
-

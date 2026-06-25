@@ -9,11 +9,6 @@
 /* Begin PBXBuildFile section */
 		9A0B6EFD2F6F828E00CCA17C /* AddServerWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */; };
 		9A0B6EFE2F6F828E00CCA17C /* AppViewModel+ServerImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */; };
-		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
-		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
-		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
-		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
-		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
 		9A0B6F002F6F94C800CCA17C /* CrossPlatformGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */; };
 		9A4F742A2F6CBB92008FF39A /* OnboardingOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74292F6CBB92008FF39A /* OnboardingOverlayView.swift */; };
 		9A4F742B2F6CBB92008FF39A /* OnboardingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */; };
@@ -87,10 +82,6 @@
 		9A5632BB2F65AD6D00FB8246 /* ConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320C2F65AD6C00FB8246 /* ConsoleView.swift */; };
 		9A5632BC2F65AD6D00FB8246 /* AppViewModel+Broadcasting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EA2F65AD6C00FB8246 /* AppViewModel+Broadcasting.swift */; };
 		9A5632BD2F65AD6D00FB8246 /* XboxBroadcastProcessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */; };
-		CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */; };
-		CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */; };
-		CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */; };
-		CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */; };
 		9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */; };
 		9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632242F65AD6C00FB8246 /* HealthCardModels.swift */; };
 		9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632502F65AD6C00FB8246 /* ResourcePacksView.swift */; };
@@ -212,16 +203,20 @@
 		BB02000BAA000000000000BB /* BedrockPlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */; };
 		BB02000CAA000000000000CB /* BedrockNameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000CAA000000000000CA /* BedrockNameCache.swift */; };
 		BB02000DAA000000000000DC /* BedrockHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB01000DAA000000000000DA /* BedrockHiddenProfiles.swift */; };
+		CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */; };
+		CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */; };
+		CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */; };
+		CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */; };
+		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
+		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
+		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
+		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
+		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerWizardView.swift; sourceTree = "<group>"; };
 		9A0B6EFC2F6F828E00CCA17C /* AppViewModel+ServerImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerImport.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ServerTransferView.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChunkerManager.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorldConversionWizardView.swift"; sourceTree = "<group>"; };
 		9A0B6EFF2F6F94C800CCA17C /* CrossPlatformGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPlatformGuideSheet.swift; sourceTree = "<group>"; };
 		9A4F74272F6CBB92008FF39A /* CreateServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateServerView.swift; sourceTree = "<group>"; };
 		9A4F74282F6CBB92008FF39A /* OnboardingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingManager.swift; sourceTree = "<group>"; };
@@ -361,10 +356,6 @@
 		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
 		9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastProcessManager.swift; sourceTree = "<group>"; };
-		CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitAgentManager.swift; sourceTree = "<group>"; };
-		CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Playit.swift"; sourceTree = "<group>"; };
-		CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitSetupGuideSheet.swift; sourceTree = "<group>"; };
-		CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitDockerManager.swift; sourceTree = "<group>"; };
 		9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YAMLHelper.swift; sourceTree = "<group>"; };
 		9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldRepairView.swift; sourceTree = "<group>"; };
 		9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldRepair.swift"; sourceTree = "<group>"; };
@@ -422,6 +413,15 @@
 		BB01000BAA000000000000BA /* BedrockPlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockPlayerDataManager.swift; sourceTree = "<group>"; };
 		BB01000CAA000000000000CA /* BedrockNameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockNameCache.swift; sourceTree = "<group>"; };
 		BB01000DAA000000000000DA /* BedrockHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockHiddenProfiles.swift; sourceTree = "<group>"; };
+		CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitAgentManager.swift; sourceTree = "<group>"; };
+		CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Playit.swift"; sourceTree = "<group>"; };
+		CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitSetupGuideSheet.swift; sourceTree = "<group>"; };
+		CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitDockerManager.swift; sourceTree = "<group>"; };
+		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerTransferView.swift; sourceTree = "<group>"; };
+		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkerManager.swift; sourceTree = "<group>"; };
+		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldConversionWizardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1100,7 +1100,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.9;
+				MARKETING_VERSION = 1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1139,7 +1139,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.9;
+				MARKETING_VERSION = 1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

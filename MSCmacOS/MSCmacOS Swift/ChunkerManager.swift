@@ -316,8 +316,10 @@ final class ChunkerManager {
     }
 
     /// Packages Chunker's output directory into a world.zip compatible with WorldSlotManager.
+    /// Chunker writes world files DIRECTLY into the output directory (not into a subdirectory),
+    /// so we move ALL output contents into the correct named folder before zipping.
     /// For a Java target: zip contains `{levelName}/`. For Bedrock: `worlds/{levelName}/`.
-    /// Returns the URL of the created zip file (inside a temp subfolder of `outputDir`).
+    /// Returns the URL of the created zip file (inside a `_package` subfolder of `outputDir`).
     func packageOutput(
         chunkerOutputDir: URL,
         isBedrockTarget: Bool,
@@ -325,50 +327,52 @@ final class ChunkerManager {
     ) async throws -> URL {
         let fm = FileManager.default
 
-        // Find the Chunker output folder (first non-hidden directory in outputDir)
-        guard let entries = try? fm.contentsOfDirectory(at: chunkerOutputDir, includingPropertiesForKeys: nil) else {
-            throw ChunkerError.worldFolderNotFound
-        }
-        guard let convertedFolder = entries.first(where: { e in
-            guard !e.lastPathComponent.hasPrefix("__"), !e.lastPathComponent.hasPrefix("."),
-                  e.lastPathComponent != "_package" else { return false }
-            var isDir: ObjCBool = false
-            fm.fileExists(atPath: e.path, isDirectory: &isDir)
-            return isDir.boolValue
-        }) else {
-            throw ChunkerError.worldFolderNotFound
-        }
-
         let packageDir = chunkerOutputDir.appendingPathComponent("_package", isDirectory: true)
         try fm.createDirectory(at: packageDir, withIntermediateDirectories: true)
-
         let zipURL = packageDir.appendingPathComponent("converted.zip")
+
+        // All entries in outputDir except _package itself are world files
+        guard let allEntries = try? fm.contentsOfDirectory(at: chunkerOutputDir, includingPropertiesForKeys: nil) else {
+            throw ChunkerError.worldFolderNotFound
+        }
+        let worldEntries = allEntries.filter {
+            $0.lastPathComponent != "_package" && !$0.lastPathComponent.hasPrefix(".")
+        }
+        guard !worldEntries.isEmpty else { throw ChunkerError.worldFolderNotFound }
 
         return try await Task.detached(priority: .userInitiated) {
             if isBedrockTarget {
-                // Structure: worlds/{targetLevelName}/
-                let worldsDir = packageDir.appendingPathComponent("worlds", isDirectory: true)
-                try fm.createDirectory(at: worldsDir, withIntermediateDirectories: true)
-                let destFolder = worldsDir.appendingPathComponent(targetLevelName, isDirectory: true)
-                try fm.moveItem(at: convertedFolder, to: destFolder)
-
+                // Target zip structure: worlds/{targetLevelName}/...
+                let worldDir = packageDir
+                    .appendingPathComponent("worlds", isDirectory: true)
+                    .appendingPathComponent(targetLevelName, isDirectory: true)
+                try fm.createDirectory(at: worldDir, withIntermediateDirectories: true)
+                for entry in worldEntries {
+                    try fm.moveItem(at: entry, to: worldDir.appendingPathComponent(entry.lastPathComponent))
+                }
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
                 p.currentDirectoryURL = packageDir
                 p.arguments = ["-r", zipURL.path, "worlds"]
+                p.standardOutput = FileHandle.nullDevice
+                p.standardError = FileHandle.nullDevice
                 try p.run(); p.waitUntilExit()
                 guard p.terminationStatus == 0 else {
                     throw ChunkerError.conversionFailed("zip failed (status \(p.terminationStatus))")
                 }
             } else {
-                // Structure: {targetLevelName}/
-                let destFolder = packageDir.appendingPathComponent(targetLevelName, isDirectory: true)
-                try fm.moveItem(at: convertedFolder, to: destFolder)
-
+                // Target zip structure: {targetLevelName}/...
+                let worldDir = packageDir.appendingPathComponent(targetLevelName, isDirectory: true)
+                try fm.createDirectory(at: worldDir, withIntermediateDirectories: true)
+                for entry in worldEntries {
+                    try fm.moveItem(at: entry, to: worldDir.appendingPathComponent(entry.lastPathComponent))
+                }
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
                 p.currentDirectoryURL = packageDir
                 p.arguments = ["-r", zipURL.path, targetLevelName]
+                p.standardOutput = FileHandle.nullDevice
+                p.standardError = FileHandle.nullDevice
                 try p.run(); p.waitUntilExit()
                 guard p.terminationStatus == 0 else {
                     throw ChunkerError.conversionFailed("zip failed (status \(p.terminationStatus))")

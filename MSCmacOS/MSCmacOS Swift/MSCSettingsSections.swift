@@ -188,7 +188,6 @@ struct PreferencesRemoteAPISection: View {
     let urlBoxAnchorID: String
     let preferredHostAnchorID: String
     let actionsAnchorID: String
-    let onPresentHelp: () -> Void
     let onCopyToClipboard: (String) -> Void
     let onBuildPairingLink: (String) -> String
     let onAddSharedAccessEntry: (String) -> Void
@@ -198,20 +197,9 @@ struct PreferencesRemoteAPISection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            HStack(alignment: .center, spacing: MSC.Spacing.md) {
-                Label("Remote Access", systemImage: "iphone.and.arrow.forward")
-                    .font(MSC.Typography.cardTitle)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button(action: onPresentHelp) {
-                    Label("How this works", systemImage: "questionmark.circle")
-                }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.small)
-                .help("Explains pairing, LAN or VPN access, and token behavior.")
-            }
+            Label("Remote Access", systemImage: "iphone.and.arrow.forward")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
 
             Divider()
 
@@ -786,8 +774,6 @@ struct PreferencesLearnHelpSection: View {
             Button("Restart Setup Tour…", action: onRestartSetupTour)
                 .buttonStyle(MSCSecondaryButtonStyle())
 
-            Divider()
-
             Button("Port Forwarding Guide…", action: onOpenPortForwardGuide)
                 .buttonStyle(MSCSecondaryButtonStyle())
 
@@ -962,7 +948,6 @@ extension AppViewModel {
 struct PreferencesPortsSection: View {
     @EnvironmentObject var viewModel: AppViewModel
     let anchorID: String
-    let onOpenPortForwardGuide: () -> Void
 
     @State private var ports: [AppPortInfo] = []
 
@@ -1014,14 +999,6 @@ struct PreferencesPortsSection: View {
                 .foregroundStyle(MSC.Colors.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, MSC.Spacing.xs)
-
-            Button {
-                onOpenPortForwardGuide()
-            } label: {
-                Label("Port Forwarding Guide", systemImage: "wifi.router")
-            }
-            .buttonStyle(MSCSecondaryButtonStyle())
-            .padding(.top, MSC.Spacing.xs)
         }
         .pscCard()
         .id(anchorID)

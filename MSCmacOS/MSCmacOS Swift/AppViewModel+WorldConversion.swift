@@ -211,8 +211,10 @@ extension AppViewModel {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
             p.arguments = ["-o", sourceZip.path, "-d", destination.path]
-            p.standardOutput = Pipe()
-            p.standardError = Pipe()
+            // Use /dev/null — NOT Pipe(). A Pipe that isn't drained deadlocks
+            // waitUntilExit() once its buffer fills (common with large worlds).
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError = FileHandle.nullDevice
             try p.run()
             p.waitUntilExit()
             guard p.terminationStatus == 0 else {

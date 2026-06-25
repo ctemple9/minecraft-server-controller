@@ -169,6 +169,16 @@ extension AppViewModel {
                         }
                     }
 
+                    // 2b. Live world directories — the server's current on-disk world, which
+                    //     may be newer than the most recent slot zip. Copied directly so the
+                    //     import always reflects the exact state the server was last left in.
+                    for folderName in WorldSlotManager.worldFolderNames(for: server) {
+                        let src = serverURL.appendingPathComponent(folderName, isDirectory: true)
+                        if fm.fileExists(atPath: src.path) {
+                            try? fm.copyItem(at: src, to: outDir.appendingPathComponent(folderName, isDirectory: true))
+                        }
+                    }
+
                     // 3. Top-level config files → configs/
                     let configsDir = outDir.appendingPathComponent("configs", isDirectory: true)
                     try? fm.createDirectory(at: configsDir, withIntermediateDirectories: true)
@@ -420,10 +430,31 @@ extension AppViewModel {
                         cfgServer.bedrockPort = portOverride
                     }
 
-                    // Restore the active slot to the live world/ directory so the server
-                    // has world data on first start. Without this, world_slots/ exists but
-                    // world/ doesn't, and Paper generates a completely fresh world.
-                    if let activeSlot = WorldSlotManager.activeSlot(forServerDir: destURL.path) {
+                    // Restore world data. Prefer live world folders bundled in the package
+                    // (exact state the server was left in). Fall back to slot restore only
+                    // for older transfer files that don't have them.
+                    var restoredLiveWorld = false
+                    if entry.server.isJava {
+                        // level-name is in the already-copied server.properties at destURL
+                        let props = ServerPropertiesManager.readProperties(serverDir: destURL.path)
+                        let raw = props["level-name"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let levelName = raw.isEmpty ? "world" : raw
+                        for candidate in [levelName, "\(levelName)_nether", "\(levelName)_the_end"] {
+                            let src = pkgDir.appendingPathComponent(candidate, isDirectory: true)
+                            if fm.fileExists(atPath: src.path) {
+                                try? fm.copyItem(at: src, to: destURL.appendingPathComponent(candidate, isDirectory: true))
+                                restoredLiveWorld = true
+                            }
+                        }
+                    } else {
+                        let src = pkgDir.appendingPathComponent("worlds", isDirectory: true)
+                        if fm.fileExists(atPath: src.path) {
+                            try? fm.copyItem(at: src, to: destURL.appendingPathComponent("worlds", isDirectory: true))
+                            restoredLiveWorld = true
+                        }
+                    }
+
+                    if !restoredLiveWorld, let activeSlot = WorldSlotManager.activeSlot(forServerDir: destURL.path) {
                         await WorldSlotManager.activateSlot(
                             activeSlot,
                             for: cfgServer,
