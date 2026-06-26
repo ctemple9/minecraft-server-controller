@@ -19,6 +19,7 @@
 // The server MUST be stopped before any slot operation that touches world data.
 // WorldSlotManager enforces nothing here — the caller (AppViewModel) is responsible.
 
+import AppKit
 import Foundation
 
 // MARK: - WorldSlot model
@@ -87,6 +88,13 @@ enum WorldSlotManager {
     static func metadataURL(forSlot slot: WorldSlot, serverDir: String) -> URL {
         slotDirectory(slot: slot, serverDir: serverDir)
             .appendingPathComponent("slot.json")
+    }
+
+    /// Returns the on-disk URL for a slot's thumbnail, or nil if not set / file missing.
+    static func thumbnailURL(forSlot slot: WorldSlot, serverDir: String) -> URL? {
+        guard let file = slot.thumbnailFileName, !file.isEmpty else { return nil }
+        let url = slotDirectory(slot: slot, serverDir: serverDir).appendingPathComponent(file)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     static func activeSlotIDURL(forServerDir serverDir: String) -> URL {
@@ -328,6 +336,48 @@ enum WorldSlotManager {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(slot)
         try data.write(to: metadataURL(forSlot: slot, serverDir: serverDir), options: .atomic)
+    }
+
+    // MARK: - Thumbnail
+
+    /// Resizes `image` to at most 800×450, saves it as thumbnail.jpg in the slot directory,
+    /// and returns the updated WorldSlot (with thumbnailFileName set).
+    @discardableResult
+    static func saveThumbnail(_ image: NSImage, for slot: WorldSlot, serverDir: String) throws -> WorldSlot {
+        let srcSize = image.size
+        guard srcSize.width > 0, srcSize.height > 0 else {
+            throw NSError(domain: "WorldSlotManager", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Image has zero size."])
+        }
+
+        let maxW: CGFloat = 800; let maxH: CGFloat = 450
+        let scale = min(maxW / srcSize.width, maxH / srcSize.height, 1.0)
+        let destSize = CGSize(width: (srcSize.width * scale).rounded(),
+                              height: (srcSize.height * scale).rounded())
+
+        let resized = NSImage(size: destSize)
+        resized.lockFocus()
+        image.draw(in: CGRect(origin: .zero, size: destSize),
+                   from: CGRect(origin: .zero, size: srcSize),
+                   operation: .copy, fraction: 1.0)
+        resized.unlockFocus()
+
+        guard let tiff   = resized.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let jpeg   = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.82]) else {
+            throw NSError(domain: "WorldSlotManager", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "Failed to encode thumbnail as JPEG."])
+        }
+
+        let slotDir  = slotDirectory(slot: slot, serverDir: serverDir)
+        try FileManager.default.createDirectory(at: slotDir, withIntermediateDirectories: true)
+        let filename = "thumbnail.jpg"
+        try jpeg.write(to: slotDir.appendingPathComponent(filename), options: .atomic)
+
+        var updated = slot
+        updated.thumbnailFileName = filename
+        try saveMetadata(updated, serverDir: serverDir)
+        return updated
     }
 
     // MARK: - Create a new slot from current world

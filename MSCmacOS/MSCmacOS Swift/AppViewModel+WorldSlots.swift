@@ -16,8 +16,9 @@
 //
 // All methods guard against server-is-running where world data is touched.
 
-import Foundation
+import AppKit
 import Combine
+import Foundation
 
 // MARK: - Published state
 
@@ -273,6 +274,21 @@ extension AppViewModel {
         } catch {
             logAppMessage("[WorldSlots] Failed to rename slot: \(error.localizedDescription)")
             showError(title: "Rename Failed", message: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Set thumbnail
+
+    func setSlotThumbnail(_ slot: WorldSlot, image: NSImage) {
+        guard let server = selectedServer,
+              let cfgServer = configServer(for: server) else { return }
+        do {
+            _ = try WorldSlotManager.saveThumbnail(image, for: slot, serverDir: cfgServer.serverDir)
+            logAppMessage("[WorldSlots] Thumbnail set for slot \"\(slot.name)\".")
+            loadWorldSlotsForSelectedServer()
+        } catch {
+            logAppMessage("[WorldSlots] Failed to save thumbnail: \(error.localizedDescription)")
+            showError(title: "Thumbnail Failed", message: error.localizedDescription)
         }
     }
 

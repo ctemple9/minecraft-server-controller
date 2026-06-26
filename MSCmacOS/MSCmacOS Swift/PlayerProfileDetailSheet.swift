@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct PlayerProfileDetailSheet: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -24,6 +25,8 @@ struct PlayerProfileDetailSheet: View {
     @State private var identifyInput: String = ""
     @State private var actionError: String? = nil
     @State private var actionSuccess: String? = nil
+    @State private var lookupInput: String = ""
+    @State private var isEditingLookup: Bool = false
 
     init(profile: PlayerProfile) {
         self.profile = profile
@@ -57,6 +60,9 @@ struct PlayerProfileDetailSheet: View {
 
                     // ── Identity header ────────────────────────────────────
                     identityHeader
+
+                    // ── Skin override section ──────────────────────────────
+                    skinOverrideSection
 
                     // ── Status feedback ────────────────────────────────────
                     if let msg = actionError {
@@ -139,10 +145,11 @@ struct PlayerProfileDetailSheet: View {
     // MARK: - Identity header
 
     private var identityHeader: some View {
-        HStack(alignment: .top, spacing: MSC.Spacing.xl) {
+        let appearance = viewModel.playerAppearance(for: localProfile)
+        return HStack(alignment: .top, spacing: MSC.Spacing.xl) {
 
             // Full-body skin with idle sway
-            PlayerBodyView(identifier: localProfile.imageIdentifier, height: 160)
+            PlayerBodyView(identifier: appearance.identifier, height: 160, customSkinURL: appearance.skinURL)
                 .frame(width: 70)
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
@@ -194,6 +201,184 @@ struct PlayerProfileDetailSheet: View {
             }
 
             Spacer()
+        }
+    }
+
+    // MARK: - Skin override section
+
+    private var skinOverrideSection: some View {
+        let appearance = viewModel.playerAppearance(for: localProfile)
+        let currentOverride: PlayerSkinOverride? = {
+            guard let cfg = viewModel.selectedServer.flatMap({ viewModel.configServer(for: $0) }) else { return nil }
+            return PlayerSkinStore.currentOverride(profileID: localProfile.id, serverDir: cfg.serverDir)
+        }()
+        let hasSkin = appearance.skinURL != nil
+        let hasLookup = currentOverride?.lookupIdentifier != nil
+
+        return VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            sectionHeader("Skin Override", icon: "paintbrush.fill")
+
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+
+                // Preview row
+                HStack(spacing: MSC.Spacing.lg) {
+                    VStack(spacing: 4) {
+                        PlayerHeadView(
+                            identifier: appearance.identifier,
+                            size: 48,
+                            customSkinURL: appearance.skinURL
+                        )
+                        Text("Head")
+                            .font(.system(size: 9))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                    }
+
+                    VStack(spacing: 4) {
+                        PlayerBodyView(
+                            identifier: appearance.identifier,
+                            height: 120,
+                            customSkinURL: appearance.skinURL
+                        )
+                        Text("Body")
+                            .font(.system(size: 9))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                    }
+
+                    Spacer()
+                }
+
+                Divider()
+
+                // Custom Lookup Name row
+                VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                    Text("CUSTOM LOOKUP NAME")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(MSC.Colors.tertiary)
+
+                    if isEditingLookup {
+                        HStack(spacing: MSC.Spacing.sm) {
+                            TextField("Username, UUID, or .GamertTag", text: $lookupInput)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 12))
+                                .onSubmit { saveLookupOverride() }
+
+                            Button("Set") { saveLookupOverride() }
+                                .controlSize(.small)
+                                .buttonStyle(.borderedProminent)
+                                .disabled(lookupInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                            Button("Cancel") {
+                                isEditingLookup = false
+                                lookupInput = ""
+                            }
+                            .controlSize(.small)
+                        }
+                        Text("Java: enter username or UUID. Bedrock via Geyser: prefix with a dot (e.g. .JaeBedrock). Console-only players with no Geyser account: upload a skin file instead.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        HStack(spacing: MSC.Spacing.sm) {
+                            if let lookup = currentOverride?.lookupIdentifier {
+                                Text(lookup)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(MSC.Colors.body)
+                            } else {
+                                Text("None")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(MSC.Colors.tertiary)
+                            }
+
+                            Spacer()
+
+                            Button(hasLookup ? "Edit" : "Set") {
+                                lookupInput = currentOverride?.lookupIdentifier ?? ""
+                                isEditingLookup = true
+                            }
+                            .controlSize(.small)
+                            .disabled(hasSkin)
+
+                            if hasLookup {
+                                Button("Clear") {
+                                    viewModel.setPlayerLookupOverride(nil, for: localProfile)
+                                }
+                                .controlSize(.small)
+                                .disabled(hasSkin)
+                            }
+                        }
+                        if hasSkin {
+                            Text("Remove the uploaded skin to use a lookup name instead.")
+                                .font(.system(size: 10))
+                                .foregroundStyle(MSC.Colors.tertiary)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Upload Skin File row
+                VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                    Text("UPLOADED SKIN FILE")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(MSC.Colors.tertiary)
+
+                    HStack(spacing: MSC.Spacing.sm) {
+                        if let skinURL = appearance.skinURL {
+                            Text(skinURL.lastPathComponent)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(MSC.Colors.body)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        } else {
+                            Text("None")
+                                .font(.system(size: 11))
+                                .foregroundStyle(MSC.Colors.tertiary)
+                        }
+
+                        Spacer()
+
+                        Button("Upload…") { pickSkinFile() }
+                            .controlSize(.small)
+
+                        if hasSkin {
+                            Button("Clear") {
+                                viewModel.clearPlayerSkinOverride(for: localProfile)
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+            .padding(MSC.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .fill(MSC.Colors.tierContent)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(MSC.Colors.contentBorder, lineWidth: 1)
+            )
+        }
+    }
+
+    private func saveLookupOverride() {
+        let trimmed = lookupInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        viewModel.setPlayerLookupOverride(trimmed, for: localProfile)
+        isEditingLookup = false
+        lookupInput = ""
+    }
+
+    private func pickSkinFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Select a 64×64 or 64×32 Minecraft skin PNG"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let img = NSImage(contentsOf: url) else { return }
+            viewModel.uploadPlayerSkin(img, for: localProfile)
         }
     }
 

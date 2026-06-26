@@ -45,12 +45,14 @@ struct OverviewPlayersStripView: View {
         if showingOnline {
             return viewModel.onlinePlayers.map { p in
                 let isOp = opFlag(for: p.name)
+                let appearance = playerAppearanceForEntry(p.name)
                 return PlayerStripEntry(
                     name: p.name,
                     isOnline: true,
-                    identifier: headIdentifier(for: p.name),
+                    identifier: appearance.identifier,
                     isOp: isOp,
-                    subtitle: isOp ? "Operator" : "Online"
+                    subtitle: isOp ? "Operator" : "Online",
+                    customSkinURL: appearance.skinURL
                 )
             }
         } else {
@@ -60,12 +62,14 @@ struct OverviewPlayersStripView: View {
                 .sorted { $0.lastModified > $1.lastModified }
                 .prefix(24)
                 .map { profile in
-                    PlayerStripEntry(
+                    let appearance = viewModel.playerAppearance(for: profile)
+                    return PlayerStripEntry(
                         name: profile.displayName,
                         isOnline: false,
-                        identifier: profile.imageIdentifier,
+                        identifier: appearance.identifier,
                         isOp: profile.isOp,
-                        subtitle: Self.relativeString(profile.lastModified)
+                        subtitle: Self.relativeString(profile.lastModified),
+                        customSkinURL: appearance.skinURL
                     )
                 }
         }
@@ -252,7 +256,8 @@ struct OverviewPlayersStripView: View {
                 Button { showFeaturedActions = true } label: {
                     PlayerBodyView(
                         identifier: featured.identifier,
-                        height: max(72, geo.size.height - 62)
+                        height: max(72, geo.size.height - 62),
+                        customSkinURL: featured.customSkinURL
                     )
                     .frame(maxWidth: .infinity)
                 }
@@ -361,6 +366,13 @@ struct OverviewPlayersStripView: View {
         return name
     }
 
+    private func playerAppearanceForEntry(_ name: String) -> (identifier: String, skinURL: URL?) {
+        if let profile = matchedProfile(for: name) {
+            return viewModel.playerAppearance(for: profile)
+        }
+        return (headIdentifier(for: name), nil)
+    }
+
     private func opFlag(for name: String) -> Bool {
         if isBedrock { return viewModel.isBedrockOperator(named: name) }
         return matchedProfile(for: name)?.isOp ?? false
@@ -402,6 +414,7 @@ struct PlayerStripEntry: Identifiable {
     /// Small line under the name: "Online" / "Operator" when live, or a relative
     /// last-seen ("2h ago") for the recently-joined list.
     let subtitle: String
+    let customSkinURL: URL?
     var id: String { name }
 }
 
@@ -422,7 +435,7 @@ private struct PlayerHeadTile: View {
         Button(action: onTap) {
             VStack(spacing: 4) {
                 ZStack(alignment: .topTrailing) {
-                    PlayerHeadView(identifier: entry.identifier, size: headSize)
+                    PlayerHeadView(identifier: entry.identifier, size: headSize, customSkinURL: entry.customSkinURL)
                         .opacity(entry.isOnline ? 1.0 : 0.6)
                         .overlay(
                             RoundedRectangle(cornerRadius: headSize * 0.15, style: .continuous)
@@ -523,7 +536,7 @@ private struct PlayerQuickActionsPopover: View {
 
             // Header
             HStack(spacing: MSC.Spacing.sm) {
-                PlayerHeadView(identifier: entry.identifier, size: 28)
+                PlayerHeadView(identifier: entry.identifier, size: 28, customSkinURL: entry.customSkinURL)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(entry.name)
                         .font(MSC.Typography.captionBold)

@@ -44,10 +44,20 @@ struct PlayerProfile: Identifiable, Equatable {
 
     var isBedrockPlayer: Bool { xuid != nil }
 
-    /// The identifier string (no dashes, lowercase) passed to mc-heads.net avatar/body URLs.
-    /// Uses the Floodgate UUID once resolved; falls back to the profile UUID.
+    /// The identifier passed to mc-heads.net avatar/body URLs.
+    /// Priority: Floodgate UUID → dotted Bedrock gamertag → profile UUID (Java or last-resort).
     var imageIdentifier: String {
-        (floodgateUUID ?? uuid).uuidString
+        if let floodgate = floodgateUUID {
+            return floodgate.uuidString
+                .replacingOccurrences(of: "-", with: "")
+                .lowercased()
+        }
+        // Bedrock player without a resolved Floodgate UUID: use the dotted gamertag.
+        // mc-heads.net accepts ".GamerTag" for Bedrock avatars.
+        if isBedrockPlayer, let name = username, !name.isEmpty {
+            return name.hasPrefix(".") ? name : ".\(name)"
+        }
+        return uuid.uuidString
             .replacingOccurrences(of: "-", with: "")
             .lowercased()
     }

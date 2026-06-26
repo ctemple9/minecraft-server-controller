@@ -15,6 +15,7 @@ struct PlayerHeadView: View {
     /// UUID string without dashes, lowercase. For Java: Mojang UUID. For Bedrock: Floodgate UUID.
     let identifier: String
     let size: CGFloat
+    var customSkinURL: URL? = nil
 
     @State private var image: NSImage? = nil
 
@@ -40,12 +41,32 @@ struct PlayerHeadView: View {
                     }
             }
         }
-        .task(id: identifier) { await loadHead() }
+        .task(id: identifier + (customSkinURL?.path ?? "")) { await loadHead() }
     }
 
     private func loadHead() async {
         image = nil
+
+        // Custom skin file — extract face locally, no network needed.
+        if let skinURL = customSkinURL, let skinImg = NSImage(contentsOf: skinURL) {
+            let face = PlayerSkinRenderer.extractFace(from: skinImg) ?? skinImg
+            let trimmed = PlayerImageTrim.croppedToOpaqueBounds(face) ?? face
+            await MainActor.run { image = trimmed }
+            return
+        }
+
         let px = Int(size * 2)   // 2× for retina
+
+        // Bedrock gamertag (dot prefix): resolve via GeyserMC → Floodgate UUID,
+        // matching the same chain PlayerAvatarView uses for the sidebar avatar.
+        if identifier.hasPrefix(".") {
+            if let img = await BedrockSkinFetcher.fetchAvatar(gamertag: identifier, size: px) {
+                await MainActor.run { image = PlayerImageTrim.croppedToOpaqueBounds(img) ?? img }
+            }
+            return
+        }
+
+        // Standard Java UUID / username — hit mc-heads.net directly.
         guard let url = URL(string: "https://mc-heads.net/avatar/\(identifier)/\(px)") else { return }
         var req = URLRequest(url: url)
         req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
@@ -53,9 +74,6 @@ struct PlayerHeadView: View {
         guard let (data, resp) = try? await URLSession.shared.data(for: req),
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let img = NSImage(data: data) else { return }
-        // Some avatars (notably Bedrock/Floodgate skins) come back with a
-        // transparent border, which makes the face look small once it fills the
-        // tile. Trim the transparent margin so every head renders edge-to-edge.
         let finalImage = PlayerImageTrim.croppedToOpaqueBounds(img) ?? img
         await MainActor.run { image = finalImage }
     }
@@ -68,31 +86,40 @@ enum PlayerImageTrim {
     /// fills the frame. Returns nil (caller falls back to the original) when the
     /// image has no usable alpha or is already tight.
     static func croppedToOpaqueBounds(_ image: NSImage) -> NSImage? {
-        guard let tiff = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff),
-              let cg = bitmap.cgImage else { return nil }
+        let sz = image.size
+        let w = Int(sz.width); let h = Int(sz.height)
+        guard w > 0, h > 0 else { return nil }
 
-        let alpha = cg.alphaInfo
-        let alphaLast  = (alpha == .last || alpha == .premultipliedLast)
-        let alphaFirst = (alpha == .first || alpha == .premultipliedFirst)
-        guard alphaLast || alphaFirst else { return nil }  // no alpha → already opaque
+        // Render into a fresh RGBA bitmap instead of going through tiffRepresentation,
+        // which can silently drop the alpha channel on some NSImage sources and cause
+        // the guard below to bail out on every Bedrock/Floodgate avatar.
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: w, pixelsHigh: h,
+            bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0, bitsPerPixel: 32
+        ) else { return nil }
 
-        let w = cg.width, h = cg.height
-        guard w > 0, h > 0,
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        image.draw(in: NSRect(x: 0, y: 0, width: w, height: h))
+        NSGraphicsContext.restoreGraphicsState()
+
+        // Alpha is always byte 3 (RGBA) in the bitmap we just created.
+        guard let cg = bitmap.cgImage,
               let pixelData = cg.dataProvider?.data,
               let ptr = CFDataGetBytePtr(pixelData) else { return nil }
 
-        let bpp = cg.bitsPerPixel / 8
-        let stride = cg.bytesPerRow
+        let stride = bitmap.bytesPerRow
         let threshold: UInt8 = 12
-
         var minX = w, minY = h, maxX = -1, maxY = -1
+
         for y in 0..<h {
             let row = y * stride
             for x in 0..<w {
-                let idx = row + x * bpp
-                let a = alphaFirst ? ptr[idx] : ptr[idx + bpp - 1]
-                if a > threshold {
+                if ptr[row + x * 4 + 3] > threshold {
                     if x < minX { minX = x }
                     if x > maxX { maxX = x }
                     if y < minY { minY = y }
@@ -119,6 +146,7 @@ struct PlayerBodyView: View {
     /// UUID string without dashes, lowercase. For Java: Mojang UUID. For Bedrock: Floodgate UUID.
     let identifier: String
     let height: CGFloat
+    var customSkinURL: URL? = nil
 
     @State private var image: NSImage? = nil
     @State private var swayAngle: Double = -7
@@ -148,11 +176,27 @@ struct PlayerBodyView: View {
                 .frame(height: height)
             }
         }
-        .task(id: identifier) { await loadBody() }
+        .task(id: identifier + (customSkinURL?.path ?? "")) { await loadBody() }
     }
 
     private func loadBody() async {
         image = nil
+
+        // Custom skin file — render 2D front view locally, no network needed.
+        if let skinURL = customSkinURL, let skinImg = NSImage(contentsOf: skinURL) {
+            let body = PlayerSkinRenderer.renderFrontView(skin: skinImg) ?? skinImg
+            await MainActor.run { image = body }
+            return
+        }
+
+        // Bedrock gamertag (dot prefix): use GeyserMC resolution chain, same as PlayerAvatarView.
+        if identifier.hasPrefix(".") {
+            if let img = await BedrockSkinFetcher.fetchBody(gamertag: identifier) {
+                await MainActor.run { image = img }
+            }
+            return
+        }
+
         guard let url = URL(string: "https://mc-heads.net/body/\(identifier)/160") else { return }
         var req = URLRequest(url: url)
         req.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
@@ -169,11 +213,19 @@ struct PlayerBodyView: View {
 struct PlayerProfileCardView: View {
     let profile: PlayerProfile
     @Binding var selectedProfile: PlayerProfile?
+    @EnvironmentObject var viewModel: AppViewModel
 
     private var borderColor: Color {
         profile.isOnline
             ? MSC.Colors.success.opacity(0.5)
             : MSC.Colors.contentBorder
+    }
+
+    private var appearance: (identifier: String, skinURL: URL?) {
+        guard let cfg = viewModel.selectedServer.flatMap({ viewModel.configServer(for: $0) }) else {
+            return (profile.imageIdentifier, nil)
+        }
+        return PlayerSkinStore.resolveAppearance(for: profile, serverDir: cfg.serverDir)
     }
 
     var body: some View {
@@ -182,7 +234,7 @@ struct PlayerProfileCardView: View {
 
                 // Head + online indicator
                 ZStack(alignment: .topTrailing) {
-                    PlayerHeadView(identifier: profile.imageIdentifier, size: 48)
+                    PlayerHeadView(identifier: appearance.identifier, size: 48, customSkinURL: appearance.skinURL)
 
                     if profile.isOnline {
                         Circle()

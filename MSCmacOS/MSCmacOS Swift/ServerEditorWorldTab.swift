@@ -62,6 +62,12 @@ var worldTab: some View {
         .environmentObject(viewModel)
     }
     .contextualHelpAnchor(worldSlotsAnchorID)
+    .onChange(of: viewModel.worldSlots) { slots in
+        if let current = selectedSlotForEditor,
+           let fresh = slots.first(where: { $0.id == current.id }) {
+            selectedSlotForEditor = fresh
+        }
+    }
 }
 
 // MARK: - Left Panel: World List
@@ -125,8 +131,10 @@ func worldListPanel(cfg: ConfigServer) -> some View {
                         WorldSlotListCard(
                             slot: slot,
                             isActive: activeId == slot.id,
-                            isSelected: selectedSlotForEditor?.id == slot.id
+                            isSelected: selectedSlotForEditor?.id == slot.id,
+                            thumbnailURL: WorldSlotManager.thumbnailURL(forSlot: slot, serverDir: cfg.serverDir)
                         )
+                        .id(slot.id + (slot.thumbnailFileName ?? ""))
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedSlotForEditor = selectedSlotForEditor?.id == slot.id ? nil : slot
@@ -201,27 +209,36 @@ func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
 
         // ── Hero thumbnail ─────────────────────────────────────────
         ZStack(alignment: .topTrailing) {
-            LinearGradient(
-                colors: [
-                    Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
-                    Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            let thumbURL = WorldSlotManager.thumbnailURL(forSlot: slot, serverDir: cfg.serverDir)
+            Group {
+                if let url = thumbURL, let img = NSImage(contentsOf: url) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
+                        colors: [
+                            Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
+                            Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .overlay(
+                        VStack(spacing: 0) {
+                            Rectangle()
+                                .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                                .frame(height: 8)
+                            Rectangle()
+                                .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                                .frame(height: 16)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    )
+                }
+            }
             .frame(maxWidth: .infinity)
             .frame(height: 130)
-            .overlay(
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
-                        .frame(height: 8)
-                    Rectangle()
-                        .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
-                        .frame(height: 16)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            )
 
             if isActive {
                 HStack(spacing: 4) {
@@ -235,6 +252,21 @@ func worldInspectorView(slot: WorldSlot, cfg: ConfigServer) -> some View {
                 .background(Capsule().fill(MSC.Colors.success.opacity(0.85)))
                 .padding(MSC.Spacing.sm)
             }
+
+            // Camera badge — always visible so user can set or change the photo
+            Button {
+                browseThumbnail(slot: slot, cfg: cfg)
+            } label: {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(Circle().fill(.black.opacity(0.5)))
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(MSC.Spacing.sm)
+            .help("Set world thumbnail photo")
         }
         .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous))
 
@@ -604,6 +636,7 @@ struct WorldSlotListCard: View {
     let slot: WorldSlot
     let isActive: Bool
     let isSelected: Bool
+    let thumbnailURL: URL?
 
     private var borderColor: Color {
         if isActive && isSelected { return MSC.Colors.success }
@@ -616,26 +649,34 @@ struct WorldSlotListCard: View {
         VStack(alignment: .leading, spacing: 0) {
             // Thumbnail
             ZStack(alignment: .topTrailing) {
-                LinearGradient(
-                    colors: [
-                        Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
-                        Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 58)
-                .overlay(
-                    VStack(spacing: 0) {
-                        Rectangle()
-                            .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
-                            .frame(height: 6)
-                        Rectangle()
-                            .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
-                            .frame(height: 12)
+                Group {
+                    if let url = thumbnailURL, let img = NSImage(contentsOf: url) {
+                        Image(nsImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        LinearGradient(
+                            colors: [
+                                Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
+                                Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .overlay(
+                            VStack(spacing: 0) {
+                                Rectangle()
+                                    .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                                    .frame(height: 6)
+                                Rectangle()
+                                    .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                                    .frame(height: 12)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        )
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                )
+                }
+                .frame(height: 58)
 
                 if isActive {
                     HStack(spacing: 3) {

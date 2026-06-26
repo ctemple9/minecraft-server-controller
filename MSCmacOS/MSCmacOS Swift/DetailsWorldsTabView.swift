@@ -7,6 +7,7 @@
 //  Create Backup, Restore, Delete all happen inline — no sheets.
 //
 
+import AppKit
 import SwiftUI
 
 struct DetailsWorldsTabView: View {
@@ -265,6 +266,7 @@ struct DetailsWorldsTabView: View {
                             isSelected: selectedSlot?.id == slot.id,
                             isActive: activeSlotId == slot.id,
                             serverIsRunning: serverIsRunning,
+                            serverDir: cfgServer?.serverDir ?? "",
                             onSelect: {
                                 withAnimation(.easeInOut(duration: 0.15)) {
                                     if selectedSlot?.id == slot.id {
@@ -291,8 +293,12 @@ struct DetailsWorldsTabView: View {
                                 if let server = cfgServer {
                                     conversionContext = WorldConversionContext(slot: slot, server: server)
                                 }
+                            },
+                            onSetThumbnail: {
+                                browseAndSetThumbnail(for: slot)
                             }
                         )
+                        .id(slot.id + (slot.thumbnailFileName ?? ""))
                     }
                 }
             }
@@ -468,6 +474,20 @@ struct DetailsWorldsTabView: View {
         )
     }
 
+    // MARK: - Thumbnail
+
+    private func browseAndSetThumbnail(for slot: WorldSlot) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "gif"]
+        panel.prompt = "Set as Thumbnail"
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              let image = NSImage(contentsOf: url) else { return }
+        viewModel.setSlotThumbnail(slot, image: image)
+    }
+
     // MARK: - Backup grouping helpers
 
     private struct BackupSection {
@@ -541,11 +561,13 @@ private struct WorldSlotCard: View {
     let isSelected: Bool
     let isActive: Bool
     let serverIsRunning: Bool
+    let serverDir: String
     let onSelect: () -> Void
     let onActivate: () -> Void
     let onRename: () -> Void
     let onDelete: () -> Void
     var onConvert: (() -> Void)? = nil
+    var onSetThumbnail: (() -> Void)? = nil
 
     @State private var isHovered = false
 
@@ -561,29 +583,40 @@ private struct WorldSlotCard: View {
 
             // Realms-style thumbnail
             ZStack(alignment: .bottomLeading) {
-                LinearGradient(
-                    colors: [Color(hue: 0.57, saturation: 0.6, brightness: 0.85),
-                             Color(hue: 0.57, saturation: 0.45, brightness: 0.65)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 100)
-
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
-                        .frame(height: 8)
-                    Rectangle()
-                        .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
-                        .frame(height: 16)
+                // Custom photo or default scene
+                let thumbURL = WorldSlotManager.thumbnailURL(forSlot: slot, serverDir: serverDir)
+                Group {
+                    if let url = thumbURL, let img = NSImage(contentsOf: url) {
+                        Image(nsImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        LinearGradient(
+                            colors: [Color(hue: 0.57, saturation: 0.6, brightness: 0.85),
+                                     Color(hue: 0.57, saturation: 0.45, brightness: 0.65)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .overlay(
+                            VStack(spacing: 0) {
+                                Rectangle()
+                                    .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                                    .frame(height: 8)
+                                Rectangle()
+                                    .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                                    .frame(height: 16)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        )
+                        .overlay(
+                            Image(systemName: "mountain.2.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(.white.opacity(0.25))
+                                .padding(.bottom, 24)
+                        )
+                    }
                 }
-                .frame(maxWidth: .infinity)
-
-                Image(systemName: "mountain.2.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.25))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 24)
+                .frame(height: 100)
 
                 if let bytes = slot.zipSizeBytes {
                     Text(WorldSlotManager.formatBytes(bytes))
@@ -713,6 +746,14 @@ private struct WorldSlotCard: View {
         .animation(.easeOut(duration: 0.15), value: isHovered)
         .onHover { isHovered = $0 }
         .onTapGesture { onSelect() }
+        .contextMenu {
+            if let onSetThumbnail {
+                Button("Set Thumbnail…") { onSetThumbnail() }
+                Divider()
+            }
+            Button("Rename") { onRename() }
+            Button("Delete", role: .destructive) { onDelete() }
+        }
     }
 }
 

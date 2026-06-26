@@ -1146,6 +1146,18 @@ struct ServerEditorView: View {
         }
     }
 
+    func browseThumbnail(slot: WorldSlot, cfg: ConfigServer) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "gif"]
+        panel.prompt = "Set as Thumbnail"
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              let image = NSImage(contentsOf: url) else { return }
+        viewModel.setSlotThumbnail(slot, image: image)
+    }
+
     func browseForImportZIP() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true

@@ -6,6 +6,8 @@
 //  for the Java Edition Player Profiles feature.
 //
 
+import AppKit
+import Combine
 import Foundation
 
 extension AppViewModel {
@@ -444,6 +446,47 @@ extension AppViewModel {
         if let cfg = selectedConfigServerForProfiles() { loadPlayerProfiles(for: cfg) }
     }
 
+    // MARK: - Player skin overrides
+
+    func playerAppearance(for profile: PlayerProfile) -> (identifier: String, skinURL: URL?) {
+        guard let cfg = selectedConfigServerForProfiles() else {
+            return (profile.imageIdentifier, nil)
+        }
+        return PlayerSkinStore.resolveAppearance(for: profile, serverDir: cfg.serverDir)
+    }
+
+    func setPlayerLookupOverride(_ identifier: String?, for profile: PlayerProfile) {
+        guard let cfg = selectedConfigServerForProfiles() else { return }
+        var overrides = PlayerSkinStore.loadOverrides(serverDir: cfg.serverDir)
+        var override = overrides[profile.id] ?? PlayerSkinOverride()
+        let trimmed = identifier?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        override.lookupIdentifier = trimmed
+        overrides[profile.id] = override
+        PlayerSkinStore.saveOverrides(overrides, serverDir: cfg.serverDir)
+        objectWillChange.send()
+    }
+
+    func uploadPlayerSkin(_ image: NSImage, for profile: PlayerProfile) {
+        guard let cfg = selectedConfigServerForProfiles() else { return }
+        do {
+            let filename = try PlayerSkinStore.saveSkin(image, profileID: profile.id, serverDir: cfg.serverDir)
+            var overrides = PlayerSkinStore.loadOverrides(serverDir: cfg.serverDir)
+            var override = overrides[profile.id] ?? PlayerSkinOverride()
+            override.skinFileName = filename
+            overrides[profile.id] = override
+            PlayerSkinStore.saveOverrides(overrides, serverDir: cfg.serverDir)
+            objectWillChange.send()
+        } catch {
+            logAppMessage("[PlayerSkins] Failed to save skin for \(profile.displayName): \(error.localizedDescription)")
+        }
+    }
+
+    func clearPlayerSkinOverride(for profile: PlayerProfile) {
+        guard let cfg = selectedConfigServerForProfiles() else { return }
+        PlayerSkinStore.clearOverride(profileID: profile.id, serverDir: cfg.serverDir)
+        objectWillChange.send()
+    }
+
     // MARK: - Error type
 
     enum ProfileError: LocalizedError {
@@ -459,4 +502,10 @@ extension AppViewModel {
             }
         }
     }
+}
+
+// MARK: - String helper
+
+private extension String {
+    var nilIfEmpty: String? { trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self }
 }
