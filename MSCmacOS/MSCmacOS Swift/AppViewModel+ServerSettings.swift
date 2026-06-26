@@ -35,48 +35,75 @@ extension AppViewModel {
         shouldLaunchFirstRunEducationAfterInitialSetupDismiss = true
     }
 
-    // MARK: - Welcome Guide helpers
+    // MARK: - Onboarding helpers
 
     func handleInitialSetupDismissed() {
         guard shouldLaunchFirstRunEducationAfterInitialSetupDismiss else { return }
         shouldLaunchFirstRunEducationAfterInitialSetupDismiss = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            self.stageWelcomeGuideThenTourIfNeeded()
+            self.stageConceptGuideThenTourIfNeeded()
         }
     }
 
-    func stageWelcomeGuideThenTourIfNeeded() {
-        let shouldShowWelcomeGuide = !configManager.config.hasShownWelcomeGuide
-        if shouldShowWelcomeGuide {
-            shouldStartOnboardingAfterWelcomeGuide = true
-            isShowingWelcomeGuide = true
+    /// First-run pipeline: show Concept Guide → Onboarding Tour (→ user can open Handbook anytime).
+    func stageConceptGuideThenTourIfNeeded() {
+        if !configManager.config.hasShownConceptGuide {
+            shouldStartOnboardingAfterConceptGuide = true
+            isShowingConceptGuide = true
             return
         }
-        shouldStartOnboardingAfterWelcomeGuide = false
+        shouldStartOnboardingAfterConceptGuide = false
         OnboardingManager.shared.startIfNeeded()
     }
 
-    func handleWelcomeGuideDismissed() {
-        isShowingWelcomeGuide = false
-        markWelcomeGuideShown()
-        guard shouldStartOnboardingAfterWelcomeGuide else { return }
-        shouldStartOnboardingAfterWelcomeGuide = false
+    // MARK: - Concept Guide
+
+    func handleConceptGuideDismissed() {
+        isShowingConceptGuide = false
+        markConceptGuideShown()
+        guard shouldStartOnboardingAfterConceptGuide else { return }
+        shouldStartOnboardingAfterConceptGuide = false
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             OnboardingManager.shared.forceStart()
         }
     }
 
-    func markWelcomeGuideShown() {
-        if !configManager.config.hasShownWelcomeGuide {
-            configManager.config.hasShownWelcomeGuide = true
+    func markConceptGuideShown() {
+        if !configManager.config.hasShownConceptGuide {
+            configManager.config.hasShownConceptGuide = true
             configManager.save()
-            logAppMessage("[App] Welcome Guide marked as shown.")
+            logAppMessage("[App] Concept Guide marked as shown.")
         }
     }
 
-    func showWelcomeGuideFromPreferences() {
-        shouldStartOnboardingAfterWelcomeGuide = false
-        isShowingWelcomeGuide = true
+    func showConceptGuideFromPreferences() {
+        shouldStartOnboardingAfterConceptGuide = false
+        isShowingConceptGuide = true
+    }
+
+    // MARK: - Server Handbook
+
+    func handleHandbookDismissed() {
+        isShowingServerHandbook = false
+        markHandbookShown()
+        guard shouldStartOnboardingAfterHandbook else { return }
+        shouldStartOnboardingAfterHandbook = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            OnboardingManager.shared.forceStart()
+        }
+    }
+
+    func markHandbookShown() {
+        if !configManager.config.hasShownHandbook {
+            configManager.config.hasShownHandbook = true
+            configManager.save()
+            logAppMessage("[App] Server Handbook marked as shown.")
+        }
+    }
+
+    func showServerHandbookFromPreferences() {
+        shouldStartOnboardingAfterHandbook = false
+        isShowingServerHandbook = true
     }
 
     // MARK: - EULA

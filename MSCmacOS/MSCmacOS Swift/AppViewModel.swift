@@ -148,7 +148,8 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Welcome / onboarding
 
-    @Published var isShowingWelcomeGuide: Bool = false
+    @Published var isShowingConceptGuide: Bool = false
+    @Published var isShowingServerHandbook: Bool = false
 
     // MARK: - Backups / World Slots
 
@@ -303,7 +304,8 @@ final class AppViewModel: ObservableObject {
     var autoBackupTimer: Timer?
     let logicalCoreCount: Int = ProcessInfo.processInfo.activeProcessorCount
 
-    var shouldStartOnboardingAfterWelcomeGuide: Bool = false
+    var shouldStartOnboardingAfterConceptGuide: Bool = false
+    var shouldStartOnboardingAfterHandbook: Bool = false
     var shouldLaunchFirstRunEducationAfterInitialSetupDismiss: Bool = false
 
     // MARK: - Init
@@ -1016,7 +1018,7 @@ final class AppViewModel: ObservableObject {
         }
 
         if cfg.initialSetupDone {
-            stageWelcomeGuideThenTourIfNeeded()
+            stageConceptGuideThenTourIfNeeded()
         }
 
         if cfg.initialSetupDone {

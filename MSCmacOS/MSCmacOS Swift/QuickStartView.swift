@@ -39,17 +39,17 @@ struct QuickStartView: View {
 
                 // Link to the deeper reference guide
                 Button {
-                    viewModel.isShowingWelcomeGuide = true
+                    viewModel.isShowingServerHandbook = true
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "book.fill")
                             .font(.system(size: 10))
-                        Text("Welcome Guide")
+                        Text("Server Handbook")
                             .font(.system(size: 11, weight: .medium))
                     }
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
-                .help("Open the Welcome Guide for deeper explanations and troubleshooting.")
+                .help("Open the Server Handbook for deeper explanations and troubleshooting.")
             }
             .padding(.horizontal, MSC.Spacing.xl)
             .padding(.vertical, MSC.Spacing.lg)
@@ -226,7 +226,7 @@ struct QuickStartView: View {
             icon: "flag.checkered",
             color: .green,
             title: "You're live",
-            text: "Share your DuckDNS hostname or public IP with friends. Java players use Multiplayer \u{2192} Add Server; Bedrock players add a custom server entry with your IP and port 19132. Need DuckDNS? See Help \u{2192} Welcome Guide \u{2192} Ports & DuckDNS."
+            text: "Share your DuckDNS hostname or public IP with friends. Java players use Multiplayer \u{2192} Add Server; Bedrock players add a custom server entry with your IP and port 19132. For DuckDNS setup or an alternative that skips port forwarding entirely, see the Server Handbook \u{2192} Connection & Access."
         )
     }
 
@@ -317,9 +317,9 @@ struct QuickStartView: View {
 
 // MARK: - Quick Start Building Blocks
 // These are private to this file — they follow the exact same visual grammar
-// as GuideCallout / InAppBox in WelcomeGuideView, adapted for a narrower window.
+// as GuideCallout / InAppBox in ServerHandbookView, adapted for a narrower window.
 
-/// Tinted callout card — mirrors GuideCallout from WelcomeGuideView.
+/// Tinted callout card — mirrors GuideCallout from ServerHandbookView.
 private struct QSCallout: View {
     let icon: String
     let color: Color

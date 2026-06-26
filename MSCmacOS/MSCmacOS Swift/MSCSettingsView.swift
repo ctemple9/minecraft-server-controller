@@ -166,7 +166,7 @@ struct MSCSettingsView: View {
             helpStep(
                 id: "preferences.help.learnHelp",
                 title: "Learn & Help reopens the guided tours",
-                body: "Use this section to bring back the onboarding material at any time — the welcome guide, the prerequisites checklist, the setup tour, and the port forwarding guide. Nothing here changes your configuration; it just relaunches the walkthroughs.",
+                body: "Use this section to bring back the onboarding material at any time — the Server Handbook, the prerequisites checklist, the setup tour, and the port forwarding guide. Nothing here changes your configuration; it just relaunches the walkthroughs.",
                 anchorID: learnHelpCardAnchorID,
                 nextLabel: "Done"
             )
@@ -474,8 +474,14 @@ struct MSCSettingsView: View {
 
     private var learnHelpCard: some View {
         PreferencesLearnHelpSection(
-            onShowWelcomeGuide: {
-                viewModel.showWelcomeGuideFromPreferences()
+            onShowConceptGuide: {
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    viewModel.showConceptGuideFromPreferences()
+                }
+            },
+            onShowServerHandbook: {
+                viewModel.showServerHandbookFromPreferences()
                 dismiss()
             },
             onShowPrerequisites: {

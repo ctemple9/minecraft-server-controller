@@ -225,7 +225,7 @@ private struct FSCard<Content: View>: View {
 
 // MARK: - Step Row
 
-/// A numbered step row — mirrors ChecklistStep from WelcomeGuideView.
+/// A numbered step row — mirrors ChecklistStep from ServerHandbookView.
 private struct FSStep: View {
     let number: Int
     let text: String

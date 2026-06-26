@@ -30,7 +30,7 @@
 		9A5632842F65AD6D00FB8246 /* XboxBroadcastDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */; };
 		9A5632852F65AD6D00FB8246 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320D2F65AD6C00FB8246 /* ContentView.swift */; };
 		9A5632862F65AD6D00FB8246 /* MessagePlayerSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56322B2F65AD6C00FB8246 /* MessagePlayerSheetView.swift */; };
-		9A5632872F65AD6D00FB8246 /* WelcomeGuideTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */; };
+		9A5632872F65AD6D00FB8246 /* ServerHandbookTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326D2F65AD6C00FB8246 /* ServerHandbookTopics.swift */; };
 		9A5632882F65AD6D00FB8246 /* OverviewHealthHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632362F65AD6C00FB8246 /* OverviewHealthHelpers.swift */; };
 		9A5632892F65AD6D00FB8246 /* AppViewModel+XboxBroadcastDownload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631FC2F65AD6C00FB8246 /* AppViewModel+XboxBroadcastDownload.swift */; };
 		9A56328A2F65AD6D00FB8246 /* ComponentVersionParsing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632092F65AD6C00FB8246 /* ComponentVersionParsing.swift */; };
@@ -123,7 +123,7 @@
 		9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632552F65AD6C00FB8246 /* ServerEditorBroadcastTab.swift */; };
 		9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632112F65AD6C00FB8246 /* DetailsClipboardAndHUDHelpers.swift */; };
 		9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632082F65AD6C00FB8246 /* CommandPaletteView.swift */; };
-		9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */; };
+		9A5632EB2F65AD6D00FB8246 /* ServerHandbookComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326C2F65AD6C00FB8246 /* ServerHandbookComponents.swift */; };
 		9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632382F65AD6C00FB8246 /* OverviewPlayersCardView.swift */; };
 		9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632132F65AD6C00FB8246 /* DetailsComponentsTabView.swift */; };
 		9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56325F2F65AD6C00FB8246 /* ServerLifecycleManager.swift */; };
@@ -131,7 +131,9 @@
 		9A5632F02F65AD6D00FB8246 /* DetailsPlayersTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321C2F65AD6C00FB8246 /* DetailsPlayersTabView.swift */; };
 		9A5632F12F65AD6D00FB8246 /* MSCStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632462F65AD6C00FB8246 /* MSCStyles.swift */; };
 		9A5632F22F65AD6D00FB8246 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632292F65AD6C00FB8246 /* KeychainManager.swift */; };
-		9A5632F32F65AD6D00FB8246 /* WelcomeGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */; };
+		9A5632F32F65AD6D00FB8246 /* ServerHandbookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326E2F65AD6C00FB8246 /* ServerHandbookView.swift */; };
+		9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */; };
+		9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */; };
 		9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */; };
 		9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */; };
 		9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */; };
@@ -349,9 +351,9 @@
 		9A5632682F65AD6C00FB8246 /* SplashGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashGateView.swift; sourceTree = "<group>"; };
 		9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateItemDisplay.swift; sourceTree = "<group>"; };
 		9A56326B2F65AD6C00FB8246 /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
-		9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideComponents.swift; sourceTree = "<group>"; };
-		9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideTopics.swift; sourceTree = "<group>"; };
-		9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeGuideView.swift; sourceTree = "<group>"; };
+		9A56326C2F65AD6C00FB8246 /* ServerHandbookComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHandbookComponents.swift; sourceTree = "<group>"; };
+		9A56326D2F65AD6C00FB8246 /* ServerHandbookTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHandbookTopics.swift; sourceTree = "<group>"; };
+		9A56326E2F65AD6C00FB8246 /* ServerHandbookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerHandbookView.swift; sourceTree = "<group>"; };
 		9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotManager.swift; sourceTree = "<group>"; };
 		9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSlotsView.swift; sourceTree = "<group>"; };
 		9A5632712F65AD6C00FB8246 /* XboxBroadcastDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxBroadcastDownloader.swift; sourceTree = "<group>"; };
@@ -364,6 +366,8 @@
 		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
 		9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthAPI.swift; sourceTree = "<group>"; };
 		9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PluginManagement.swift"; sourceTree = "<group>"; };
+		9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideView.swift; sourceTree = "<group>"; };
+		9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideDiagrams.swift; sourceTree = "<group>"; };
 		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
 		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
@@ -632,9 +636,11 @@
 				9A5632682F65AD6C00FB8246 /* SplashGateView.swift */,
 				9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */,
 				9A56326B2F65AD6C00FB8246 /* TemplateView.swift */,
-				9A56326C2F65AD6C00FB8246 /* WelcomeGuideComponents.swift */,
-				9A56326D2F65AD6C00FB8246 /* WelcomeGuideTopics.swift */,
-				9A56326E2F65AD6C00FB8246 /* WelcomeGuideView.swift */,
+				9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */,
+				9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */,
+				9A56326C2F65AD6C00FB8246 /* ServerHandbookComponents.swift */,
+				9A56326D2F65AD6C00FB8246 /* ServerHandbookTopics.swift */,
+				9A56326E2F65AD6C00FB8246 /* ServerHandbookView.swift */,
 				9A56326F2F65AD6C00FB8246 /* WorldSlotManager.swift */,
 				9A5632702F65AD6C00FB8246 /* WorldSlotsView.swift */,
 				9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */,
@@ -773,7 +779,7 @@
 				9A5632842F65AD6D00FB8246 /* XboxBroadcastDownloader.swift in Sources */,
 				9A5632852F65AD6D00FB8246 /* ContentView.swift in Sources */,
 				9A5632862F65AD6D00FB8246 /* MessagePlayerSheetView.swift in Sources */,
-				9A5632872F65AD6D00FB8246 /* WelcomeGuideTopics.swift in Sources */,
+				9A5632872F65AD6D00FB8246 /* ServerHandbookTopics.swift in Sources */,
 				9A5632882F65AD6D00FB8246 /* OverviewHealthHelpers.swift in Sources */,
 				9A5632892F65AD6D00FB8246 /* AppViewModel+XboxBroadcastDownload.swift in Sources */,
 				9A56328A2F65AD6D00FB8246 /* ComponentVersionParsing.swift in Sources */,
@@ -906,7 +912,7 @@
 				9A5632E82F65AD6D00FB8246 /* ServerEditorBroadcastTab.swift in Sources */,
 				9A5632E92F65AD6D00FB8246 /* DetailsClipboardAndHUDHelpers.swift in Sources */,
 				9A5632EA2F65AD6D00FB8246 /* CommandPaletteView.swift in Sources */,
-				9A5632EB2F65AD6D00FB8246 /* WelcomeGuideComponents.swift in Sources */,
+				9A5632EB2F65AD6D00FB8246 /* ServerHandbookComponents.swift in Sources */,
 				9A5632EC2F65AD6D00FB8246 /* OverviewPlayersCardView.swift in Sources */,
 				9AFE02010000000000000002 /* OverviewPlayersStripView.swift in Sources */,
 				9AFE02020000000000000002 /* OverviewActiveWorldCardView.swift in Sources */,
@@ -919,7 +925,9 @@
 				9A5632F12F65AD6D00FB8246 /* MSCStyles.swift in Sources */,
 				9A5632F22F65AD6D00FB8246 /* KeychainManager.swift in Sources */,
 				9AC4CEB92F69F8CD002B5564 /* RouterPortForwardTroubleshootingEngine.swift in Sources */,
-				9A5632F32F65AD6D00FB8246 /* WelcomeGuideView.swift in Sources */,
+				9A5632F32F65AD6D00FB8246 /* ServerHandbookView.swift in Sources */,
+				9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */,
+				9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */,
 				9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */,
 				9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */,
 				9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */,

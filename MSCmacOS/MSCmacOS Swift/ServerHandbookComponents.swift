@@ -1,5 +1,5 @@
 //
-//  WelcomeGuideComponents.swift
+//  ServerHandbookComponents.swift
 //  MinecraftServerController
 //
 

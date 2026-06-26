@@ -1,5 +1,5 @@
 //
-//  WelcomeGuideTopics.swift
+//  ServerHandbookTopics.swift
 //  MinecraftServerController
 //
 
@@ -7,7 +7,7 @@ import SwiftUI
 
 // MARK: - Topic Content Views
 
-extension WelcomeGuideView {
+extension ServerHandbookView {
 
     // ── Overview ──────────────────────────────────────────────────────────
 
@@ -35,10 +35,12 @@ The app supports two types of servers \u{2014} Java (Paper) and Bedrock Dedicate
                 "Start and stop Java (Paper) or Bedrock servers with a single click",
                 "Watch the live console \u{2014} see exactly what your server is doing",
                 "Manage multiple servers from one window \u{2014} mix Java and Bedrock",
-                "Configure ports, RAM (Java), plugins (Java), and cross-play settings",
-                "Handle backups so you can safely experiment",
+                "Configure ports, RAM (Java), plugins, cross-play, and Playit.gg tunneling",
+                "Handle backups, world conversions, and server transfers",
                 "Manage world slots, resource packs, and player allowlists",
-                "Remote control from iOS via MSC Remote (companion app)"
+                "Monitor live performance \u{2014} TPS, CPU, RAM, player health, and in-game time",
+                "Remote control from iOS via MSC Remote (companion app)",
+                "Watchdog crash recovery keeps your server running overnight"
             ])
 
             GuideCallout(style: .tip, text: "Starting fresh? Use \"Your First Java Server\" or \"Your First Bedrock Server\" in the Management section for a guided walk-through. You can always come back to other topics for deeper explanations.")
@@ -388,10 +390,12 @@ This is required by Mojang. The app makes it simple \u{2014} you just click a bu
         GuideSection {
             GuideTopicHeader(
                 icon: "network",
-                title: "Ports, Port Forwarding & DuckDNS",
-                subtitle: "How your friends outside your house reach your server.",
-                color: .blue
+                title: "Port Forwarding & DuckDNS",
+                subtitle: "Configure your router to let friends outside your house reach your server.",
+                color: .purple
             )
+
+            GuideCallout(style: .note, text: "There are two ways to let external players connect. Port forwarding (this topic) configures your router directly. Playit.gg tunneling (next topic) routes traffic through a relay service \u{2014} no router access needed. See the \"How Servers Connect\" topic for a side-by-side comparison. If you\u{2019}re unsure which to use, read that topic first.")
 
             AnalogyBox(
                 title: "Think of it like this",
@@ -463,7 +467,9 @@ Minecraft Server Controller integrates with **MCXboxBroadcastStandalone** \u{201
 3. When broadcast is running, your server appears as joinable in their Friends tab.
 """)
 
-            GuideCallout(style: .warning, text: "This feature requires a dedicated alt Xbox account, not your personal one. The password is stored locally for the broadcast tool to use. Never use your main Microsoft account.")
+            GuideCallout(style: .warning, text: "This feature requires a dedicated alt Xbox account, not your personal one. Never use your main Microsoft account.")
+
+            GuideCallout(style: .note, text: "Why a separate account? Xbox Broadcast keeps your server visible in the friends list by staying signed into Xbox Live continuously while the server runs. Using your real account would mean it appears permanently \u{201C}online\u{201D} elsewhere, which can conflict with other Xbox activity and Game Pass sessions. A free dedicated alt account \u{2014} any Outlook.com address works \u{2014} keeps this completely separate from your personal gaming.")
 
             GuideBodyText("""
 **Requirements before enabling broadcast:**
@@ -574,7 +580,7 @@ When the Remote API is enabled, your Mac acts as a small local server that MSC R
 - Check player count and performance stats
 """)
 
-            GuideCallout(style: .note, text: "MSC Remote works over your local network by default. To access it away from home, you'll need a VPN (like Tailscale) or a tunneling solution to reach your Mac remotely.")
+            GuideCallout(style: .note, text: "MSC Remote works over your local network by default using your Mac\u{2019}s local IP. To use it from outside your home \u{2014} a different network, cellular, traveling \u{2014} you need Tailscale. Tailscale creates a secure private connection between your iPhone and Mac that works from anywhere with no port forwarding required. See the Tailscale topic in Connection & Access for a step-by-step setup guide.")
 
             GuideBodyText("""
 **Access Tokens \u{2014} How Security Works**
@@ -650,7 +656,7 @@ The API exposes endpoints for server status, console streaming (via polling or S
                 VStack(alignment: .leading, spacing: 14) {
                     ChecklistStep(number: 8, title: "Start the server", detail: "Click Start. Watch the console. When you see \"Done (X.XX s)! For help, type /help\", the server is ready.")
                     ChecklistStep(number: 9, title: "Test local connection", detail: "Open Minecraft Java on the same Mac or another computer on your home network. Add a server using your Mac's local IP (e.g. 192.168.1.x) and port 25565. You should be able to connect.")
-                    ChecklistStep(number: 10, title: "Set up port forwarding (for external players)", detail: "Log into your router and forward TCP port 25565 to your Mac's local IP. If using Geyser, also forward UDP port 19132. See the Ports & DuckDNS topic for details.")
+                    ChecklistStep(number: 10, title: "Enable external access", detail: "Friends outside your home need one of two approaches \u{2014} (A) Port Forwarding: log into your router and forward TCP port 25565 (and UDP 19132 for Geyser cross-play). Or (B) Playit.gg Tunneling: no router access needed; create a free Playit.gg account and enable the tunnel in Edit Server \u{2192} Settings \u{2192} Network. See Connection & Access for full step-by-step guides on both.")
                     ChecklistStep(number: 11, title: "(Optional) Set up DuckDNS", detail: "Create a free hostname at duckdns.org and add it to Preferences. Share yourname.duckdns.org with friends instead of your raw IP.")
                 }
             }
@@ -744,8 +750,8 @@ The API exposes endpoints for server status, console streaming (via polling or S
                     )
                     ChecklistStep(
                         number: 8,
-                        title: "Set up UDP port forwarding (for external players)",
-                        detail: "Log into your router and forward UDP port 19132 to your Mac's local IP. Important: Bedrock uses UDP, not TCP. If you forward TCP 19132, it will not work."
+                        title: "Enable external access",
+                        detail: "Friends outside your home need one of two approaches \u{2014} (A) Port Forwarding: forward UDP port 19132 on your router to your Mac\u{2019}s local IP. Bedrock requires UDP, not TCP \u{2014} forwarding TCP 19132 will not work. Or (B) Playit.gg Tunneling: no router access needed; Docker Desktop is already installed for Bedrock servers so no extra installs are required. Enable the tunnel in Edit Server \u{2192} Settings \u{2192} Network. See Connection & Access for full guides on both."
                     )
                     ChecklistStep(
                         number: 9,
@@ -822,11 +828,397 @@ Neither server type locks individual files while running (except active world re
         }
     }
 
+    // ── Networking Basics ─────────────────────────────────────────────────
+
+    var networkingBasicsContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "globe.americas.fill",
+                title: "How Servers Connect",
+                subtitle: "Public IPs, private IPs, NAT, and the two ways friends reach your server.",
+                color: .blue
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "The internet is a city. Every building (internet connection) has one street address (public IP). Inside each building are many apartments (devices). Your Mac is one apartment. When a friend wants to visit, they need the building address AND the apartment number \u{2014} and your building\u{2019}s front desk (router) needs to be told which apartment to send them to."
+            )
+
+            GuideBodyText("""
+**Public IP** is the address your internet provider assigns to your home connection. Everyone outside your home sees this address when they try to reach something on your network. It\u{2019}s shared by all devices in your house.
+
+**Private IP** is the address your router assigns to each device inside your home \u{2014} your Mac, your phone, your TV. These addresses (like 192.168.1.x or 10.0.0.x) only exist inside your home network and can\u{2019}t be reached directly from the internet.
+
+**NAT (Network Address Translation)** is what your router does: it translates between your one public IP and all your private devices. Outbound traffic works automatically \u{2014} your Mac can reach the internet at any time. Inbound traffic is blocked by default \u{2014} the router doesn\u{2019}t know which device an incoming connection is meant for.
+
+This is why you can load any website (your Mac reaches out) but a friend can\u{2019}t connect to your server without extra setup (they\u{2019}re trying to reach in).
+""")
+
+            GuideCallout(style: .note, text: "LAN players \u{2014} people on the same Wi-Fi or wired network as your Mac \u{2014} connect directly using your private IP and need nothing special. The external access problem only affects players outside your home.")
+
+            GuideBodyText("""
+**Two ways to solve this:**
+""")
+
+            InAppBox(items: [
+                "Port Forwarding: tell your router to send traffic on a specific port (25565 TCP for Java, 19132 UDP for Bedrock) to your Mac. Requires router access and a reachable public IP. Free \u{2014} no external service needed. See the Port Forwarding & DuckDNS topic.",
+                "Playit.gg Tunneling: your Mac connects outbound to Playit.gg\u{2019}s relay servers. Friends connect to an address Playit.gg gives you. No router access needed, but adds some latency and requires a free Playit.gg account. See the Playit.gg Tunneling topic."
+            ])
+
+            GuideCallout(style: .tip, text: "Not sure which to use? If you have access to your router and your ISP gives you a standard public IP, port forwarding is simpler long-term. If you\u{2019}re on a shared network, behind CGNAT (some mobile and cable ISPs), or just don\u{2019}t want to configure your router, Playit.gg is the better choice.")
+
+            AdvancedSection(content: """
+CGNAT (Carrier-Grade NAT) is used by some ISPs \u{2014} particularly mobile carriers and some cable providers. Under CGNAT, your home doesn\u{2019}t get its own public IP; you share one with many other customers. Port forwarding is impossible under CGNAT. If you set up port forwarding correctly and it still never works, CGNAT may be the reason.
+
+You can check for CGNAT by comparing the WAN IP shown in your router\u{2019}s admin panel to the IP shown on a site like whatismyip.com. If they\u{2019}re different, you\u{2019}re behind CGNAT.
+
+Playit.gg and all other tunneling solutions work under CGNAT because they rely only on outbound connections from your Mac.
+""")
+        }
+    }
+
+    // ── Playit.gg ─────────────────────────────────────────────────────────
+
+    var playitSetupContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "antenna.radiowaves.left.and.right",
+                title: "Playit.gg Tunneling",
+                subtitle: "Let friends connect to your server without touching your router.",
+                color: .purple
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Normally your server is like a shop inside a building with a locked front door \u{2014} friends need to know the address and the building needs to unlock the door (port forwarding). Playit.gg is like opening a franchise counter at their shopping mall. Friends go to the mall address; Playit.gg passes the traffic to your shop in the background. You never had to unlock your door."
+            )
+
+            GuideBodyText("""
+**Playit.gg** is a free tunneling service for game servers. Instead of requiring your router to accept inbound connections, the app runs a small agent (via Docker) that connects outbound to Playit.gg\u{2019}s relay servers. Playit.gg gives you a stable public address \u{2014} like abc123.jth.mc.ply.gg \u{2014} that routes traffic back through the relay to your server.
+
+**Why this matters:**
+""")
+
+            BulletList(items: [
+                "No router configuration needed \u{2014} the agent makes outbound connections only",
+                "Works behind CGNAT (some mobile and cable ISPs) where port forwarding is impossible",
+                "Works on networks where you don\u{2019}t have router access \u{2014} dorms, apartments, offices",
+                "The address Playit.gg gives you is stable and doesn\u{2019}t change when your home IP changes"
+            ])
+
+            GuideCallout(style: .note, text: "Playit.gg requires Docker Desktop \u{2014} the same Docker used for Bedrock servers. If you\u{2019}re already running a Bedrock server, Docker is already installed and you have everything you need.")
+
+            GuideBodyText("""
+**Tradeoffs vs. port forwarding:**
+""")
+
+            BulletList(items: [
+                "Latency: game traffic passes through Playit.gg\u{2019}s relay servers, adding roughly 10\u{2013}50 ms. For most players this is unnoticeable.",
+                "Account required: you need a free Playit.gg account (no credit card). One-time setup takes about 5 minutes.",
+                "Docker required: the agent runs as a Docker container. Bedrock users already have Docker Desktop. Java-only users need to install it.",
+                "Free tier: Playit.gg\u{2019}s free tier supports Minecraft tunnels without player count limits."
+            ])
+
+            InAppBox(items: [
+                "Create Server wizard: choose Tunnel (playit.gg) in the Network step instead of a direct port.",
+                "Existing server: Edit Server \u{2192} Settings \u{2192} Network \u{2192} toggle Playit.gg tunnel on.",
+                "First start: a prompt asks for your Playit.gg agent secret key. The in-app setup guide walks through getting this from the Playit.gg website.",
+                "Your Playit.gg addresses appear in the Overview connection card automatically once the agent is running.",
+                "Voice Chat (Simple Voice Chat plugin): after enabling the tunnel, also enable Voice Chat Tunnel in Edit Server \u{2192} Settings \u{2192} Network, then create a matching Custom UDP tunnel in the Playit.gg dashboard."
+            ])
+
+            GuideCallout(style: .tip, text: "You can use Playit.gg and port forwarding simultaneously on the same server. Players connecting via the Playit.gg address are relayed; players connecting to your direct IP go straight through. Useful as a fallback for players who have trouble with one approach.")
+
+            AdvancedSection(content: """
+The app runs the Playit.gg agent as a Docker container alongside your Minecraft server. One agent (one secret key, one container) can tunnel multiple ports \u{2014} your Java port and Bedrock/Geyser port can both go through the same agent.
+
+Individual tunnels are configured on the Playit.gg website and assigned to your agent. The agent picks them up automatically \u{2014} no server restart needed when adding or changing tunnels.
+
+Supported tunnel types used by MSC:
+  \u{2022} Minecraft Java (TCP) \u{2014} for Paper servers
+  \u{2022} Minecraft Bedrock (UDP) \u{2014} for Geyser or native Bedrock servers
+  \u{2022} Custom UDP \u{2014} for Simple Voice Chat (port 24454)
+""")
+        }
+    }
+
+    // ── Tailscale ─────────────────────────────────────────────────────────
+
+    var tailscaleContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "lock.shield.fill",
+                title: "Tailscale",
+                subtitle: "Access MSC Remote from anywhere using a secure private network.",
+                color: .purple
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Tailscale gives every device you add a permanent private phone number that only your approved devices can call \u{2014} no matter where any of them are in the world. Your Mac gets a Tailscale IP (like 100.64.0.1) that never changes and is only reachable from your other Tailscale devices."
+            )
+
+            GuideBodyText("""
+**Tailscale** is a zero-config VPN that creates a secure private network between your devices. There\u{2019}s no server to maintain and no port forwarding to set up. You install Tailscale on your Mac and on your iPhone, sign into the same account on both, and they can reach each other from anywhere \u{2014} home Wi-Fi, cellular, a friend\u{2019}s network, anywhere with internet.
+
+**Why you\u{2019}d use it:**
+""")
+
+            BulletList(items: [
+                "Control your Minecraft server via MSC Remote from outside your home without exposing the Remote API port on your router",
+                "Access the console and send commands while you\u{2019}re away",
+                "Your Tailscale IP never changes, so your MSC Remote pairing stays valid even when your home IP changes",
+                "Fully encrypted end-to-end \u{2014} no one can intercept Remote API traffic"
+            ])
+
+            GuideCallout(style: .note, text: "Tailscale is for MSC Remote app access and server management. It is not a replacement for port forwarding or Playit.gg for Minecraft game clients \u{2014} players still need one of those two approaches to join your server.")
+
+            GuideBodyText("**Setup (one time per device):**")
+
+            VStack(alignment: .leading, spacing: 14) {
+                ChecklistStep(number: 1, title: "Create a Tailscale account", detail: "Go to tailscale.com and sign up. Free for personal use with up to 3 users and 100 devices. No credit card required.")
+                ChecklistStep(number: 2, title: "Install Tailscale on your Mac", detail: "Download from the Mac App Store or tailscale.com. Open it and sign in with your account. Your Mac is now assigned a Tailscale IP \u{2014} click the menu bar icon to see it. It starts with 100.")
+                ChecklistStep(number: 3, title: "Install Tailscale on your iPhone", detail: "Search \u{201C}Tailscale\u{201D} in the App Store. Sign in with the same account. Tap Connect.")
+                ChecklistStep(number: 4, title: "Verify both devices appear connected", detail: "In Tailscale on your iPhone, you should see your Mac listed with a green dot. That\u{2019}s all the setup required.")
+                ChecklistStep(number: 5, title: "Use the Tailscale IP in MSC Remote", detail: "In MSC Remote \u{2192} Settings, set the Base URL to your Mac\u{2019}s Tailscale IP and the Remote API port \u{2014} for example: http://100.64.0.1:48400. This works on any network automatically.")
+            }
+
+            InAppBox(items: [
+                "Preferences \u{2192} Remote API: shows your Mac\u{2019}s local URL and port. Replace the local IP with your Tailscale IP when configuring MSC Remote for use outside your home network.",
+                "Your Mac\u{2019}s Tailscale IP is shown in the Tailscale menu bar icon. It starts with 100.",
+                "Once configured with a Tailscale IP, MSC Remote works everywhere \u{2014} you don\u{2019}t need to switch between home and away configurations."
+            ])
+
+            AdvancedSection(content: """
+Tailscale uses WireGuard under the hood \u{2014} a modern, fast, and widely-audited VPN protocol. Traffic between your devices is encrypted end-to-end. Tailscale\u{2019}s coordination servers handle device discovery but never see your traffic.
+
+For most home setups, Tailscale establishes direct peer-to-peer connections once both devices are online, giving very low latency. When a direct path isn\u{2019}t possible (strict NATs, some firewalls), it falls back to Tailscale\u{2019}s DERP relay servers automatically.
+
+If you run multiple Macs with MSC, each gets its own Tailscale IP and can be reached independently from MSC Remote.
+""")
+        }
+    }
+
+    // ── World Conversion ──────────────────────────────────────────────────
+
+    var worldConversionContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "arrow.2.circlepath",
+                title: "World Conversion",
+                subtitle: "Convert a world between Java Edition and Bedrock Edition format.",
+                color: .teal
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Java and Bedrock worlds are written in different formats \u{2014} like the same novel published in two different languages. Conversion reads the original and writes it out in the other language. Most content comes through cleanly; some edition-specific features don\u{2019}t have an equivalent in the other format and get left behind."
+            )
+
+            GuideBodyText("""
+Java Edition and Bedrock Edition store world data in fundamentally different formats. A world created on a Java server cannot be directly loaded by a Bedrock server, and vice versa. The World Conversion wizard handles the translation automatically.
+
+**When you\u{2019}d use this:**
+""")
+
+            BulletList(items: [
+                "You\u{2019}re switching from a Java server to a Bedrock server (or vice versa) and want to keep your existing world",
+                "You want to run the same world on both a Java and a Bedrock server simultaneously",
+                "A player wants to continue their singleplayer Bedrock world on your Java server"
+            ])
+
+            GuideCallout(style: .warning, text: "World conversion is a best-effort process. Blocks, items, and entities that don\u{2019}t exist in the target edition are dropped or approximated. Always create a backup before converting, and test the result before replacing your active world.")
+
+            InAppBox(items: [
+                "Worlds tab \u{2192} World Conversion Wizard: select the source world and target format.",
+                "The wizard creates a converted copy \u{2014} it does not replace or delete your original world.",
+                "Review the conversion summary after it finishes: it lists anything that couldn\u{2019}t be converted.",
+                "To use the converted world: open the Worlds tab and use Replace World to swap it in after the server is stopped."
+            ])
+
+            GuideCallout(style: .note, text: "For most survival worlds, terrain, blocks, and player inventory convert cleanly. The main losses are edition-exclusive content: Java-only technical blocks, Bedrock-only items, and any content added by plugins or mods.")
+
+            AdvancedSection(content: """
+Java worlds store chunk data in the Anvil format \u{2014} .mca region files inside a world/ directory. Bedrock worlds use LevelDB \u{2014} a key-value store inside a leveldb/ directory. These are completely different storage formats, which is why direct file copying doesn\u{2019}t work between editions.
+
+Conversion quality is generally good for vanilla survival worlds built on recent versions. The further apart the source and target versions, or the more modded/plugin-generated the content, the more conversion gaps you\u{2019}ll see.
+
+The converted world should be tested in the target edition before you commit to using it as your active server world. Run around the spawn area, check your inventory, and test key locations before retiring the original.
+""")
+        }
+    }
+
+    // ── Server Import & Transfer ──────────────────────────────────────────
+
+    var serverTransferContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "square.and.arrow.down.fill",
+                title: "Server Import & Transfer",
+                subtitle: "Move an existing server into the app or transfer it to a new Mac.",
+                color: .teal
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Your server is a folder on disk \u{2014} all the settings, world data, and plugins live there. Import just tells the app where that folder is. Transfer is copying that folder to a different computer and pointing the new app at it."
+            )
+
+            GuideBodyText("""
+If you have an existing Minecraft server \u{2014} one you ran manually from Terminal, one you managed with another tool, or one you\u{2019}re moving from a different Mac \u{2014} you can bring it into Minecraft Server Controller without starting from scratch. Your world data, plugins, settings, and player lists all carry over.
+
+**Import an existing server:**
+Point the app at an existing server folder. MSC reads the configuration, detects whether it\u{2019}s a Java or Bedrock server, and adds it to your server list. Nothing in the folder is changed during import.
+
+**Transfer to a new Mac:**
+""")
+
+            BulletList(items: [
+                "On your old Mac: create a backup from the Worlds tab, or simply locate your server folder in Finder",
+                "Copy the entire server folder to your new Mac \u{2014} AirDrop, an external drive, or any file transfer method works",
+                "On your new Mac: use File \u{2192} Import Server (or the + button in the server list) and select the copied folder",
+                "The app reads the existing configuration automatically"
+            ])
+
+            InAppBox(items: [
+                "File \u{2192} Import Server (or the + button in the server list): browse to an existing server folder to add it.",
+                "The server folder must be self-contained \u{2014} all config files and world data should be inside one directory.",
+                "Java servers: your Paper JAR path may need updating after a move if the folder is now in a different location.",
+                "Bedrock servers: Docker pulls the correct image version automatically on first start after import."
+            ])
+
+            GuideCallout(style: .tip, text: "The most reliable way to transfer a server is to create a backup zip from the Worlds tab first. The backup is a complete, self-contained archive that\u{2019}s easy to move and easy to restore from.")
+
+            GuideCallout(style: .note, text: "The app stores the path to each server folder but doesn\u{2019}t move or copy files itself. If you relocate a server folder in Finder after importing, update the path in Manage Servers \u{2192} Edit.")
+        }
+    }
+
+    // ── Watchdog & Crash Recovery ─────────────────────────────────────────
+
+    var watchdogContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "stethoscope",
+                title: "Watchdog & Crash Recovery",
+                subtitle: "Automatically restart your server if it crashes unexpectedly.",
+                color: .teal
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "The watchdog is a supervisor that checks on your server at regular intervals. If the server stopped but was never told to stop, the supervisor restarts it. If you stopped it intentionally, the supervisor sees the note you left and leaves it stopped."
+            )
+
+            GuideBodyText("""
+Minecraft servers can crash \u{2014} a buggy plugin, an out-of-memory condition, or a rare JVM error can bring the server down without warning. Without a watchdog, it stays down until someone manually restarts it.
+
+**How the MSC watchdog works:**
+""")
+
+            BulletList(items: [
+                "A background launchd agent (a macOS system service) polls periodically to check whether your server process is running",
+                "When you stop the server intentionally via the Stop button or the /stop command, the app writes a clean-quit marker to the server folder",
+                "If the watchdog finds the server stopped but no clean-quit marker present, it treats the stop as a crash and restarts the server automatically",
+                "If the clean-quit marker is present, the watchdog recognizes the intentional stop and leaves the server down"
+            ])
+
+            GuideCallout(style: .note, text: "The watchdog runs via macOS launchd, so it continues monitoring even when the Minecraft Server Controller app is not open on screen.")
+
+            InAppBox(items: [
+                "Preferences \u{2192} Watchdog: enable and configure crash recovery per server.",
+                "Restart delay: how long the watchdog waits before restarting after detecting a crash. Default is 30 seconds to let the system settle.",
+                "Watchdog activity appears in the console log tagged [Watchdog] so you can see when it took action.",
+                "To stop a server and keep it stopped: always use the Stop button in MSC or the /stop command. These write the clean-quit marker."
+            ])
+
+            GuideCallout(style: .warning, text: "Don\u{2019}t stop your server by killing the process in Activity Monitor or Terminal. This bypasses the clean-quit marker, and the watchdog will restart the server immediately \u{2014} which is probably not what you intended.")
+
+            GuideCallout(style: .tip, text: "Enable the watchdog any time you\u{2019}re leaving your server running overnight or while away from your Mac. It\u{2019}s especially valuable if you have players who rely on the server being available without you monitoring it constantly.")
+
+            AdvancedSection(content: """
+The launchd agent is a lightweight plist that macOS loads on login. It polls at a configurable interval (default: 60 seconds). The interval is intentionally not too short \u{2014} a rapid restart loop after a repeating crash could hammer disk I/O unnecessarily.
+
+The clean-quit cookie is a file written to the server\u{2019}s directory when MSC initiates an intentional stop, and removed when the server is started again. The watchdog reads this file before deciding whether to restart.
+
+If your server crashes immediately on every restart due to a bug or corrupt world, the watchdog will keep restarting it. In that case, stop the server intentionally (which writes the cookie) and investigate the console log before re-enabling the watchdog.
+""")
+        }
+    }
+
+    // ── Player Management ─────────────────────────────────────────────────
+
+    var playerManagementContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "person.2.fill",
+                title: "Player Management",
+                subtitle: "Control who can connect, what they can do, and how they appear in the app.",
+                color: .teal
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Your server is like a private club. The allowlist is the guest list \u{2014} only people on it can get in. Ops are the staff \u{2014} they can do things regular members can\u{2019}t. Banning is a permanent removal from the premises. These are independent systems you can use in any combination."
+            )
+
+            GuideBodyText("""
+**Allowlist (Whitelist)**
+
+The allowlist restricts who can join your server. When enabled, only players whose usernames appear on the list can connect \u{2014} anyone else gets a \u{201C}Not whitelisted\u{201D} rejection.
+
+Use this for private servers \u{2014} family servers, friend groups, or any server where you don\u{2019}t want strangers joining. It\u{2019}s disabled by default.
+
+**Operators (Ops)**
+
+Ops are trusted players with elevated command permissions. They can use commands regular players cannot \u{2014} like /gamemode, /tp, /give, and player management commands. Java servers support four op levels:
+""")
+
+            BulletList(items: [
+                "Level 1: bypass spawn protection only",
+                "Level 2: gameplay commands (/give, /tp, /gamemode, /time, /weather, etc.)",
+                "Level 3: player management commands (/kick, /ban, /whitelist)",
+                "Level 4: full server control including /stop and /op \u{2014} use sparingly"
+            ])
+
+            GuideBodyText("""
+**Banning**
+
+Banning prevents a specific player from connecting even if they\u{2019}re on the allowlist. Java servers track bans by UUID (account ID) so name changes don\u{2019}t bypass them. Bedrock servers track by XUID.
+""")
+
+            InAppBox(items: [
+                "Players tab: see all online players with their head renders, health, and status. Right-click a player (or use the action menu) for op, deop, kick, ban, message, teleport, and whitelist actions.",
+                "Overview \u{2192} Players strip: scrolling head grid of online players. Tap a head to feature the player; tap their character render for quick actions.",
+                "Overview \u{2192} Players strip: right-click a head to hide a player from the overview grid. Right-click empty space to show hidden players again.",
+                "Edit Server \u{2192} Players tab: manage the allowlist and op list without typing commands in the console.",
+                "Bedrock players joining via Geyser appear with a period prefix (e.g. .PlayerName) \u{2014} this is Floodgate\u{2019}s identifier so they can be distinguished from Java Edition players."
+            ])
+
+            GuideCallout(style: .tip, text: "For a typical friends server: enable the allowlist and add each friend\u{2019}s username, set yourself and at least one trusted friend as ops (level 2 is usually enough), and leave online mode on.")
+
+            AdvancedSection(content: """
+Java servers store player data in these files inside the server directory:
+  whitelist.json \u{2014} the allowlist by UUID and username
+  ops.json \u{2014} operator list with UUIDs and op levels
+  banned-players.json \u{2014} banned players by UUID
+  banned-ips.json \u{2014} IP-based bans
+
+Bedrock servers use:
+  allowlist.json \u{2014} the allowlist with platform XUIDs
+  permissions.json \u{2014} operator and visitor permission levels
+
+Changes made in the Players tab are written directly to these files. Paper reloads allowlist and ops changes dynamically \u{2014} they take effect on a running server without a restart.
+
+Floodgate assigns Bedrock players a Java UUID starting with 00000000-0000-0000-0009-... which is how whitelist.json and ops.json can track them even though they don\u{2019}t have Java Edition accounts.
+""")
+        }
+    }
+
 }
 
 // MARK: - Preview
 
 #Preview {
-    WelcomeGuideView()
+    ServerHandbookView()
         .environmentObject(AppViewModel())
 }

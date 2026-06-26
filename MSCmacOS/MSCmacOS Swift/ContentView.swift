@@ -172,10 +172,17 @@ struct ContentView: View {
         )
     }
 
-    private var welcomeGuideBinding: Binding<Bool> {
+    private var serverHandbookBinding: Binding<Bool> {
         Binding(
-            get: { viewModel.isShowingWelcomeGuide },
-            set: { viewModel.isShowingWelcomeGuide = $0 }
+            get: { viewModel.isShowingServerHandbook },
+            set: { viewModel.isShowingServerHandbook = $0 }
+        )
+    }
+
+    private var conceptGuideBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isShowingConceptGuide },
+            set: { viewModel.isShowingConceptGuide = $0 }
         )
     }
 
@@ -624,11 +631,19 @@ struct ContentView: View {
             PrerequisitesView().environmentObject(viewModel)
         }
 
-        // Welcome Guide
-        .sheet(isPresented: welcomeGuideBinding, onDismiss: {
-            viewModel.handleWelcomeGuideDismissed()
+        // Concept Guide (visual mental model walkthrough — first-run + on-demand from Settings)
+        .sheet(isPresented: conceptGuideBinding, onDismiss: {
+            viewModel.handleConceptGuideDismissed()
         }) {
-            WelcomeGuideView()
+            ConceptGuideView()
+                .environmentObject(viewModel)
+        }
+
+        // Server Handbook (long-form reference manual)
+        .sheet(isPresented: serverHandbookBinding, onDismiss: {
+            viewModel.handleHandbookDismissed()
+        }) {
+            ServerHandbookView()
                 .environmentObject(viewModel)
         }
 

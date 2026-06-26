@@ -751,7 +751,8 @@ private struct StorageBarRow: View {
 }
 
 struct PreferencesLearnHelpSection: View {
-    let onShowWelcomeGuide: () -> Void
+    let onShowConceptGuide: () -> Void
+    let onShowServerHandbook: () -> Void
     let onShowPrerequisites: () -> Void
     let onRestartSetupTour: () -> Void
     let onOpenPortForwardGuide: () -> Void
@@ -765,19 +766,24 @@ struct PreferencesLearnHelpSection: View {
 
             Divider()
 
-            Button("Show Welcome Guide…", action: onShowWelcomeGuide)
+            Button("How MSC Works\u{2026}", action: onShowConceptGuide)
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .help("Visual walkthrough of the server \u{2192} world mental model.")
+
+            Button("Server Handbook\u{2026}", action: onShowServerHandbook)
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .help("Long-form reference covering every feature and concept.")
+
+            Button("Prerequisites & Dependencies\u{2026}", action: onShowPrerequisites)
                 .buttonStyle(MSCSecondaryButtonStyle())
 
-            Button("Prerequisites & Dependencies…", action: onShowPrerequisites)
+            Button("Restart Setup Tour\u{2026}", action: onRestartSetupTour)
                 .buttonStyle(MSCSecondaryButtonStyle())
 
-            Button("Restart Setup Tour…", action: onRestartSetupTour)
+            Button("Port Forwarding Guide\u{2026}", action: onOpenPortForwardGuide)
                 .buttonStyle(MSCSecondaryButtonStyle())
 
-            Button("Port Forwarding Guide…", action: onOpenPortForwardGuide)
-                .buttonStyle(MSCSecondaryButtonStyle())
-
-            Button("playit.gg Tunnel Setup Guide…", action: onOpenPlayitGuide)
+            Button("playit.gg Tunnel Setup Guide\u{2026}", action: onOpenPlayitGuide)
                 .buttonStyle(MSCSecondaryButtonStyle())
         }
         .pscCard()

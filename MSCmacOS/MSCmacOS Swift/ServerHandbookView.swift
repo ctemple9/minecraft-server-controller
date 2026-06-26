@@ -1,8 +1,8 @@
 //
-//  WelcomeGuideView.swift
+//  ServerHandbookView.swift
 //  MinecraftServerController
 //
-//  Long-form in-app reference guide covering hosting concepts, workflows,
+//  Long-form in-app reference handbook covering hosting concepts, workflows,
 //  and feature explanations for both Java and Bedrock servers.
 //
 
@@ -10,118 +10,153 @@ import SwiftUI
 
 // MARK: - Topic Model
 
-enum WelcomeGuideTopic: String, CaseIterable, Identifiable {
+enum HandbookTopic: String, CaseIterable, Identifiable {
+    // Concepts
     case overview
+    case networkingBasics
+    case ramPerformance
+    // Java Servers
     case paper
     case jarsJava
+    case eulaOnlineMode
+    case pluginsGeyserFloodgate
+    // Bedrock Servers
     case bedrock
     case docker
-    case ramPerformance
-    case pluginsGeyserFloodgate
-    case eulaOnlineMode
+    // Connection & Access
     case portsForwardingDuckDNS
+    case playitSetup
+    case tailscale
     case broadcast
-    case worldsBackups
     case remoteAccess
+    // Server Management
+    case worldsBackups
+    case worldConversion
+    case serverTransfer
+    case serverFiles
+    case watchdog
+    case playerManagement
+    // Getting Started
     case firstServer
     case bedrockSetup
-    case serverFiles
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .overview:               return "Overview"
+        case .networkingBasics:       return "How Servers Connect"
+        case .ramPerformance:         return "RAM & Performance"
         case .paper:                  return "What is Paper?"
+        case .jarsJava:               return "JAR Files & Java"
+        case .eulaOnlineMode:         return "EULA & Online Mode"
+        case .pluginsGeyserFloodgate: return "Plugins & Cross-Play"
         case .bedrock:                return "What is Bedrock Dedicated Server?"
         case .docker:                 return "Docker & How Bedrock Runs"
-        case .jarsJava:               return "JAR Files & Java"
-        case .ramPerformance:         return "RAM & Performance"
-        case .pluginsGeyserFloodgate: return "Plugins & Cross-Play"
-        case .eulaOnlineMode:         return "EULA & Online Mode"
-        case .portsForwardingDuckDNS: return "Ports & DuckDNS"
+        case .portsForwardingDuckDNS: return "Port Forwarding & DuckDNS"
+        case .playitSetup:            return "Playit.gg Tunneling"
+        case .tailscale:              return "Tailscale"
         case .broadcast:              return "Xbox Broadcast"
-        case .worldsBackups:          return "Worlds & Backups"
         case .remoteAccess:           return "MSC Remote (iOS)"
+        case .worldsBackups:          return "Worlds & Backups"
+        case .worldConversion:        return "World Conversion"
+        case .serverTransfer:         return "Server Import & Transfer"
+        case .serverFiles:            return "Server Files Browser"
+        case .watchdog:               return "Watchdog & Crash Recovery"
+        case .playerManagement:       return "Player Management"
         case .firstServer:            return "Your First Java Server"
         case .bedrockSetup:           return "Your First Bedrock Server"
-        case .serverFiles:            return "Server Files Browser"
         }
     }
 
     var icon: String {
         switch self {
         case .overview:               return "house.fill"
+        case .networkingBasics:       return "globe.americas.fill"
+        case .ramPerformance:         return "memorychip.fill"
         case .paper:                  return "server.rack"
+        case .jarsJava:               return "shippingbox.fill"
+        case .eulaOnlineMode:         return "checkmark.seal.fill"
+        case .pluginsGeyserFloodgate: return "puzzlepiece.fill"
         case .bedrock:                return "cube.fill"
         case .docker:                 return "shippingbox.fill"
-        case .jarsJava:               return "shippingbox.fill"
-        case .ramPerformance:         return "memorychip.fill"
-        case .pluginsGeyserFloodgate: return "puzzlepiece.fill"
-        case .eulaOnlineMode:         return "checkmark.seal.fill"
         case .portsForwardingDuckDNS: return "network"
+        case .playitSetup:            return "antenna.radiowaves.left.and.right"
+        case .tailscale:              return "lock.shield.fill"
         case .broadcast:              return "dot.radiowaves.left.and.right"
-        case .worldsBackups:          return "archivebox.fill"
         case .remoteAccess:           return "iphone"
+        case .worldsBackups:          return "archivebox.fill"
+        case .worldConversion:        return "arrow.2.circlepath"
+        case .serverTransfer:         return "square.and.arrow.down.fill"
+        case .serverFiles:            return "folder.fill"
+        case .watchdog:               return "stethoscope"
+        case .playerManagement:       return "person.2.fill"
         case .firstServer:            return "flag.checkered"
         case .bedrockSetup:           return "flag.checkered"
-        case .serverFiles:            return "folder.fill"
         }
     }
 
-    var category: TopicCategory {
+    var category: HandbookCategory {
         switch self {
-        case .overview, .paper, .bedrock, .docker, .jarsJava, .ramPerformance:
-            return .basics
-        case .pluginsGeyserFloodgate, .eulaOnlineMode, .portsForwardingDuckDNS:
-            return .setup
-        case .broadcast, .remoteAccess:
-            return .advanced
-        case .worldsBackups, .firstServer, .bedrockSetup, .serverFiles:
+        case .overview, .networkingBasics, .ramPerformance:
+            return .concepts
+        case .paper, .jarsJava, .eulaOnlineMode, .pluginsGeyserFloodgate:
+            return .java
+        case .bedrock, .docker:
+            return .bedrockCat
+        case .portsForwardingDuckDNS, .playitSetup, .tailscale, .broadcast, .remoteAccess:
+            return .connection
+        case .worldsBackups, .worldConversion, .serverTransfer, .serverFiles, .watchdog, .playerManagement:
             return .management
+        case .firstServer, .bedrockSetup:
+            return .gettingStarted
         }
     }
 }
 
-enum TopicCategory: String, CaseIterable {
-    case basics     = "Basics"
-    case setup      = "Setup"
-    case advanced   = "Advanced Features"
-    case management = "Management"
+enum HandbookCategory: String, CaseIterable {
+    case concepts       = "Concepts"
+    case java           = "Java Servers"
+    case bedrockCat     = "Bedrock Servers"
+    case connection     = "Connection & Access"
+    case management     = "Server Management"
+    case gettingStarted = "Getting Started"
 
     var color: Color {
         switch self {
-        case .basics:     return .blue
-        case .setup:      return .orange
-        case .advanced:   return .purple
-        case .management: return .green
+        case .concepts:       return .blue
+        case .java:           return .orange
+        case .bedrockCat:     return .green
+        case .connection:     return .purple
+        case .management:     return .teal
+        case .gettingStarted: return .mint
         }
     }
 }
 
 // MARK: - Main View
 
-struct WelcomeGuideView: View {
+struct ServerHandbookView: View {
     @EnvironmentObject var viewModel: AppViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedTopic: WelcomeGuideTopic = .overview
-    @State private var visitedTopics: Set<WelcomeGuideTopic> = [.overview]
+    @State private var selectedTopic: HandbookTopic = .overview
+    @State private var visitedTopics: Set<HandbookTopic> = [.overview]
     @State private var searchText: String = ""
     @State private var topicTransitionID: UUID = UUID()
 
-    private var filteredTopics: [WelcomeGuideTopic] {
-        if searchText.isEmpty { return WelcomeGuideTopic.allCases }
-        return WelcomeGuideTopic.allCases.filter {
+    private var filteredTopics: [HandbookTopic] {
+        if searchText.isEmpty { return HandbookTopic.allCases }
+        return HandbookTopic.allCases.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
         }
     }
 
     private var progressFraction: Double {
-        Double(visitedTopics.count) / Double(WelcomeGuideTopic.allCases.count)
+        Double(visitedTopics.count) / Double(HandbookTopic.allCases.count)
     }
 
-    private func selectTopic(_ topic: WelcomeGuideTopic) {
+    private func selectTopic(_ topic: HandbookTopic) {
         withAnimation(.easeInOut(duration: 0.18)) {
             selectedTopic = topic
             visitedTopics.insert(topic)
@@ -130,14 +165,14 @@ struct WelcomeGuideView: View {
     }
 
     private func nextTopic() {
-        let all = WelcomeGuideTopic.allCases
+        let all = HandbookTopic.allCases
         if let idx = all.firstIndex(of: selectedTopic), idx + 1 < all.count {
             selectTopic(all[idx + 1])
         }
     }
 
     private func previousTopic() {
-        let all = WelcomeGuideTopic.allCases
+        let all = HandbookTopic.allCases
         if let idx = all.firstIndex(of: selectedTopic), idx > 0 {
             selectTopic(all[idx - 1])
         }
@@ -194,11 +229,11 @@ struct WelcomeGuideView: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Minecraft Server Controller")
+                Text("Server Handbook")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Your complete guide to hosting Minecraft servers \u{2014} Java or Bedrock \u{2014} on your Mac.")
+                Text("Your long-term reference for hosting, configuring, and managing Minecraft servers on your Mac.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -210,7 +245,7 @@ struct WelcomeGuideView: View {
                 HStack {
                     Spacer()
                     Button {
-                        viewModel.markWelcomeGuideShown()
+                        viewModel.markHandbookShown()
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
@@ -244,7 +279,7 @@ struct WelcomeGuideView: View {
             Image(systemName: "chart.bar.fill")
                 .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.8))
-            Text("\(visitedTopics.count) of \(WelcomeGuideTopic.allCases.count) topics read")
+            Text("\(visitedTopics.count) of \(HandbookTopic.allCases.count) topics read")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.9))
             GeometryReader { geo in
@@ -286,8 +321,8 @@ struct WelcomeGuideView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     if searchText.isEmpty {
-                        ForEach(TopicCategory.allCases, id: \.self) { category in
-                            let topicsInCategory = WelcomeGuideTopic.allCases.filter { $0.category == category }
+                        ForEach(HandbookCategory.allCases, id: \.self) { category in
+                            let topicsInCategory = HandbookTopic.allCases.filter { $0.category == category }
                             if !topicsInCategory.isEmpty {
                                 sidebarSection(category: category, topics: topicsInCategory)
                             }
@@ -304,7 +339,7 @@ struct WelcomeGuideView: View {
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
     }
 
-    private func sidebarSection(category: TopicCategory, topics: [WelcomeGuideTopic]) -> some View {
+    private func sidebarSection(category: HandbookCategory, topics: [HandbookTopic]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(category.rawValue.uppercased())
                 .font(.system(size: 9, weight: .semibold))
@@ -320,7 +355,7 @@ struct WelcomeGuideView: View {
         }
     }
 
-    private func sidebarRow(topic: WelcomeGuideTopic) -> some View {
+    private func sidebarRow(topic: HandbookTopic) -> some View {
         let isSelected = selectedTopic == topic
         let isVisited = visitedTopics.contains(topic)
 
@@ -367,7 +402,7 @@ struct WelcomeGuideView: View {
         VStack(spacing: 0) {
             Divider()
             HStack {
-                let all = WelcomeGuideTopic.allCases
+                let all = HandbookTopic.allCases
                 let isFirst = selectedTopic == all.first
                 let isLast = selectedTopic == all.last
 
@@ -385,21 +420,16 @@ struct WelcomeGuideView: View {
 
                 Spacer()
 
-                // Dot progress
-                HStack(spacing: 4) {
-                    ForEach(all) { topic in
-                        Circle()
-                            .fill(selectedTopic == topic ? Color.accentColor : (visitedTopics.contains(topic) ? Color.accentColor.opacity(0.3) : Color.secondary.opacity(0.2)))
-                            .frame(width: selectedTopic == topic ? 7 : 5, height: selectedTopic == topic ? 7 : 5)
-                            .animation(.spring(response: 0.3), value: selectedTopic)
-                    }
-                }
+                // Progress fraction pill instead of per-topic dots (22 topics makes dots impractical)
+                Text("\(HandbookTopic.allCases.firstIndex(of: selectedTopic).map { $0 + 1 } ?? 1) / \(HandbookTopic.allCases.count)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
                 if isLast {
                     Button {
-                        viewModel.markWelcomeGuideShown()
+                        viewModel.markHandbookShown()
                         dismiss()
                     } label: {
                         HStack(spacing: 4) {
@@ -433,23 +463,30 @@ struct WelcomeGuideView: View {
     // MARK: - Content Router
 
     @ViewBuilder
-    private func content(for topic: WelcomeGuideTopic) -> some View {
+    private func content(for topic: HandbookTopic) -> some View {
         switch topic {
         case .overview:                 overviewContent
+        case .networkingBasics:         networkingBasicsContent
+        case .ramPerformance:           ramPerformanceContent
         case .paper:                    paperContent
+        case .jarsJava:                 jarsJavaContent
+        case .eulaOnlineMode:           eulaOnlineModeContent
+        case .pluginsGeyserFloodgate:   pluginsGeyserFloodgateContent
         case .bedrock:                  bedrockContent
         case .docker:                   dockerContent
-        case .jarsJava:                 jarsJavaContent
-        case .ramPerformance:           ramPerformanceContent
-        case .pluginsGeyserFloodgate:   pluginsGeyserFloodgateContent
-        case .eulaOnlineMode:           eulaOnlineModeContent
         case .portsForwardingDuckDNS:   portsForwardingDuckDNSContent
+        case .playitSetup:              playitSetupContent
+        case .tailscale:                tailscaleContent
         case .broadcast:                broadcastContent
-        case .worldsBackups:            worldsBackupsContent
         case .remoteAccess:             remoteAccessContent
+        case .worldsBackups:            worldsBackupsContent
+        case .worldConversion:          worldConversionContent
+        case .serverTransfer:           serverTransferContent
+        case .serverFiles:              serverFilesContent
+        case .watchdog:                 watchdogContent
+        case .playerManagement:         playerManagementContent
         case .firstServer:              firstServerContent
         case .bedrockSetup:             bedrockSetupContent
-        case .serverFiles:              serverFilesContent
         }
     }
 }

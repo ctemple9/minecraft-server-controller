@@ -416,8 +416,11 @@ struct AppConfig: Codable {
     /// Public Bedrock tunnel address e.g. "something.ply.gg:35803". Set once in Server Settings.
     var playitBedrockAddress: String?
 
-    /// Tracks whether the Welcome Guide has been shown at least once.
-    var hasShownWelcomeGuide: Bool
+    /// Tracks whether the Server Handbook has been shown at least once.
+    var hasShownHandbook: Bool
+
+    /// Tracks whether the Concept Guide (mental model walkthrough) has been shown at least once.
+    var hasShownConceptGuide: Bool
 
     // Xbox Broadcast (global)
     /// Path to MCXboxBroadcastStandalone.jar
@@ -464,7 +467,8 @@ struct AppConfig: Codable {
         case duckdnsHostname = "duckdns_hostname"
         case playitJavaAddress    = "playit_java_address"
         case playitBedrockAddress = "playit_bedrock_address"
-        case hasShownWelcomeGuide = "has_shown_welcome_guide"
+        case hasShownHandbook = "has_shown_welcome_guide"
+        case hasShownConceptGuide = "has_shown_concept_guide"
 
         case xboxBroadcastJarPath = "xbox_broadcast_jar_path"
         case xboxBroadcastAutoStartEnabled = "xbox_broadcast_auto_start_enabled"
@@ -522,7 +526,8 @@ struct AppConfig: Codable {
             duckdnsHostname: nil,
             playitJavaAddress: nil,
             playitBedrockAddress: nil,
-            hasShownWelcomeGuide: false,
+            hasShownHandbook: false,
+            hasShownConceptGuide: false,
             xboxBroadcastJarPath: nil,
             xboxBroadcastAutoStartEnabled: true,
             minecraftUsername: nil,
@@ -617,9 +622,15 @@ extension AppConfig {
         self.playitJavaAddress    = try container.decodeIfPresent(String.self, forKey: .playitJavaAddress)
         self.playitBedrockAddress = try container.decodeIfPresent(String.self, forKey: .playitBedrockAddress)
 
-        self.hasShownWelcomeGuide =
-            try container.decodeIfPresent(Bool.self, forKey: .hasShownWelcomeGuide)
-                ?? defaults.hasShownWelcomeGuide
+        self.hasShownHandbook =
+            try container.decodeIfPresent(Bool.self, forKey: .hasShownHandbook)
+                ?? defaults.hasShownHandbook
+
+        // For existing users who already saw the old "Welcome Guide" (now Handbook),
+        // skip the new concept guide automatically — only show to genuinely new installs.
+        self.hasShownConceptGuide =
+            try container.decodeIfPresent(Bool.self, forKey: .hasShownConceptGuide)
+                ?? self.hasShownHandbook
 
         // Xbox Broadcast JAR path
         self.xboxBroadcastJarPath =
@@ -669,7 +680,8 @@ extension AppConfig {
         try container.encodeIfPresent(playitJavaAddress,    forKey: .playitJavaAddress)
         try container.encodeIfPresent(playitBedrockAddress, forKey: .playitBedrockAddress)
 
-        try container.encode(hasShownWelcomeGuide, forKey: .hasShownWelcomeGuide)
+        try container.encode(hasShownHandbook,      forKey: .hasShownHandbook)
+        try container.encode(hasShownConceptGuide,  forKey: .hasShownConceptGuide)
         try container.encodeIfPresent(xboxBroadcastJarPath, forKey: .xboxBroadcastJarPath)
         try container.encode(xboxBroadcastAutoStartEnabled, forKey: .xboxBroadcastAutoStartEnabled)
         try container.encodeIfPresent(minecraftUsername, forKey: .minecraftUsername)

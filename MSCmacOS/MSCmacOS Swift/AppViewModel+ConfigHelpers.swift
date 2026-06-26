@@ -203,7 +203,8 @@ extension AppViewModel {
     private func clearInMemoryStateAfterReset() {
         servers = []
         selectedServer = nil
-        isShowingWelcomeGuide = false
+        isShowingConceptGuide = false
+        isShowingServerHandbook = false
         isShowingInitialSetup = false
         isShowingCreateServer = false
         isServerRunning = false

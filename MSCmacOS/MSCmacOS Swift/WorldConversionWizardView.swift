@@ -2,7 +2,7 @@
 // MinecraftServerController
 //
 // Multi-step sheet for converting a world between Java and Bedrock using Chunker CLI.
-// Layout mirrors WelcomeGuideView: left sidebar navigation + right scrollable content.
+// Layout mirrors ServerHandbookView: left sidebar navigation + right scrollable content.
 
 import SwiftUI
 
