@@ -177,6 +177,8 @@ struct HealthCardsGridView: View {
             onOpenComponentsTab?()
         case .openRouterPortForwardGuide:
             viewModel.isShowingRouterPortForwardGuide = true
+        case .diagnoseStartup:
+            viewModel.reopenStartupProblems()
         }
     }
 }
@@ -546,7 +548,7 @@ fileprivate struct HealthGridCardBack: View {
                         Text(key.uppercased())
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(MSC.Colors.tertiary)
-                            .frame(width: 72, alignment: .leading)
+                            .frame(width: 90, alignment: .leading)
                             .lineLimit(1)
 
                         Text(val)
@@ -678,6 +680,7 @@ fileprivate struct HealthGridCardBack: View {
         case .triggerDownload:           return "arrow.down.circle"
         case .openComponentsTab:         return "cpu"
         case .openRouterPortForwardGuide:return "network"
+        case .diagnoseStartup:           return "stethoscope"
         }
     }
 }

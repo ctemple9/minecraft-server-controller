@@ -23,11 +23,17 @@ extension AppViewModel {
 
     private func isFirstRun(for server: ConfigServer) -> Bool {
         if server.hasEverStarted { return false }
-        if hasFirstRunArtifactsOnDisk(serverDir: server.serverDir) { return false }
+        // Install-step flavors (NeoForge) pre-create libraries/ etc. at *creation*
+        // time, so those can't be used as "already ran" signals — fall back to
+        // logs/ and world/ only. Otherwise a fresh NeoForge server would skip the
+        // first-run setup (auto-stop + settings sheet).
+        let ignoreLibraryArtifacts = server.javaFlavor.provisioningKind == .installStep
+        if hasFirstRunArtifactsOnDisk(serverDir: server.serverDir,
+                                      ignoreLibraryArtifacts: ignoreLibraryArtifacts) { return false }
         return true
     }
 
-    private func hasFirstRunArtifactsOnDisk(serverDir: String) -> Bool {
+    private func hasFirstRunArtifactsOnDisk(serverDir: String, ignoreLibraryArtifacts: Bool = false) -> Bool {
         let fm = FileManager.default
         let base = URL(fileURLWithPath: serverDir, isDirectory: true)
         let logsDir = base.appendingPathComponent("logs", isDirectory: true)
@@ -39,10 +45,12 @@ extension AppViewModel {
             var d: ObjCBool = false
             if fm.fileExists(atPath: worldURL.path, isDirectory: &d), d.boolValue { return true }
         }
-        for dirName in ["cache", "libraries", "versions"] {
-            let url = base.appendingPathComponent(dirName, isDirectory: true)
-            var d: ObjCBool = false
-            if fm.fileExists(atPath: url.path, isDirectory: &d), d.boolValue { return true }
+        if !ignoreLibraryArtifacts {
+            for dirName in ["cache", "libraries", "versions"] {
+                let url = base.appendingPathComponent(dirName, isDirectory: true)
+                var d: ObjCBool = false
+                if fm.fileExists(atPath: url.path, isDirectory: &d), d.boolValue { return true }
+            }
         }
         let geyserCfg = GeyserConfigManager.configURL(for: serverDir)
         if fm.fileExists(atPath: geyserCfg.path) { return true }
@@ -81,6 +89,21 @@ extension AppViewModel {
         }
 
         let appCfg = configManager.config
+
+        // Java-version preflight: warn clearly if the configured Java is too old for
+        // this server's Minecraft version (the usual cause of a silent boot failure).
+        // Non-blocking — we still attempt the start.
+        if !cfgServer.isBedrock {
+            if let warning = JavaRuntimeManager.compatibilityWarning(
+                minecraftVersion: cfgServer.minecraftVersion,
+                javaPath: appCfg.javaPath
+            ) {
+                javaCompatibilityWarning = warning
+                logAppMessage("[App] ⚠️ Java compatibility: \(warning)")
+            } else {
+                javaCompatibilityWarning = nil
+            }
+        }
 
         do {
             try activeBackend?.start(config: cfgServer, appConfig: appCfg)
@@ -146,14 +169,18 @@ extension AppViewModel {
 
                     firstStartAlertTitle = "Bedrock First Start"
                 } else {
+                    let softwareName = cfgServer.javaFlavor.displayName
                     message = "Initiation complete \n\n"
-                    message += "On first run, Paper generates important config files (server.properties, eula.txt, plugin configs, etc.). When the console shows \"Done\", the app will automatically stop the server so you can safely edit settings.\n\n"
+                    message += "On first run, \(softwareName) generates important config files (server.properties, eula.txt, and more). When the console shows \"Done\", the app will automatically stop the server so you can safely edit settings.\n\n"
                     message += "Next steps:\n"
                     message += "• Open Server Settings and review/save your settings.\n"
                     if geyserInstalled && !geyserConfigExists {
                         message += "• Geyser is now installed. Please update your port settings and click save. If you already changed it earlier, save the settings again to apply them.\n"
                     } else if geyserInstalled {
                         message += "• If you use Geyser (Bedrock), your Bedrock port is managed in Server Settings. If you decide to add it later, you must save your port information after the first run\n"
+                    }
+                    if cfgServer.isModded {
+                        message += "• Add your mods to the mods/ folder before starting for real. World-gen mods must be present on the first real start or they won't affect your world.\n"
                     }
                     message += "• Start the server again when you're ready.\n\n"
                     message += "If you use Xbox Broadcast, it stays synced with the Bedrock port where applicable."

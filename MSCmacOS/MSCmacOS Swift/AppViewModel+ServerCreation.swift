@@ -129,6 +129,9 @@ extension AppViewModel {
         name: String,
         initialWorldName: String? = nil,
         jarSource: CreateServerJarSource,
+        flavor: JavaServerFlavor = .paper,
+        specificVersion: ServerVersionEntry? = nil,
+        stagedAddOns: [WizardStagedAddOn] = [],
         port: Int,
         enableCrossPlay: Bool,
         crossPlayBedrockPort: Int? = nil,
@@ -157,6 +160,10 @@ extension AppViewModel {
         let effectiveWorldSeed = normalizedWorldSeed ?? importedMetadata.seed
         let initialLevelName = WorldSlotManager.sanitizedWorldLevelName(initialSlotName, fallback: "world")
 
+        lastServerCreateError = nil
+        pendingCreationConsole.removeAll()
+        await MainActor.run { creationLogLines.removeAll() }
+
         let folderName = safeName.replacingOccurrences(of: " ", with: "_").lowercased()
         let root = configManager.serversRootURL
         let javaRoot = root.appendingPathComponent("java", isDirectory: true)
@@ -168,37 +175,121 @@ extension AppViewModel {
         }
         if fm.fileExists(atPath: newDir.path) {
             logAppMessage("[CreateServer] Folder already exists: \(newDir.path)")
+            lastServerCreateError = "A server folder named \"\(folderName)\" already exists at \(newDir.path). Choose a different name, or remove that folder."
             return false
         }
 
         do {
             try fm.createDirectory(at: newDir, withIntermediateDirectories: true)
+
+            var resolvedVersion: String? = nil
+            var resolvedBuild: String? = nil
+            var resolvedLoader: String? = nil
+            // paperJarPath for the config. Empty for NeoForge, which launches from a
+            // generated args file rather than a single jar.
+            var primaryJarPath = ""
+
+            if flavor.provisioningKind == .installStep {
+                // NeoForge / Forge: run the installer (downloads Minecraft + libraries,
+                // patches, and generates the run/args files we later launch from).
+                noteCreation("[CreateServer] Installing \(flavor.displayName) — this can take a minute…")
+                if flavor == .neoforge {
+                    let info: NeoForgeInstaller.InstallResult
+                    if let sv = specificVersion, !sv.isLatest, let nfv = sv.loaderVersion {
+                        info = try await NeoForgeInstaller.install(
+                            specificVersion: nfv,
+                            into: newDir,
+                            javaPath: configManager.config.javaPath,
+                            onLog: { line in DispatchQueue.main.async { self.noteCreation("[NeoForge] \(line)") } }
+                        )
+                    } else {
+                        info = try await NeoForgeInstaller.install(
+                            into: newDir,
+                            javaPath: configManager.config.javaPath,
+                            onLog: { line in DispatchQueue.main.async { self.noteCreation("[NeoForge] \(line)") } }
+                        )
+                    }
+                    resolvedVersion = info.minecraftVersion
+                    resolvedLoader = info.neoForgeVersion
+                    resolvedBuild = info.neoForgeVersion
+                    noteCreation("[CreateServer] Installed NeoForge \(info.neoForgeVersion) (Minecraft \(info.minecraftVersion)).")
+                } else if flavor == .forge {
+                    let info: ForgeInstaller.InstallResult
+                    if let sv = specificVersion, !sv.isLatest, let fv = sv.loaderVersion {
+                        info = try await ForgeInstaller.install(
+                            mcVersion: sv.mcVersion,
+                            forgeVersion: fv,
+                            into: newDir,
+                            javaPath: configManager.config.javaPath,
+                            onLog: { line in DispatchQueue.main.async { self.noteCreation("[Forge] \(line)") } }
+                        )
+                    } else {
+                        info = try await ForgeInstaller.install(
+                            into: newDir,
+                            javaPath: configManager.config.javaPath,
+                            onLog: { line in DispatchQueue.main.async { self.noteCreation("[Forge] \(line)") } }
+                        )
+                    }
+                    resolvedVersion = info.minecraftVersion
+                    resolvedLoader = info.forgeVersion
+                    resolvedBuild = info.forgeVersion
+                    noteCreation("[CreateServer] Installed Forge \(info.forgeVersion) (Minecraft \(info.minecraftVersion)).")
+                }
+            } else {
+
             let jarDest = newDir.appendingPathComponent("paper.jar")
+            primaryJarPath = jarDest.path
 
             switch jarSource {
             case .template(let url):
                 try fm.copyItem(at: url, to: jarDest)
-                logAppMessage("[CreateServer] Copied Paper template into new server.")
+                logAppMessage("[CreateServer] Copied \(flavor.displayName) template into new server.")
                 if let parsed = ComponentVersionParsing.parsePaperJarFilename(url.lastPathComponent) {
+                    resolvedVersion = parsed.mcVersion
+                    resolvedBuild = String(parsed.build)
                     PaperVersionSidecarManager.write(mcVersion: parsed.mcVersion, build: parsed.build, toServerDirectory: newDir)
                 }
             case .downloadLatest:
-                let result = try await PaperDownloader.downloadLatestPaper(to: jarDest)
-                logAppMessage("[CreateServer] Downloaded Paper \(result.version) build \(result.build).")
-                PaperVersionSidecarManager.write(mcVersion: result.version, build: result.build, toServerDirectory: newDir)
-                let templateDirPath = configManager.config.paperTemplateDir
-                if !templateDirPath.isEmpty {
-                    let templatesDirURL = URL(fileURLWithPath: templateDirPath, isDirectory: true)
-                    try fm.createDirectory(at: templatesDirURL, withIntermediateDirectories: true)
-                    let templateJarURL = templatesDirURL.appendingPathComponent("paper-\(result.version)-build\(result.build).jar")
-                    if !fm.fileExists(atPath: templateJarURL.path) {
-                        try fm.copyItem(at: jarDest, to: templateJarURL)
-                        logAppMessage("[CreateServer] Also saved Paper jar to templates: \(templateJarURL.lastPathComponent)")
+                // Archive-first for Paper: lightweight metadata check → skip download if the
+                // exact version is already in the archive.
+                var usedArchive = false
+                if flavor == .paper && configManager.config.saveDownloadedJars {
+                    if let meta = try? await PaperDownloader.fetchLatestMetadata() {
+                        let archiveFilename = "paper-\(meta.version)-build\(meta.build).jar"
+                        let archiveURL = URL(fileURLWithPath: configManager.config.paperTemplateDir)
+                            .appendingPathComponent(archiveFilename)
+                        if fm.fileExists(atPath: archiveURL.path) {
+                            try fm.copyItem(at: archiveURL, to: jarDest)
+                            resolvedVersion = meta.version
+                            resolvedBuild = String(meta.build)
+                            noteCreation("[CreateServer] Used archived Paper \(meta.version) (build \(meta.build)).")
+                            PaperVersionSidecarManager.write(mcVersion: meta.version, build: meta.build, toServerDirectory: newDir)
+                            usedArchive = true
+                        }
+                    }
+                }
+
+                if !usedArchive {
+                    let result: ServerJarDownloadResult
+                    if let sv = specificVersion, !sv.isLatest {
+                        result = try await ServerJarProvider.downloadVersion(sv, flavor: flavor, to: jarDest)
+                        noteCreation("[CreateServer] Downloaded \(flavor.displayName) \(result.version) (\(result.build)) [specific version].")
                     } else {
-                        logAppMessage("[CreateServer] Template jar already exists: \(templateJarURL.lastPathComponent)")
+                        result = try await ServerJarProvider.downloadLatest(flavor: flavor, to: jarDest)
+                        noteCreation("[CreateServer] Downloaded \(flavor.displayName) \(result.version) (\(result.build)).")
+                    }
+                    resolvedVersion = result.version
+                    resolvedBuild = result.build
+                    resolvedLoader = result.loaderVersion
+                    if flavor == .paper, let buildInt = Int(result.build) {
+                        PaperVersionSidecarManager.write(mcVersion: result.version, build: buildInt, toServerDirectory: newDir)
+                    }
+                    if configManager.config.saveDownloadedJars {
+                        archiveServerJar(flavor: flavor, result: result, from: jarDest)
                     }
                 }
             }
+            }   // end non-install-step provisioning (else)
 
             try "eula=false\n".write(to: newDir.appendingPathComponent("eula.txt"), atomically: true, encoding: .utf8)
 
@@ -216,10 +307,15 @@ extension AppViewModel {
             }
             try ServerPropertiesManager.writeProperties(props, to: newDir.path)
 
-            let pluginsDir = newDir.appendingPathComponent("plugins", isDirectory: true)
-            try fm.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
-
-            if enableCrossPlay { applyCrossPlayTemplatesIfAvailable(to: pluginsDir) }
+            // Create the add-on folder for this flavor: plugins/ for plugin servers,
+            // mods/ for modded loaders, nothing for Vanilla (no add-on API).
+            if let addOn = flavor.addOnKind {
+                let addOnDir = newDir.appendingPathComponent(addOn.folderName, isDirectory: true)
+                try fm.createDirectory(at: addOnDir, withIntermediateDirectories: true)
+                if enableCrossPlay, addOn == .plugin {
+                    applyCrossPlayTemplatesIfAvailable(to: addOnDir)
+                }
+            }
 
             let writtenProps = ServerPropertiesManager.readProperties(serverDir: newDir.path)
             let levelName = (writtenProps["level-name"]?.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -238,7 +334,16 @@ extension AppViewModel {
 
             let newId = UUID().uuidString
             var cfgServer = ConfigServer(id: newId, displayName: safeName, serverDir: newDir.path,
-                                         paperJarPath: jarDest.path, minRamGB: 2, maxRamGB: 4, notes: "")
+                                         paperJarPath: primaryJarPath, minRamGB: 2, maxRamGB: 4, notes: "")
+            cfgServer.javaFlavor = flavor
+            cfgServer.minecraftVersion = resolvedVersion
+            cfgServer.serverBuild = resolvedBuild
+            cfgServer.loaderVersion = resolvedLoader
+            // Modded servers need more memory than plugin servers.
+            if flavor.category == .modded {
+                cfgServer.minRamGB = 3
+                cfgServer.maxRamGB = 6
+            }
             cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
             cfgServer.playitEnabled = enablePlayit
             if enableCrossPlay, let bedrockPort = crossPlayBedrockPort {
@@ -254,16 +359,38 @@ extension AppViewModel {
             ) != nil else {
                 try? fm.removeItem(at: newDir)
                 logAppMessage("[CreateServer] Failed to create the initial world slot for \(safeName); aborting server creation.")
+                lastServerCreateError = "Couldn't create the initial world slot for \"\(safeName)\"."
                 return false
             }
 
+            // Apply staged add-ons chosen during the wizard.
+            if !stagedAddOns.isEmpty, let addOnKind = flavor.addOnKind {
+                let addOnDir = newDir.appendingPathComponent(addOnKind.folderName, isDirectory: true)
+                try? fm.createDirectory(at: addOnDir, withIntermediateDirectories: true)
+                for addOn in stagedAddOns {
+                    await applyStagedAddOn(addOn, to: addOnDir, serverConfig: cfgServer, label: "[CreateServer]")
+                }
+            }
+
             upsertServer(cfgServer)
+            if cfgServer.javaFlavor.category == .modded,
+               let mc = cfgServer.minecraftVersion,
+               let loader = cfgServer.loaderVersion {
+                recordLoaderVersion(flavor: cfgServer.javaFlavor, mc: mc, loader: loader)
+            }
             setActiveServer(withId: newId)
+            // Selecting the new server cleared the console — replay the creation/install
+            // output so it's visible in the new server's console.
+            replayCreationConsole()
             logAppMessage("[CreateServer] Created new server \(safeName).")
             return true
 
         } catch {
             logAppMessage("[CreateServer] Failed: \(error.localizedDescription)")
+            lastServerCreateError = error.localizedDescription
+            // Roll back the partially-created server folder so a retry isn't blocked
+            // by a leftover directory (esp. NeoForge, which writes libraries/ during install).
+            try? FileManager.default.removeItem(at: newDir)
             return false
         }
     }
@@ -476,5 +603,112 @@ extension AppViewModel {
         }
         // Fallback: return the original folder.
         return folder
+    }
+
+    // MARK: - Archive helpers
+
+    /// Copies a freshly-downloaded server JAR into the archive directory with a versioned
+    /// filename, so the same binary can be reused for future servers without a network fetch.
+    /// Server/core JARs only — mods are tracked per-server and explicitly excluded.
+    func archiveServerJar(
+        flavor: JavaServerFlavor,
+        result: ServerJarDownloadResult,
+        from sourceURL: URL
+    ) {
+        let archiveDir = URL(fileURLWithPath: configManager.config.paperTemplateDir, isDirectory: true)
+
+        let archiveFilename: String
+        switch flavor {
+        case .paper:
+            guard let buildInt = Int(result.build) else { return }
+            archiveFilename = "paper-\(result.version)-build\(buildInt).jar"
+        case .purpur:
+            archiveFilename = "purpur-\(result.version)-build\(result.build).jar"
+        case .vanilla:
+            archiveFilename = "minecraft_server-\(result.version).jar"
+        case .fabric:
+            archiveFilename = "fabric-server-launch-\(result.version).jar"
+        default:
+            return
+        }
+
+        let archiveURL = archiveDir.appendingPathComponent(archiveFilename)
+        let fm = FileManager.default
+
+        guard !fm.fileExists(atPath: archiveURL.path) else {
+            logAppMessage("[Archive] Already in archive: \(archiveFilename)")
+            return
+        }
+
+        do {
+            try fm.createDirectory(at: archiveDir, withIntermediateDirectories: true)
+            try fm.copyItem(at: sourceURL, to: archiveURL)
+            logAppMessage("[Archive] Saved \(archiveFilename) to archive.")
+            loadPaperTemplates()
+        } catch {
+            logAppMessage("[Archive] Failed to save \(archiveFilename): \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Staged add-on applicator
+
+    func applyStagedAddOn(
+        _ addOn: WizardStagedAddOn,
+        to addOnDir: URL,
+        serverConfig: ConfigServer,
+        label: String
+    ) async {
+        let fm = FileManager.default
+        switch addOn.source {
+        case .modrinthDownload(_, let version):
+            let dest = addOnDir.appendingPathComponent(addOn.filename)
+            do {
+                try await ModrinthAPI.downloadVersionFile(version, to: dest)
+                noteCreation("\(label) Installed \(addOn.name).")
+            } catch {
+                noteCreation("\(label) Failed to download \(addOn.name): \(error.localizedDescription)")
+            }
+
+        case .localJar(let url):
+            let dest = addOnDir.appendingPathComponent(addOn.filename)
+            do {
+                try fm.copyItem(at: url, to: dest)
+                noteCreation("\(label) Copied \(addOn.name).")
+            } catch {
+                noteCreation("\(label) Failed to copy \(addOn.name): \(error.localizedDescription)")
+            }
+
+        case .remoteJar(let url, _):
+            let dest = addOnDir.appendingPathComponent(addOn.filename)
+            do {
+                let (data, _) = try await MSCHTTP.get(url)
+                try data.write(to: dest, options: [.atomic])
+                noteCreation("\(label) Downloaded \(addOn.name).")
+            } catch {
+                noteCreation("\(label) Failed to fetch \(addOn.name): \(error.localizedDescription)")
+            }
+
+        case .mrpackFile(let url):
+            noteCreation("\(label) Importing modpack \(addOn.filename)…")
+            await importModpack(from: url, for: serverConfig)
+
+        case .zipFolder(let url):
+            let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("MSC-zip-\(UUID().uuidString)", isDirectory: true)
+            defer { try? fm.removeItem(at: tmpDir) }
+            do { try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true) } catch { return }
+            let unzip = Process()
+            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+            unzip.arguments = ["-q", url.path, "-d", tmpDir.path]
+            try? unzip.run(); unzip.waitUntilExit()
+            if let items = try? fm.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: nil,
+                                                        options: .skipsSubdirectoryDescendants) {
+                for item in items where item.pathExtension.lowercased() == "jar" {
+                    let dest = addOnDir.appendingPathComponent(item.lastPathComponent)
+                    try? fm.copyItem(at: item, to: dest)
+                    noteCreation("\(label) Copied \(item.lastPathComponent) from zip.")
+                }
+            }
+        }
     }
 }

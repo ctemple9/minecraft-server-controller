@@ -12,6 +12,24 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+
+// MARK: - Staged add-on types
+
+enum WizardStagedSource {
+    case modrinthDownload(hit: ModrinthSearchHit, version: ModrinthVersionInfo)
+    case localJar(url: URL)
+    case remoteJar(url: URL, filename: String)
+    case mrpackFile(url: URL)
+    case zipFolder(url: URL)
+}
+
+struct WizardStagedAddOn: Identifiable {
+    let id = UUID()
+    let name: String
+    let filename: String
+    let source: WizardStagedSource
+}
+
 // MARK: - Wizard path
 
 enum AddServerWizardPath {
@@ -55,6 +73,38 @@ struct AddServerWizardView: View {
     @State private var jarSourceMode: FreshJarSourceMode = .downloadLatest
     @State private var selectedTemplateId: String? = nil
 
+    // Version picker
+    @State private var selectedVersionEntry: ServerVersionEntry? = nil
+    @State private var isShowingVersionPicker = false
+    @State private var availableVersions: [ServerVersionEntry] = []
+    @State private var isLoadingVersions = false
+
+    // Staged add-ons
+    @State private var stagedAddOns: [WizardStagedAddOn] = []
+    @State private var isShowingAddOnBrowser = false
+
+    // Fresh — Java server software (M1: category + flavor selection)
+    @State private var selectedCategory: JavaServerCategory = .standard
+    @State private var selectedFlavor: JavaServerFlavor = .paper
+
+    /// Flavors whose provisioning is implemented today. Grows as M2–M4 land
+    /// (M2: Standard forks · M3: Fabric · M4: NeoForge). Others show "Soon".
+    private let implementedFlavors: Set<JavaServerFlavor> = [.paper, .purpur, .vanilla, .fabric, .neoforge, .forge]
+
+    /// Cross-play is unavailable for Modded (Bedrock can't load Java mods) and
+    /// for Vanilla (no plugin API to host Geyser).
+    private var crossPlayUnavailable: Bool {
+        selectedCategory == .modded || selectedFlavor == .vanilla
+    }
+
+    // True when the wizard should insert an Add-ons step between World and Confirm.
+    private var hasAddOnsStep: Bool {
+        wizardPath == .fresh && serverType == .java && selectedFlavor.addOnKind != nil
+    }
+    private var totalSteps: Int    { hasAddOnsStep ? 6 : 5 }
+    private var confirmStepNum: Int { hasAddOnsStep ? 6 : 5 }
+    private var addOnsNoun: String  { selectedFlavor.addOnKind?.displayName ?? "Add-ons" }
+
     // Fresh — Bedrock
     @State private var bedrockDockerImage: String = "itzg/minecraft-bedrock-server"
     @State private var bedrockVersion: String    = "LATEST"
@@ -79,6 +129,7 @@ struct AddServerWizardView: View {
     @State private var displayName: String       = ""
     @State private var isCreating: Bool          = false
     @State private var statusMessage: String     = ""
+    @State private var createSucceeded: Bool     = false
 
     // MARK: Enums
 
@@ -126,11 +177,14 @@ struct AddServerWizardView: View {
             .onboardingAnchor(.wizardBodyArea)
         }
         .frame(minWidth: 640, minHeight: 520)
+        .onboardingAnchor(.wizardSheetArea)
         .overlay {
             OnboardingOverlayView(
                 ownedSteps: [.wizardChoosePath, .serverName, .serverType,
+                             .serverCategory, .serverFlavor, .serverVersion, .serverCrossplay,
                              .serverSettings, .serverConnectivity, .serverConnectivityPorts,
-                             .serverNetworkContinue, .firstWorld, .firstWorldFill, .createButton]
+                             .serverNetworkContinue, .firstWorld,
+                             .serverAddOns, .createButton]
             )
         }
         .onAppear {
@@ -149,15 +203,63 @@ struct AddServerWizardView: View {
                 runtimeContext: networkStepPortForwardContext
             )
         }
+        .sheet(isPresented: $isShowingVersionPicker) {
+            VersionPickerSheet(
+                versions: availableVersions,
+                selectedEntry: $selectedVersionEntry,
+                isPresented: $isShowingVersionPicker
+            )
+        }
+        .sheet(isPresented: $isShowingAddOnBrowser) {
+            ModrinthBrowserView(
+                serverConfig: wizardStagingConfig,
+                onAddToStaging: { hit, version in
+                    let entry = WizardStagedAddOn(
+                        name: hit.title,
+                        filename: version.primaryFile?.filename ?? "\(hit.slug).jar",
+                        source: .modrinthDownload(hit: hit, version: version)
+                    )
+                    stagedAddOns.append(entry)
+                },
+                stagingGameVersion: resolvedStagingMCVersion
+            )
+            .environmentObject(viewModel)
+        }
+    }
+
+    /// The Minecraft version add-ons should be matched against. When the user picked a
+    /// specific version, that's it. When "Latest (recommended)" is selected
+    /// (`selectedVersionEntry == nil`), fall back to the newest stable version we loaded,
+    /// so compatibility checks aren't comparing against an unknown (nil) version.
+    private var resolvedStagingMCVersion: String? {
+        if let v = selectedVersionEntry?.mcVersion, !v.isEmpty { return v }
+        return availableVersions.first(where: { $0.isStable })?.mcVersion
+            ?? availableVersions.first?.mcVersion
+    }
+
+    /// A minimal ConfigServer populated with the wizard's current flavor selection,
+    /// used only as a config carrier for ModrinthBrowserView during staging.
+    private var wizardStagingConfig: ConfigServer {
+        var cfg = ConfigServer(
+            id: "wizard-staging",
+            displayName: serverName,
+            serverDir: "",
+            paperJarPath: "",
+            minRamGB: 2,
+            maxRamGB: 4
+        )
+        cfg.javaFlavor = selectedFlavor
+        cfg.minecraftVersion = resolvedStagingMCVersion
+        return cfg
     }
 
     // MARK: - Step indicator
 
     private var stepIndicator: some View {
         HStack(spacing: 0) {
-            ForEach(1...5, id: \.self) { step in
+            ForEach(1...totalSteps, id: \.self) { step in
                 stepItemView(step: step)
-                if step < 5 {
+                if step < totalSteps {
                     Rectangle()
                         .fill(step < currentStep
                               ? Color.green.opacity(0.5)
@@ -201,13 +303,25 @@ struct AddServerWizardView: View {
 
     private func stepLabel(_ step: Int) -> String {
         if wizardPath == .fresh && currentStep > 1 {
-            switch step {
-            case 1: return "Choose path"
-            case 2: return "Configure"
-            case 3: return "Network"
-            case 4: return "World"
-            case 5: return "Confirm"
-            default: return ""
+            if hasAddOnsStep {
+                switch step {
+                case 1: return "Choose path"
+                case 2: return "Configure"
+                case 3: return "Network"
+                case 4: return "World"
+                case 5: return addOnsNoun
+                case 6: return "Confirm"
+                default: return ""
+                }
+            } else {
+                switch step {
+                case 1: return "Choose path"
+                case 2: return "Configure"
+                case 3: return "Network"
+                case 4: return "World"
+                case 5: return "Confirm"
+                default: return ""
+                }
             }
         }
         switch step {
@@ -238,6 +352,8 @@ struct AddServerWizardView: View {
             step3Network
         } else if currentStep == 4 && wizardPath == .fresh {
             step4FreshWorld
+        } else if currentStep == 5 && hasAddOnsStep {
+            step5AddOns
         } else {
             step5Confirm
         }
@@ -570,39 +686,133 @@ struct AddServerWizardView: View {
 
     private var javaFreshSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                Text("Paper Source")
-                    .font(MSC.Typography.sectionHeader)
-                Picker("Paper Source", selection: $jarSourceMode) {
-                    ForEach(FreshJarSourceMode.allCases) { m in
-                        Text(m.rawValue).tag(m)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
 
-            if jarSourceMode == .template {
-                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                    Text("Choose Template")
-                        .font(.subheadline)
-                    List(selection: $selectedTemplateId) {
-                        if viewModel.paperTemplateItems.isEmpty {
-                            Text("No templates found. Add some in the Templates menu.")
-                                .foregroundStyle(.secondary)
-                        } else {
-                            ForEach(viewModel.paperTemplateItems) { item in
-                                Text(item.filename).tag(item.id)
-                            }
+            // Server Software — Level 1: category (Standard vs Modded)
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                Text("Server Software")
+                    .font(MSC.Typography.sectionHeader)
+                HStack(spacing: MSC.Spacing.md) {
+                    ForEach(JavaServerCategory.allCases, id: \.self) { cat in
+                        WizardServerTypeCard(
+                            title: cat.displayName,
+                            subtitle: cat.subtitle,
+                            systemImage: cat == .standard ? "bolt.fill" : "cube.fill",
+                            isSelected: selectedCategory == cat
+                        ) {
+                            selectCategory(cat)
                         }
                     }
-                    .frame(height: 110)
-                    .onAppear { viewModel.loadPaperTemplates() }
                 }
             }
+            .onboardingAnchor(.serverCategoryArea)
 
+            // Server Software — Level 2: specific flavor
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                Toggle("Enable Bedrock cross-play (Geyser + Floodgate)", isOn: $enableCrossPlay)
+                ForEach(JavaServerFlavor.createFlowChoices(in: selectedCategory), id: \.self) { flavor in
+                    WizardFlavorCard(
+                        flavor: flavor,
+                        isSelected: selectedFlavor == flavor,
+                        isAvailable: implementedFlavors.contains(flavor)
+                    ) {
+                        if implementedFlavors.contains(flavor) {
+                            selectedFlavor = flavor
+                            OnboardingManager.shared.tourFlavor = flavor
+                            if flavor == .vanilla { enableCrossPlay = false }
+                        }
+                    }
+                }
+            }
+            .onboardingAnchor(.serverFlavorArea)
+
+            // Source
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                Text("Source")
+                    .font(MSC.Typography.sectionHeader)
+                HStack(spacing: MSC.Spacing.md) {
+                    sourceChip(title: "Download latest", isSelected: selectedVersionEntry == nil, isAvailable: true) {
+                        selectedVersionEntry = nil
+                    }
+                    Button {
+                        if availableVersions.isEmpty && !isLoadingVersions {
+                            isLoadingVersions = true
+                            Task {
+                                let versions = (try? await ServerJarProvider.listVersions(for: selectedFlavor)) ?? []
+                                await MainActor.run {
+                                    availableVersions = versions
+                                    isLoadingVersions = false
+                                    isShowingVersionPicker = true
+                                }
+                            }
+                        } else {
+                            isShowingVersionPicker = true
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isLoadingVersions {
+                                ProgressView().controlSize(.mini)
+                            }
+                            Text(selectedVersionEntry.map { $0.displayLabel } ?? "Choose version\u{2026}")
+                                .font(.subheadline)
+                                .foregroundStyle(selectedVersionEntry != nil ? Color.accentColor : .primary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, MSC.Spacing.sm)
+                        .background(
+                            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                                .fill(selectedVersionEntry != nil ? Color.accentColor.opacity(0.08) : Color(NSColor.controlBackgroundColor))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                                .stroke(selectedVersionEntry != nil ? Color.accentColor : Color(NSColor.separatorColor),
+                                        lineWidth: selectedVersionEntry != nil ? 1.5 : 0.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                if let sv = selectedVersionEntry {
+                    Text("Pinned: \(sv.displayLabel)")
+                        .font(.caption).foregroundStyle(Color.accentColor)
+                }
+            }
+            .onboardingAnchor(.serverSourceArea)
+            .onChange(of: selectedFlavor) { _, _ in
+                selectedVersionEntry = nil
+                availableVersions = []
+            }
+
+            crossPlaySection
+                .onboardingAnchor(.serverCrossplayArea)
+        }
+    }
+
+    private var crossPlaySection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            Text("Crossplay")
+                .font(MSC.Typography.sectionHeader)
+
+            HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                Image(systemName: "cube.fill")
+                    .font(.title3)
+                    .foregroundStyle(enableCrossPlay && !crossPlayUnavailable ? Color.accentColor : .secondary)
+                    .frame(width: 26)
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Enable Bedrock Cross-play")
+                        .font(MSC.Typography.sectionHeader)
+                        .foregroundStyle(crossPlayUnavailable ? .secondary : .primary)
+                    Text("Geyser and Floodgate are plugins that let Bedrock players (console, mobile, Windows) join your Java server. Enable here rather than adding them through the plugin browser.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Toggle("", isOn: $enableCrossPlay)
                     .toggleStyle(.switch)
+                    .labelsHidden()
+                    .disabled(crossPlayUnavailable)
                     .onChange(of: enableCrossPlay) { _, enabled in
                         if enabled && !crossPlayJarsPresent() {
                             Task { await downloadCrossPlayIfNeeded() }
@@ -610,22 +820,83 @@ struct AddServerWizardView: View {
                             crossPlayDownloadStatus = nil
                         }
                     }
+            }
+            .padding(MSC.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .fill(enableCrossPlay && !crossPlayUnavailable
+                          ? Color.accentColor.opacity(0.08)
+                          : Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(enableCrossPlay && !crossPlayUnavailable
+                            ? Color.accentColor : Color(NSColor.separatorColor),
+                            lineWidth: enableCrossPlay && !crossPlayUnavailable ? 1.5 : 0.5)
+            )
+            .opacity(crossPlayUnavailable ? 0.55 : 1.0)
 
-                if isDownloadingCrossPlay {
-                    HStack(spacing: 6) {
-                        ProgressView().controlSize(.small)
-                        Text("Downloading Geyser & Floodgate…")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                } else if let status = crossPlayDownloadStatus {
-                    Text(status).font(.caption)
-                        .foregroundStyle(status.contains("Failed") ? .red : .green)
-                } else {
-                    Text("Port and connectivity options are on the next step.")
+            if selectedCategory == .modded {
+                Text("Bedrock players can't join modded Java servers — cross-play is unavailable.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if selectedFlavor == .vanilla {
+                Text("Vanilla servers have no plugin API, so Geyser can't run — cross-play is unavailable.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if isDownloadingCrossPlay {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Downloading Geyser & Floodgate…")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+            } else if let status = crossPlayDownloadStatus {
+                Text(status).font(.caption)
+                    .foregroundStyle(status.contains("Failed") ? .red : .green)
             }
         }
+    }
+
+    /// Selecting a category defaults the flavor to that category's recommended
+    /// (preferring an implemented one) and clears cross-play for Modded.
+    private func selectCategory(_ cat: JavaServerCategory) {
+        selectedCategory = cat
+        let choices = JavaServerFlavor.createFlowChoices(in: cat)
+        selectedFlavor = choices.first(where: { implementedFlavors.contains($0) }) ?? choices.first ?? .paper
+        if cat == .modded { enableCrossPlay = false }
+        OnboardingManager.shared.tourServerType = .java
+        OnboardingManager.shared.tourFlavor = selectedFlavor
+    }
+
+    /// A small bordered chip for the Source row. Mirrors WizardServerTypeCard styling.
+    @ViewBuilder
+    private func sourceChip(title: String, isSelected: Bool, isAvailable: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: { if isAvailable { action() } }) {
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(isSelected ? Color.accentColor : (isAvailable ? .primary : .secondary))
+                if !isAvailable {
+                    Text("SOON")
+                        .font(.system(size: 8.5, weight: .semibold)).tracking(0.5)
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, MSC.Spacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.08) : Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor : Color(NSColor.separatorColor),
+                            lineWidth: isSelected ? 1.5 : 0.5)
+            )
+            .opacity(isAvailable ? 1 : 0.6)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isAvailable)
     }
 
     private var bedrockFreshSection: some View {
@@ -679,11 +950,8 @@ struct AddServerWizardView: View {
                     isSelected: !enablePlayit
                 ) {
                     enablePlayit = false
-                    // Advance tour from connectivity cards step to ports step
-                    if OnboardingManager.shared.isActive,
-                       OnboardingManager.shared.currentStep == .serverConnectivity {
-                        OnboardingManager.shared.advance()
-                    }
+                    // Tour advances only via the coach mark's Next button, so the user can
+                    // toggle between connectivity options freely.
                 }
 
                 WizardPathCard(
@@ -693,10 +961,7 @@ struct AddServerWizardView: View {
                     isSelected: enablePlayit
                 ) {
                     enablePlayit = true
-                    if OnboardingManager.shared.isActive,
-                       OnboardingManager.shared.currentStep == .serverConnectivity {
-                        OnboardingManager.shared.advance()
-                    }
+                    // Tour advances only via the coach mark's Next button.
                 }
             }
             .onboardingAnchor(.serverConnectivityArea)
@@ -957,9 +1222,222 @@ struct AddServerWizardView: View {
         }
     }
 
-    // MARK: - Step 5: Confirm
+    // MARK: - Step 5: Add-ons (only when hasAddOnsStep)
+
+    private var step5AddOns: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stagedAddOns.isEmpty ? "Add \(addOnsNoun)" : "\(addOnsNoun) (\(stagedAddOns.count))")
+                        .font(MSC.Typography.pageTitle)
+                    Text(stagedAddOns.isEmpty
+                         ? "Browse Modrinth or import from a file. You can also skip this and add \(addOnsNoun.lowercased()) after the server is created."
+                         : "These will be installed after the server folder is created. You can add more or remove any below.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                // Add/import controls live beside the title once items are staged,
+                // so we don't repeat the section name in a second header below.
+                if !stagedAddOns.isEmpty {
+                    HStack(spacing: MSC.Spacing.sm) {
+                        Button { importModpack() } label: {
+                            Image(systemName: "folder")
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                        .help("Import \(addOnsNoun.lowercased()) from a file")
+
+                        Button { isShowingAddOnBrowser = true } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                Text("Add")
+                            }
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                        .help("Search Modrinth")
+                    }
+                    .padding(.top, 2)
+                }
+            }
+
+            if stagedAddOns.isEmpty {
+                // Two action tiles
+                HStack(spacing: MSC.Spacing.md) {
+                    WizardPathCard(
+                        title: "Browse Modrinth",
+                        subtitle: "Search and add \(addOnsNoun.lowercased()) by name or keyword.",
+                        systemImage: "magnifyingglass",
+                        isSelected: false
+                    ) { isShowingAddOnBrowser = true }
+
+                    WizardPathCard(
+                        title: selectedFlavor.addOnKind == .mod ? "Import Modpack" : "Import \(addOnsNoun)",
+                        subtitle: selectedFlavor.addOnKind == .mod
+                            ? "Import a .mrpack, .zip, or folder of .jar files."
+                            : "Import a .zip or folder of .jar plugin files.",
+                        systemImage: "folder",
+                        isSelected: false
+                    ) { importModpack() }
+                }
+            } else {
+                // Staged list — add/import controls sit next to the page title above.
+                VStack(spacing: 0) {
+                    ForEach(stagedAddOns) { addOn in
+                        addOnRow(addOn)
+                        if addOn.id != stagedAddOns.last?.id {
+                            Divider().padding(.leading, 52)
+                        }
+                    }
+                }
+                .pscCard(padding: 0)
+            }
+        }
+        .task {
+            // Ensure we know the latest MC version so add-on compatibility checks work even
+            // if the user never opened the version picker (i.e. left "Latest" selected).
+            if availableVersions.isEmpty && !isLoadingVersions {
+                isLoadingVersions = true
+                let versions = (try? await ServerJarProvider.listVersions(for: selectedFlavor)) ?? []
+                await MainActor.run {
+                    availableVersions = versions
+                    isLoadingVersions = false
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func addOnRow(_ addOn: WizardStagedAddOn) -> some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            // Icon: async from Modrinth if available, else generic
+            Group {
+                if case .modrinthDownload(let hit, _) = addOn.source, let iconStr = hit.iconUrl, let iconURL = URL(string: iconStr) {
+                    AsyncImage(url: iconURL) { img in
+                        img.resizable().scaledToFit()
+                    } placeholder: {
+                        Image(systemName: selectedFlavor.addOnKind == .plugin ? "puzzlepiece.fill" : "shippingbox.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Image(systemName: selectedFlavor.addOnKind == .plugin ? "puzzlepiece.fill" : "shippingbox.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 32, height: 32)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(addOn.name)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                if case .modrinthDownload(let hit, _) = addOn.source {
+                    Text(hit.description)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                } else {
+                    Text(addOn.filename)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                stagedAddOns.removeAll { $0.id == addOn.id }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(Color.secondary.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, MSC.Spacing.sm)
+        .padding(.horizontal, MSC.Spacing.md)
+    }
+
+    // MARK: - Step 5/6: Confirm
 
     private var step5Confirm: some View {
+        Group {
+            if createSucceeded {
+                createSuccessView
+            } else {
+                confirmFormView
+            }
+        }
+    }
+
+    private var createSuccessView: some View {
+        VStack(spacing: MSC.Spacing.lg) {
+            Spacer()
+            VStack(spacing: MSC.Spacing.md) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 52))
+                    .foregroundStyle(MSC.Colors.success)
+                Text("\(displayName) created!")
+                    .font(.system(size: 20, weight: .semibold))
+                Text(postCreateHint)
+                    .font(.system(size: 13))
+                    .foregroundStyle(MSC.Colors.caption)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 400)
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var installerLogView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("Installing \(selectedFlavor.displayName) — this can take several minutes…")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: 1) {
+                        ForEach(Array(viewModel.creationLogLines.enumerated()), id: \.offset) { idx, line in
+                            Text(line)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(MSC.Colors.caption)
+                                .textSelection(.enabled)
+                                .id(idx)
+                        }
+                    }
+                    .padding(6)
+                }
+                .frame(height: 100)
+                .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.08)))
+                .onChange(of: viewModel.creationLogLines.count) { _ in
+                    if let last = viewModel.creationLogLines.indices.last {
+                        proxy.scrollTo(last, anchor: .bottom)
+                    }
+                }
+            }
+        }
+    }
+
+    private var postCreateHint: String {
+        if selectedFlavor.category == .modded {
+            return "Add mods in the Components tab before starting — world-gen mods must be present on first boot."
+        }
+        if selectedFlavor == .vanilla {
+            return "Open Server Settings to review defaults, then press Start when you're ready."
+        }
+        return "Open Server Settings to review defaults. Install plugins from the Components tab any time."
+    }
+
+    private var confirmFormView: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Name and confirm")
@@ -1004,6 +1482,10 @@ struct AddServerWizardView: View {
                     } else {
                         infoRow(key: "Method",       value: "Start fresh")
                         infoRow(key: "Server type",  value: serverType.displayName)
+                        if serverType == .java {
+                            infoRow(key: "Software", value: "\(selectedFlavor.displayName) · \(selectedCategory.displayName)")
+                            infoRow(key: "Version",  value: selectedVersionEntry.map { $0.displayLabel } ?? "Latest \(selectedFlavor.displayName)")
+                        }
                         infoRow(key: "Port",         value: serverType == .java ? javaPort : bedrockPort)
                         infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
                         infoRow(key: "World source",  value: worldSourceMode.rawValue)
@@ -1015,13 +1497,28 @@ struct AddServerWizardView: View {
                     }
                 }
                 .pscCard(padding: MSC.Spacing.sm)
+
+                if wizardPath == .fresh && serverType == .java && selectedCategory == .modded {
+                    Label {
+                        Text("To join, every player needs the \(selectedFlavor.displayName) loader for this Minecraft version, plus the same mods installed.")
+                    } icon: {
+                        Image(systemName: "person.2.fill")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             if isCreating {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(statusMessage.isEmpty ? "Working…" : statusMessage)
-                        .font(.caption).foregroundStyle(.secondary)
+                if selectedFlavor.provisioningKind == .installStep && !viewModel.creationLogLines.isEmpty {
+                    installerLogView
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text(statusMessage.isEmpty ? "Working…" : statusMessage)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } else if !statusMessage.isEmpty {
                 Text(statusMessage)
@@ -1034,7 +1531,7 @@ struct AddServerWizardView: View {
             }
         }
         .onboardingAnchor(.confirmPageArea)
-    }
+    }  // end confirmFormView
 
     // MARK: - Footer
 
@@ -1042,7 +1539,7 @@ struct AddServerWizardView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: MSC.Spacing.sm) {
-                if currentStep > 1 {
+                if !createSucceeded && currentStep > 1 {
                     Button("Back") {
                         withAnimation(.easeInOut(duration: 0.18)) { currentStep -= 1 }
                     }
@@ -1052,7 +1549,10 @@ struct AddServerWizardView: View {
 
                 Spacer()
 
-                if currentStep == 5 {
+                if createSucceeded {
+                    Button("Done") { isPresented = false }
+                        .buttonStyle(MSCPrimaryButtonStyle())
+                } else if currentStep == confirmStepNum {
                     Button("Create Server") { beginCreate() }
                         .buttonStyle(MSCPrimaryButtonStyle())
                         .disabled(!canCreate || isCreating)
@@ -1082,7 +1582,7 @@ struct AddServerWizardView: View {
             } else {
                 let nameOk = !serverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 if serverType == .java {
-                    return nameOk && (jarSourceMode != .template || selectedTemplateId != nil)
+                    return nameOk && implementedFlavors.contains(selectedFlavor)
                 } else {
                     return nameOk
                         && !bedrockDockerImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -1097,15 +1597,16 @@ struct AddServerWizardView: View {
         case 4:
             // Network step (Import) or World step (Fresh)
             if wizardPath == .importExisting {
-                // Validate the import port
                 return Int(importPort) != nil
             }
-            // Fresh world step
             switch worldSourceMode {
             case .fresh:     return true
             case .backupZip: return selectedBackupURL != nil
             case .folder:    return selectedWorldFolderURL != nil
             }
+        case 5:
+            // Add-ons step — always skippable
+            return hasAddOnsStep
         default:
             return false
         }
@@ -1137,9 +1638,9 @@ struct AddServerWizardView: View {
         switch currentStep {
         case 2 where wizardPath == .fresh:
             if tourStep == .wizardChoosePath {
-                OnboardingManager.shared.advance()    // → .serverName
-            } else if tourStep.rawValue < OnboardingStep.serverName.rawValue {
-                OnboardingManager.shared.jumpTo(.serverName)
+                OnboardingManager.shared.advance()    // → .serverType (first Configure step)
+            } else if tourStep.rawValue < OnboardingStep.serverType.rawValue {
+                OnboardingManager.shared.jumpTo(.serverType)
             }
         case 3 where wizardPath == .fresh:
             // Entered Network page — advance from serverSettings to serverConnectivity
@@ -1155,10 +1656,19 @@ struct AddServerWizardView: View {
             } else if tourStep.rawValue < OnboardingStep.firstWorld.rawValue {
                 OnboardingManager.shared.jumpTo(.firstWorld)
             }
-        case 5:
-            // Entered Confirm page — jump to createButton regardless of which world sub-step we're on
-            if tourStep == .firstWorldFill {
-                OnboardingManager.shared.advance()    // 11 → 12 (.createButton)
+        case 5 where hasAddOnsStep:
+            // Entered the Add-ons (Plugins/Mods) page — advance from the world step.
+            if tourStep == .firstWorld {
+                OnboardingManager.shared.advance()    // → .serverAddOns
+            } else if tourStep.rawValue < OnboardingStep.serverAddOns.rawValue {
+                OnboardingManager.shared.jumpTo(.serverAddOns)
+            }
+        case 5, 6:
+            // Entered the Confirm page (page 5 when there's no add-ons step, page 6 with it).
+            // advance() is skip-aware, so from .firstWorld it hops over the inapplicable
+            // .serverAddOns step straight to .createButton when no add-ons step exists.
+            if tourStep == .firstWorld || tourStep == .serverAddOns {
+                OnboardingManager.shared.advance()    // → .createButton
             } else if tourStep.rawValue < OnboardingStep.createButton.rawValue {
                 OnboardingManager.shared.jumpTo(.createButton)
             }
@@ -1226,7 +1736,7 @@ struct AddServerWizardView: View {
 
             if serverType == .java {
                 statusMessage = jarSourceMode == .downloadLatest
-                    ? "Downloading latest Paper and creating server…"
+                    ? "Downloading latest \(selectedFlavor.displayName) and creating server…"
                     : "Creating server…"
 
                 let jarSource: CreateServerJarSource
@@ -1246,6 +1756,9 @@ struct AddServerWizardView: View {
                         name: name,
                         initialWorldName: worldNameOpt,
                         jarSource: jarSource,
+                        flavor: selectedFlavor,
+                        specificVersion: selectedVersionEntry,
+                        stagedAddOns: stagedAddOns,
                         port: port,
                         enableCrossPlay: enableCrossPlay,
                         crossPlayBedrockPort: crossPort,
@@ -1257,8 +1770,11 @@ struct AddServerWizardView: View {
                     )
                     await MainActor.run {
                         isCreating = false
-                        if ok { isPresented = false }
-                        else  { statusMessage = "Failed to create server." }
+                        if ok { createSucceeded = true }
+                        else {
+                            statusMessage = viewModel.lastServerCreateError.map { "Failed to create server: \($0)" }
+                                ?? "Failed to create server."
+                        }
                     }
                 }
 
@@ -1470,6 +1986,60 @@ struct AddServerWizardView: View {
                 .frame(height: 0.5)
         }
     }
+
+    // MARK: - Modpack import
+
+    private func importModpack() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Modpack"
+        panel.prompt = "Import"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "mrpack") ?? .zip,
+            .zip,
+        ]
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            Task { await processModpackURL(url) }
+        }
+    }
+
+    @MainActor
+    private func processModpackURL(_ url: URL) async {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        fm.fileExists(atPath: url.path, isDirectory: &isDir)
+
+        let ext = url.pathExtension.lowercased()
+        if ext == "mrpack" {
+            // Stage the whole .mrpack file; it will be imported via importModpack at creation time.
+            stagedAddOns.append(WizardStagedAddOn(
+                name: "Modpack: \(url.deletingPathExtension().lastPathComponent)",
+                filename: url.lastPathComponent,
+                source: .mrpackFile(url: url)
+            ))
+        } else if isDir.boolValue {
+            // Folder: scan for .jar files directly.
+            if let items = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) {
+                for item in items where item.pathExtension.lowercased() == "jar" {
+                    stagedAddOns.append(WizardStagedAddOn(
+                        name: item.deletingPathExtension().lastPathComponent,
+                        filename: item.lastPathComponent,
+                        source: .localJar(url: item)
+                    ))
+                }
+            }
+        } else if ext == "zip" {
+            // Zip with JARs — staged for extraction at creation time.
+            stagedAddOns.append(WizardStagedAddOn(
+                name: "Zip: \(url.deletingPathExtension().lastPathComponent)",
+                filename: url.lastPathComponent,
+                source: .zipFolder(url: url)
+            ))
+        }
+    }
 }
 
 // MARK: - WizardPathCard
@@ -1529,6 +2099,73 @@ private struct WizardPathCard: View {
 
 // MARK: - WizardServerTypeCard
 
+/// Level-2 selection card for a specific Java server flavor (Paper, Purpur, …).
+/// Shows a "Recommended" badge for the category default and a "Soon" badge plus
+/// a disabled/dimmed state for flavors whose provisioning isn't built yet.
+private struct WizardFlavorCard: View {
+    let flavor: JavaServerFlavor
+    let isSelected: Bool
+    let isAvailable: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: MSC.Spacing.sm) {
+                Image(systemName: flavor.iconName)
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    .frame(width: 26)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(flavor.displayName)
+                            .font(MSC.Typography.sectionHeader)
+                            .foregroundStyle(isSelected ? Color.accentColor : (isAvailable ? .primary : .secondary))
+                        if flavor.isRecommended { badge("Recommended", color: .accentColor) }
+                        if !isAvailable { badge("Soon", color: .secondary) }
+                    }
+                    Text(flavor.shortDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .padding(MSC.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .fill(isSelected
+                          ? Color.accentColor.opacity(0.08)
+                          : Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor : Color(NSColor.separatorColor),
+                            lineWidth: isSelected ? 1.5 : 0.5)
+            )
+            .opacity(isAvailable ? 1 : 0.6)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .disabled(!isAvailable)
+    }
+
+    @ViewBuilder
+    private func badge(_ text: String, color: Color) -> some View {
+        Text(text.uppercased())
+            .font(.system(size: 8.5, weight: .semibold))
+            .tracking(0.5)
+            .padding(.horizontal, 5).padding(.vertical, 2)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .foregroundStyle(color)
+    }
+}
+
 private struct WizardServerTypeCard: View {
     let title: String
     let subtitle: String
@@ -1577,5 +2214,135 @@ private struct WizardServerTypeCard: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - VersionPickerSheet
+
+struct VersionPickerSheet: View {
+    let versions: [ServerVersionEntry]
+    @Binding var selectedEntry: ServerVersionEntry?
+    @Binding var isPresented: Bool
+
+    @State private var tab: VersionTab = .stable
+
+    enum VersionTab: String, CaseIterable, Identifiable {
+        case stable = "Stable"
+        case experimental = "Experimental"
+        var id: String { rawValue }
+    }
+
+    private var hasExperimental: Bool { versions.contains(where: { !$0.isStable }) }
+    private var visibleVersions: [ServerVersionEntry] {
+        switch tab {
+        case .stable:       return versions.filter { $0.isStable }
+        case .experimental: return versions.filter { !$0.isStable }
+        }
+    }
+
+    // "Latest (recommended)" row with actual version+build info from the first stable entry.
+    private var latestEntry: ServerVersionEntry {
+        let first = versions.first(where: { $0.isStable }) ?? versions.first
+        guard let first else { return ServerVersionEntry.latest }
+        var label = first.mcVersion
+        if let bl = first.buildLabel { label += " · \(bl)" }
+        return ServerVersionEntry(id: "__latest__", displayLabel: "Latest (recommended)",
+                                  mcVersion: first.mcVersion, loaderVersion: first.loaderVersion,
+                                  buildLabel: label, isStable: true)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            MSCSheetHeader("Choose Version") { isPresented = false }
+                .padding(.horizontal, MSC.Spacing.xl)
+                .padding(.top, MSC.Spacing.xl)
+
+            if hasExperimental {
+                Picker("", selection: $tab) {
+                    ForEach(VersionTab.allCases) { t in Text(t.rawValue).tag(t) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, MSC.Spacing.xl)
+                .padding(.vertical, MSC.Spacing.sm)
+            }
+
+            Divider()
+
+            if versions.isEmpty {
+                VStack(spacing: MSC.Spacing.md) {
+                    ProgressView()
+                    Text("Loading versions…")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        if tab == .stable {
+                            versionRow(latestEntry)
+                            Divider()
+                        }
+                        ForEach(visibleVersions) { entry in
+                            versionRow(entry)
+                            if entry.id != visibleVersions.last?.id {
+                                Divider().padding(.leading, MSC.Spacing.xl)
+                            }
+                        }
+                    }
+                    .padding(.vertical, MSC.Spacing.sm)
+                }
+            }
+
+            Divider()
+            HStack {
+                Spacer()
+                Button("Done") { isPresented = false }
+                    .buttonStyle(MSCPrimaryButtonStyle())
+            }
+            .padding(.horizontal, MSC.Spacing.xl)
+            .padding(.vertical, MSC.Spacing.lg)
+        }
+        .frame(width: 420, height: 520)
+    }
+
+    @ViewBuilder
+    private func versionRow(_ entry: ServerVersionEntry) -> some View {
+        let isSelected = entry == selectedEntry || (entry.isLatest && selectedEntry == nil)
+        Button {
+            selectedEntry = entry.isLatest ? nil : entry
+            isPresented = false
+        } label: {
+            HStack(spacing: MSC.Spacing.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(entry.displayLabel)
+                            .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                        if entry.isLatest {
+                            Text("RECOMMENDED")
+                                .font(.system(size: 8.5, weight: .semibold)).tracking(0.5)
+                                .padding(.horizontal, 5).padding(.vertical, 2)
+                                .background(Capsule().fill(Color.green.opacity(0.15)))
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    if let bl = entry.buildLabel {
+                        Text(bl)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .padding(.vertical, MSC.Spacing.sm)
+            .padding(.horizontal, MSC.Spacing.xl)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(isSelected ? Color.accentColor.opacity(0.06) : Color.clear)
     }
 }

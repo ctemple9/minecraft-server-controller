@@ -1372,9 +1372,16 @@ enum WorldSlotManager {
 
         do {
             try process.run()
+            // Drain the pipe BEFORE waiting. gunzip/unzip output for large worlds
+            // (Forge level.dat carries mod registries/datapack data) can exceed the
+            // OS pipe buffer (~64KB). Waiting first makes the child block on write()
+            // while we block on waitUntilExit() → deadlock (permanent beachball).
+            // Reading to EOF first lets the child finish writing; EOF arrives when it
+            // exits. Mirrors the fix already documented in JavaProcessScanner.swift.
+            let data = out.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
             guard process.terminationStatus == 0 else { return nil }
-            return out.fileHandleForReading.readDataToEndOfFile()
+            return data
         } catch {
             return nil
         }

@@ -426,106 +426,18 @@ struct PlayerAvatarView: View {
         return image
     }
 
-    /// Bedrock path:
-    /// 1. Resolve the prefixed Bedrock name through Geyser's utility endpoint.
-    /// 2. Use the returned Floodgate UUID with MCHeads, which supports Floodgate UUIDs.
-    /// 3. Fall back to the direct dotted-gamertag render if resolution is unavailable.
+    /// Bedrock path: delegate to the shared resolver so the sidebar avatar behaves
+    /// identically to the player-profile head/body — join-cache, then live Xbox
+    /// lookup (with the underscore→space retry), then dotted-gamertag fallback.
     private func fetchBedrockImage(gamertag: String) async throws -> NSImage {
         let trimmed = gamertag.trimmingCharacters(in: .whitespacesAndNewlines)
         let dottedGamertag = trimmed.hasPrefix(".") ? trimmed : ".\(trimmed)"
 
-        if let resolvedImage = try await fetchBedrockImageViaResolvedFloodgateIdentity(dottedGamertag: dottedGamertag) {
-            return resolvedImage
-        }
-
-        return try await fetchDirectBedrockRender(dottedGamertag: dottedGamertag)
-    }
-
-    private func fetchBedrockImageViaResolvedFloodgateIdentity(dottedGamertag: String) async throws -> NSImage? {
-        let encodedName = dottedGamertag.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? dottedGamertag
-        var components = URLComponents(string: "https://api.geysermc.org/v2/utils/uuid/bedrock_or_java/\(encodedName)")
-        components?.queryItems = [
-            URLQueryItem(name: "prefix", value: ".")
-        ]
-
-        guard let url = components?.url else {
-            throw AvatarFetchError.network
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw AvatarFetchError.network
-        }
-
-        switch http.statusCode {
-        case 200:
-            let resolved = try JSONDecoder().decode(GeyserResolvedBedrockIdentity.self, from: data)
-            let identifier = resolved.id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? resolved.id
-            let renderURL = URL(string: "https://mc-heads.net/body/\(identifier)/160")!
-
-            var renderRequest = URLRequest(url: renderURL)
-            renderRequest.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-
-            let (renderData, renderResponse) = try await URLSession.shared.data(for: renderRequest)
-
-            guard let renderHTTP = renderResponse as? HTTPURLResponse else {
-                throw AvatarFetchError.network
-            }
-
-            guard renderHTTP.statusCode == 200 else {
-                return nil
-            }
-
-            guard let image = NSImage(data: renderData) else {
-                throw AvatarFetchError.imageDecode
-            }
-
-            return image
-
-        case 204, 400, 503:
-            return nil
-
-        default:
-            return nil
-        }
-    }
-
-    private func fetchDirectBedrockRender(dottedGamertag: String) async throws -> NSImage {
-        let encoded = dottedGamertag.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? dottedGamertag
-        let url = URL(string: "https://api.mcheads.org/body/\(encoded)/160")!
-
-        var request = URLRequest(url: url)
-        request.setValue("MinecraftServerController/1.0", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw AvatarFetchError.network
-        }
-
-        if http.statusCode == 404 {
+        guard let image = await BedrockSkinFetcher.fetchBody(gamertag: dottedGamertag) else {
             throw AvatarFetchError.usernameNotFound
         }
-
-        guard http.statusCode == 200 else {
-            throw AvatarFetchError.network
-        }
-
-        guard let image = NSImage(data: data) else {
-            throw AvatarFetchError.imageDecode
-        }
-
         return image
     }
-}
-
-private struct GeyserResolvedBedrockIdentity: Decodable {
-    let id: String
-    let name: String
 }
 
 // MARK: - Error types

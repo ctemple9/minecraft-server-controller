@@ -32,7 +32,16 @@ struct OnboardingOverlayView: View {
         if manager.isActive && isOwned {
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
-                    if manager.currentStep == .welcome || manager.currentStep == .done {
+                    if manager.cardHidden {
+                        // Card dismissed so the user can fill the page — no dim, full interaction.
+                        Color.clear
+                    } else if manager.currentStep.dimsSheetBehindCard {
+                        // Uniformly dim the whole sheet behind the card (no spotlight cutout).
+                        // Non-blocking so the page stays usable; the dim lifts on "Got it".
+                        Color.black.opacity(0.72)
+                            .ignoresSafeArea()
+                            .allowsHitTesting(false)
+                    } else if manager.currentStep == .welcome || manager.currentStep == .done {
                         Color.black.opacity(0.72)
                             .ignoresSafeArea()
                     } else if animatedSpotlight == .zero {
@@ -118,18 +127,9 @@ struct OnboardingOverlayView: View {
     @ViewBuilder
     private func tooltipCard(in size: CGSize) -> some View {
         let step = manager.currentStep
-        if !step.showsCard {
-            // No info card — user interacts freely; show only Skip tour.
-            if step != .dismissManage && step != .continueDetails {
-                Button("Skip tour") { manager.complete() }
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.45))
-                    .padding(.horizontal, MSC.Spacing.md)
-                    .padding(.vertical, MSC.Spacing.xs)
-                    .background(Capsule().fill(Color.white.opacity(0.08)))
-                    .buttonStyle(.plain)
-                    .position(x: size.width - 70, y: 52)
-            }
+        if manager.cardHidden {
+            // Card dismissed so the user can fill the page; offer Show tip + Skip.
+            tourControlPills(in: size, showShowTip: true)
         } else if step == .welcome || step == .done {
             fullScreenCard(step: step, in: size)
         } else {
@@ -221,9 +221,10 @@ struct OnboardingOverlayView: View {
         let cardY: CGFloat = isBottomAnchored
             ? cardEstimatedHeight / 2 + 80
             : isTallSpotlight
-                // Sit just above the footer (estimated ~70 pts from spotlight bottom),
-                // leaving content fields visible above the card.
-                ? spotlight.maxY - cardEstimatedHeight / 2 - 70
+                // Form steps (World, Mods) center on the sheet — the user reads, then taps
+                // "Got it" to hide the card and fill the page. Other full-sheet steps (Confirm)
+                // sit low so the card doesn't cover the fields they must edit.
+                ? (step.allowsCardHide ? size.height / 2 : spotlight.maxY - cardEstimatedHeight / 2 - 70)
                 : idealY
 
         let cardX: CGFloat = (isBottomAnchored || isTallSpotlight)
@@ -281,6 +282,25 @@ struct OnboardingOverlayView: View {
                         .background(Capsule().fill(manager.accentColor))
                         .buttonStyle(.plain)
                 }
+            } else if step.allowsCardHide {
+                // Form step — "Got it" hides the card so the user can fill the page;
+                // the tour resumes when they tap the wizard's Continue button.
+                HStack(spacing: 6) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(manager.accentColor)
+                    Text(step == .createButton ? "then tap Create Server when you're done" : "then tap Continue when you're done")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.55))
+                    Spacer()
+                    Button("Got it") { manager.hideCard() }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(manager.accentColor.contrastingLabel)
+                        .padding(.horizontal, MSC.Spacing.lg)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(manager.accentColor))
+                        .buttonStyle(.plain)
+                }
             } else if !step.requiresUserAction {
                 HStack {
                     Spacer()
@@ -314,15 +334,7 @@ struct OnboardingOverlayView: View {
         .position(x: cardX, y: cardY)
 
         if step != .dismissManage && step != .continueDetails {
-            // Skip button
-            Button("Skip tour") { manager.complete() }
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.45))
-                .padding(.horizontal, MSC.Spacing.md)
-                .padding(.vertical, MSC.Spacing.xs)
-                .background(Capsule().fill(Color.white.opacity(0.08)))
-                .buttonStyle(.plain)
-                .position(x: size.width - 70, y: 52)
+            tourControlPills(in: size, showShowTip: false)
         }
     }
 
@@ -336,13 +348,17 @@ struct OnboardingOverlayView: View {
         case .wizardChoosePath:      return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .serverName:            return f[OnboardingAnchorID.serverNameField.rawValue] ?? .zero
         case .serverType:            return f[OnboardingAnchorID.serverTypeSelector.rawValue] ?? .zero
+        case .serverCategory:        return f[OnboardingAnchorID.serverCategoryArea.rawValue] ?? .zero
+        case .serverFlavor:          return f[OnboardingAnchorID.serverFlavorArea.rawValue] ?? .zero
+        case .serverVersion:         return f[OnboardingAnchorID.serverSourceArea.rawValue] ?? .zero
+        case .serverCrossplay:       return f[OnboardingAnchorID.serverCrossplayArea.rawValue] ?? .zero
         case .serverSettings:          return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .serverConnectivity:      return f[OnboardingAnchorID.serverConnectivityArea.rawValue] ?? .zero
         case .serverConnectivityPorts: return f[OnboardingAnchorID.serverConnectivityPortsArea.rawValue] ?? .zero
         case .serverNetworkContinue:   return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
-        case .firstWorld:              return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
-        case .firstWorldFill:          return f[OnboardingAnchorID.wizardBodyArea.rawValue] ?? .zero
-        case .createButton:            return f[OnboardingAnchorID.wizardBodyArea.rawValue] ?? .zero
+        case .firstWorld:              return f[OnboardingAnchorID.wizardSheetArea.rawValue] ?? .zero
+        case .serverAddOns:            return f[OnboardingAnchorID.wizardSheetArea.rawValue] ?? .zero
+        case .createButton:            return f[OnboardingAnchorID.wizardSheetArea.rawValue] ?? .zero
         case .dismissManage:         return f[OnboardingAnchorID.manageServersDoneButton.rawValue] ?? .zero
         case .acceptEula:            return f[OnboardingAnchorID.acceptEulaButton.rawValue] ?? .zero
         case .startButton:           return f[OnboardingAnchorID.startButton.rawValue] ?? .zero
@@ -417,6 +433,51 @@ struct OnboardingOverlayView: View {
         }
 
         return frames[anchorID.rawValue] ?? .zero
+    }
+
+    /// Local frame of the whole wizard sheet, or .zero when this overlay isn't over the wizard.
+    private func sheetLocalFrame() -> CGRect {
+        toLocal(manager.anchorFrames[OnboardingAnchorID.wizardSheetArea.rawValue] ?? .zero)
+    }
+
+    /// Skip tour (+ optional Show tip) controls. When over the wizard sheet they align as a
+    /// neat row just left of the Done button with matching spacing; otherwise they fall back
+    /// to the window's top-right corner.
+    @ViewBuilder
+    private func tourControlPills(in size: CGSize, showShowTip: Bool) -> some View {
+        let sheet = sheetLocalFrame()
+        let pills = HStack(spacing: MSC.Spacing.sm) {
+            if showShowTip {
+                Button("Show tip") { manager.showCard() }
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(manager.accentColor.contrastingLabel)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.vertical, MSC.Spacing.xs)
+                    .background(Capsule().fill(manager.accentColor))
+                    .buttonStyle(.plain)
+            }
+            Button("Skip tour") { manager.complete() }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.55))
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.vertical, MSC.Spacing.xs)
+                .background(Capsule().fill(Color.white.opacity(0.12)))
+                .buttonStyle(.plain)
+        }
+
+        if sheet != .zero {
+            // Reserve the Done button's slot (~50pt) + an 8pt gap so the pills sit just
+            // to its left on the same row, evenly spaced.
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                pills
+                Spacer(minLength: 0).frame(width: 58)
+            }
+            .frame(width: max(0, sheet.width - MSC.Spacing.xl * 2))
+            .position(x: sheet.midX, y: sheet.minY + 32)
+        } else {
+            pills.position(x: size.width - 90, y: 40)
+        }
     }
 
     private func toLocal(_ globalFrame: CGRect) -> CGRect {

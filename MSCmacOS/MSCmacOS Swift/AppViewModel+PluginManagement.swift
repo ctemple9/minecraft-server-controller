@@ -11,6 +11,65 @@ import UniformTypeIdentifiers
 
 extension AppViewModel {
 
+    // MARK: - Modrinth add-on install (M5)
+
+    /// Installs the latest compatible version of a Modrinth add-on into the given
+    /// server's add-on folder (`plugins/` or `mods/`). Returns the result so the
+    /// browser can show success/failure.
+    @discardableResult
+    func installModrinthAddon(_ hit: ModrinthSearchHit, into cfg: ConfigServer) async -> (ok: Bool, message: String) {
+        guard let addOn = cfg.javaFlavor.addOnKind else {
+            return (false, "\(cfg.displayName) doesn't support add-ons.")
+        }
+        let loaders = cfg.javaFlavor.modrinthLoaderFacets
+        do {
+            let versions = try await ModrinthAPI.projectVersions(
+                idOrSlug: hit.slug, loaders: loaders, gameVersion: cfg.minecraftVersion)
+            guard let best = versions.first, let file = best.primaryFile else {
+                let v = cfg.minecraftVersion ?? "this version"
+                return (false, "No \(addOn.displayName.lowercased()) version of \(hit.title) for \(v).")
+            }
+            let folder = URL(fileURLWithPath: cfg.serverDir).appendingPathComponent(addOn.folderName, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let dest = folder.appendingPathComponent(file.filename)
+            try await ModrinthAPI.downloadVersionFile(best, to: dest)
+            logAppMessage("[Modrinth] Installed \(hit.title) \(best.versionNumber) → \(addOn.folderName)/\(file.filename)")
+            await installRequiredDependencies(of: best, into: cfg)
+            if addOn == .plugin { refreshDiscoveredPlugins() } else { refreshDiscoveredMods() }
+            invalidateAddonPlan()
+            return (true, "Added \(hit.title) \(best.versionNumber)")
+        } catch {
+            logAppMessage("[Modrinth] Failed to install \(hit.title): \(error.localizedDescription)")
+            return (false, error.localizedDescription)
+        }
+    }
+
+    /// Installs a specific Modrinth version (chosen from the detail page) into the
+    /// server's add-on folder. Used for "install this exact version".
+    @discardableResult
+    func installModrinthVersion(_ version: ModrinthVersionInfo, title: String, into cfg: ConfigServer) async -> (ok: Bool, message: String) {
+        guard let addOn = cfg.javaFlavor.addOnKind else {
+            return (false, "\(cfg.displayName) doesn't support add-ons.")
+        }
+        guard let file = version.primaryFile else {
+            return (false, "That version of \(title) has no downloadable file.")
+        }
+        do {
+            let folder = URL(fileURLWithPath: cfg.serverDir).appendingPathComponent(addOn.folderName, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let dest = folder.appendingPathComponent(file.filename)
+            try await ModrinthAPI.downloadVersionFile(version, to: dest)
+            logAppMessage("[Modrinth] Installed \(title) \(version.versionNumber) → \(addOn.folderName)/\(file.filename)")
+            await installRequiredDependencies(of: version, into: cfg)
+            if addOn == .plugin { refreshDiscoveredPlugins() } else { refreshDiscoveredMods() }
+            invalidateAddonPlan()
+            return (true, "Added \(title) \(version.versionNumber)")
+        } catch {
+            logAppMessage("[Modrinth] Failed to install \(title) \(version.versionNumber): \(error.localizedDescription)")
+            return (false, error.localizedDescription)
+        }
+    }
+
     // MARK: - Add plugin from file picker
 
     /// Opens an NSOpenPanel filtered to .jar files and copies the chosen JAR into
@@ -41,6 +100,7 @@ extension AppViewModel {
             try fm.copyItem(at: srcURL, to: destURL)
             logAppMessage("[Plugins] Added \(srcURL.lastPathComponent) to plugins folder.")
             refreshDiscoveredPlugins()
+            invalidateAddonPlan()
         } catch {
             logAppMessage("[Plugins] Failed to add plugin: \(error.localizedDescription)")
         }
@@ -73,6 +133,25 @@ extension AppViewModel {
             refreshDiscoveredPlugins()
         } catch {
             logAppMessage("[Plugins] Failed to toggle \(entry.displayName): \(error.localizedDescription)")
+        }
+    }
+
+    /// Permanently deletes a plugin JAR from the plugins/ folder.
+    func removePlugin(jarStem: String) {
+        guard let cfg = selectedServerConfig else { return }
+        guard let entry = discoveredPlugins.first(where: { $0.jarStem == jarStem }) else { return }
+
+        let pluginsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            .appendingPathComponent("plugins", isDirectory: true)
+        let url = pluginsDir.appendingPathComponent(entry.filename)
+
+        do {
+            try FileManager.default.removeItem(at: url)
+            logAppMessage("[Plugins] Removed \(entry.displayName).")
+            refreshDiscoveredPlugins()
+            invalidateAddonPlan()
+        } catch {
+            logAppMessage("[Plugins] Failed to remove \(entry.displayName): \(error.localizedDescription)")
         }
     }
 
@@ -235,6 +314,7 @@ extension AppViewModel {
                     self.downloadingPlugins.remove(entry.jarStem)
                     self.logAppMessage("[Plugins] Downloaded \(entry.displayName) \(entry.onlineVersion ?? "").")
                     self.refreshDiscoveredPlugins()
+                    self.invalidateAddonPlan()
                 }
             } catch {
                 await MainActor.run {

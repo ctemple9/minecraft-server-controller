@@ -24,6 +24,7 @@ struct DetailsOverviewTabView: View {
     @EnvironmentObject var viewModel: AppViewModel
 
     @Binding var isEditingDuckDNS: Bool
+    @State private var isShowingHostnameBanner: Bool = false
     @Binding var showCopiedHUD: Bool
     @Binding var copiedHUDText: String
     @Binding var showAddresses: Bool
@@ -49,10 +50,11 @@ struct DetailsOverviewTabView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-                // Zone 1: Alert banners
+                // Zone 1: Alert banners (EULA; DuckDNS banner only when duck-triggered)
                 OverviewAlertBannersView(
                     hasSavedDuckDNS: $hasSavedDuckDNS,
-                    isEditingDuckDNS: $isEditingDuckDNS
+                    isEditingDuckDNS: $isEditingDuckDNS,
+                    isShowingHostnameBanner: $isShowingHostnameBanner
                 )
 
                 if isEditingDuckDNS {
@@ -71,6 +73,7 @@ struct DetailsOverviewTabView: View {
                             showAddresses: $showAddresses,
                             hasSavedDuckDNS: $hasSavedDuckDNS,
                             isEditingDuckDNS: $isEditingDuckDNS,
+                            isShowingHostnameBanner: $isShowingHostnameBanner,
                             copyToPasteboard: { DetailsClipboardAndHUDHelpers.copyToPasteboard($0) },
                             showHUDMessage: {
                                 DetailsClipboardAndHUDHelpers.showHUDMessage(

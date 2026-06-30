@@ -24,6 +24,7 @@ struct OverviewConnectionCardView: View {
     @Binding var showAddresses: Bool
     @Binding var hasSavedDuckDNS: Bool
     @Binding var isEditingDuckDNS: Bool
+    @Binding var isShowingHostnameBanner: Bool
 
     let copyToPasteboard: (String) -> Void
     let showHUDMessage: (String) -> Void
@@ -212,37 +213,51 @@ struct OverviewConnectionCardView: View {
                             .buttonStyle(.borderless)
                             .help(showAddresses ? "Hide addresses" : "Show addresses")
 
-                            // DuckDNS toggle — left click swaps hostname/IP when available.
-                            // Two-finger click exposes edit actions.
+                            // DuckDNS duck icon — cycles through hostname states.
+                            // No hostname: toggles the "Set Hostname" banner.
+                            // Hostname set: IP → hostname → edit → IP.
                             Button {
-                                if duckDNSAvailable { useDuckDNS.toggle() }
+                                let hasHostname = hasSavedDuckDNS && !duckDNSHost.isEmpty
+                                if !hasHostname {
+                                    if isEditingDuckDNS {
+                                        isEditingDuckDNS = false
+                                    }
+                                    isShowingHostnameBanner.toggle()
+                                } else {
+                                    if !useDuckDNS && !isEditingDuckDNS {
+                                        showPublicIP = true
+                                        useDuckDNS = true
+                                    } else if useDuckDNS && !isEditingDuckDNS {
+                                        isEditingDuckDNS = true
+                                    } else {
+                                        useDuckDNS = false
+                                        isEditingDuckDNS = false
+                                    }
+                                }
                             } label: {
+                                let hasHostname = hasSavedDuckDNS && !duckDNSHost.isEmpty
+                                let duckOpacity: Double = {
+                                    if !hasHostname {
+                                        return isShowingHostnameBanner || isEditingDuckDNS ? 0.75 : 0.3
+                                    }
+                                    return useDuckDNS ? 1.0 : 0.5
+                                }()
                                 Text("🦆")
                                     .font(.system(size: 11))
-                                    .opacity(duckDNSAvailable ? (useDuckDNS ? 1.0 : 0.5) : 0.2)
+                                    .opacity(duckOpacity)
                             }
                             .buttonStyle(.borderless)
-                            .contextMenu {
-                                Button {
-                                    isEditingDuckDNS = true
-                                } label: {
-                                    Label(
-                                        hasSavedDuckDNS && !duckDNSHost.isEmpty
-                                            ? "Edit DuckDNS Hostname"
-                                            : "Add DuckDNS Hostname",
-                                        systemImage: "pencil"
-                                    )
+                            .help({
+                                let hasHostname = hasSavedDuckDNS && !duckDNSHost.isEmpty
+                                if !hasHostname {
+                                    return isShowingHostnameBanner || isEditingDuckDNS
+                                        ? "Click to dismiss hostname setup"
+                                        : "Click to set an external hostname for friends"
                                 }
-                            }
-                            .help(
-                                !hasSavedDuckDNS || duckDNSHost.isEmpty
-                                    ? "No DuckDNS hostname configured"
-                                    : !showPublicIP
-                                        ? "Switch to Public to use DuckDNS hostname"
-                                        : useDuckDNS
-                                            ? "Showing DuckDNS hostname — click to show IP"
-                                            : "Show DuckDNS hostname instead of IP"
-                            )
+                                if !useDuckDNS && !isEditingDuckDNS { return "Show DuckDNS hostname in connection card" }
+                                if useDuckDNS && !isEditingDuckDNS  { return "Showing hostname — click to edit" }
+                                return "Click to go back to showing IP"
+                            }())
 
                             // Share Join Card
                             Button {

@@ -73,6 +73,44 @@ struct PluginSourceConfig: Codable, Equatable {
     let type: PluginSourceType
 }
 
+// MARK: - Add-on update linking (plugins + mods, unified)
+
+/// How an installed add-on came to be associated with a Modrinth project. Drives how
+/// much we trust the link in the UI and whether silent auto-updates are allowed.
+enum AddonLinkProvenance: String, Codable, Equatable {
+    case installed     // installed through MSC's Modrinth browser — fully trusted
+    case hashDetected  // matched by exact file hash — fully trusted
+    case userLinked    // user manually picked the project — trusted
+    case nameGuess     // suggested from filename/manifest — low confidence, confirm before updating
+
+    /// Whether this link is reliable enough to update without re-confirming the project.
+    var isTrusted: Bool { self != .nameGuess }
+}
+
+/// A durable association between an installed add-on and its Modrinth project.
+/// Keyed by `projectId` in `ConfigServer.addonLinks` so the link survives version
+/// bumps (the on-disk filename changes on update; the project ID does not).
+/// Covers BOTH plugins and mods — the resolver treats them uniformly.
+struct AddonLink: Codable, Equatable {
+    let projectId: String
+    var slug: String
+    var title: String
+    /// Source provider — "modrinth" today; reserved for hangar/curseforge/github later.
+    var provider: String = "modrinth"
+    var provenance: AddonLinkProvenance
+    /// The Modrinth version ID currently installed, when known.
+    var installedVersionId: String? = nil
+    /// The on-disk filename last written for this project (so we can find/replace it).
+    var installedFileName: String? = nil
+    /// SHA-512 of the installed file, used to re-match the link after a manual rename.
+    var installedHash: String? = nil
+    var iconURL: String? = nil
+    /// Modrinth client_side field: "required" / "optional" / "unsupported". Nil when unknown.
+    var clientSide: String? = nil
+    /// Modrinth server_side field: "required" / "optional" / "unsupported". Nil when unknown.
+    var serverSide: String? = nil
+}
+
 /// One plugin JAR discovered on disk (or managed by the app).
 struct PluginEntry: Identifiable, Equatable {
     /// Stable key: filename stem with `.disabled` stripped.
@@ -100,6 +138,24 @@ struct PluginEntry: Identifiable, Equatable {
     // For managed plugins: mirror of ComponentVersionInfo fields
     var localVersion: String?    // set from componentsSnapshot after refresh
     var templateVersion: String? // set from componentsSnapshot after refresh
+}
+
+// MARK: - Mod management
+
+/// One mod JAR discovered in the server's mods/ folder.
+struct ModEntry: Identifiable, Equatable {
+    var id: String { jarStem }
+
+    let filename: String
+    let jarStem: String
+    /// Human-readable name: from fabric.mod.json / mods.toml, or derived from filename.
+    let displayName: String
+    /// The loader's mod ID (e.g. "fabric-api"), from the manifest. Nil for unrecognised jars.
+    let modId: String?
+    /// Version string from the manifest or filename; nil if not determinable.
+    let version: String?
+    /// Whether the mod is active (.jar) vs disabled (.jar.disabled).
+    let isEnabled: Bool
 }
 
 // MARK: - Components (Paper / Cross-play / Broadcast) version tracking
@@ -188,6 +244,25 @@ struct JarLibraryItem: Identifiable, Hashable {
     /// Human-readable display title for the UI list row.
     var displayTitle: String {
         versionLabel ?? filename
+    }
+}
+
+/// A saved NeoForge or Forge installation profile stored in the global version library.
+struct LoaderVersionRecord: Codable, Identifiable, Equatable, Hashable {
+    let flavor: JavaServerFlavor
+    let mcVersion: String
+    let loaderVersion: String
+    let addedAt: Date
+
+    var id: String { "\(flavor.rawValue)-\(mcVersion)-\(loaderVersion)" }
+
+    var displayTitle: String { "MC \(mcVersion) · \(flavor.displayName) \(loaderVersion)" }
+
+    var dateLabel: String {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f.string(from: addedAt)
     }
 }
 

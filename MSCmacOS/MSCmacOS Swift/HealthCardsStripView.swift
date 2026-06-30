@@ -115,6 +115,8 @@ struct HealthCardsStripView: View {
             viewModel.logAppMessage("[Health] Go to the Components tab to manage server components.")
         case .openRouterPortForwardGuide:
             viewModel.isShowingRouterPortForwardGuide = true
+        case .diagnoseStartup:
+            viewModel.reopenStartupProblems()
         }
     }
 }

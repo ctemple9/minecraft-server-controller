@@ -195,6 +195,20 @@
 		9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02050000000000000001 /* PlayerSkinStore.swift */; };
 		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
 		9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02060000000000000001 /* PlayerSkinRenderer.swift */; };
+		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
+		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
+		9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020A0000000000000001 /* JavaRuntimeManager.swift */; };
+		9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020B0000000000000001 /* NeoForgeInstaller.swift */; };
+		9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020F0000000000000001 /* AddonUpdateResolver.swift */; };
+		9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */; };
+		9AFE02110000000000000002 /* AddonUpdateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02110000000000000001 /* AddonUpdateSheet.swift */; };
+		9AFE02120000000000000002 /* StartupCrashAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02120000000000000001 /* StartupCrashAnalyzer.swift */; };
+		9AFE02130000000000000002 /* StartupProblemsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02130000000000000001 /* StartupProblemsSheet.swift */; };
+		9AFE02140000000000000002 /* AppViewModel+ClientExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */; };
+		9AFE02150000000000000002 /* ClientExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02150000000000000001 /* ClientExportSheet.swift */; };
+		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
+		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
+		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -410,6 +424,20 @@
 		9AFE02050000000000000001 /* PlayerSkinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinStore.swift; sourceTree = "<group>"; };
 		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
 		9AFE02060000000000000001 /* PlayerSkinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinRenderer.swift; sourceTree = "<group>"; };
+		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
+		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
+		9AFE020A0000000000000001 /* JavaRuntimeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeManager.swift; sourceTree = "<group>"; };
+		9AFE020B0000000000000001 /* NeoForgeInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoForgeInstaller.swift; sourceTree = "<group>"; };
+		9AFE020F0000000000000001 /* AddonUpdateResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateResolver.swift; sourceTree = "<group>"; };
+		9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+AddonUpdates.swift"; sourceTree = "<group>"; };
+		9AFE02110000000000000001 /* AddonUpdateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateSheet.swift; sourceTree = "<group>"; };
+		9AFE02120000000000000001 /* StartupCrashAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupCrashAnalyzer.swift; sourceTree = "<group>"; };
+		9AFE02130000000000000001 /* StartupProblemsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupProblemsSheet.swift; sourceTree = "<group>"; };
+		9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ClientExport.swift"; sourceTree = "<group>"; };
+		9AFE02150000000000000001 /* ClientExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientExportSheet.swift; sourceTree = "<group>"; };
+		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
+		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
+		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -570,6 +598,20 @@
 				9AFE02040000000000000001 /* JavaHiddenProfiles.swift */,
 				9AFE02050000000000000001 /* PlayerSkinStore.swift */,
 				9AFE02060000000000000001 /* PlayerSkinRenderer.swift */,
+				9AFE02080000000000000001 /* JavaServerFlavor.swift */,
+				9AFE02090000000000000001 /* ServerJarProviders.swift */,
+				9AFE020A0000000000000001 /* JavaRuntimeManager.swift */,
+				9AFE020B0000000000000001 /* NeoForgeInstaller.swift */,
+				9AFE020F0000000000000001 /* AddonUpdateResolver.swift */,
+				9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */,
+				9AFE02110000000000000001 /* AddonUpdateSheet.swift */,
+				9AFE02120000000000000001 /* StartupCrashAnalyzer.swift */,
+				9AFE02130000000000000001 /* StartupProblemsSheet.swift */,
+				9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */,
+				9AFE02150000000000000001 /* ClientExportSheet.swift */,
+				9AFE020C0000000000000001 /* ModrinthBrowserView.swift */,
+				9AFE020D0000000000000001 /* ModJarMetadataParser.swift */,
+				9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */,
 				9AFE02070000000000000001 /* BedrockSkinFetcher.swift */,
 				9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */,
 				9A56323A2F65AD6C00FB8246 /* OverviewServerStatusBarView.swift */,
@@ -929,6 +971,20 @@
 				9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */,
 				9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */,
 				9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */,
+				9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */,
+				9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */,
+				9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */,
+				9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */,
+				9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */,
+				9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */,
+				9AFE02110000000000000002 /* AddonUpdateSheet.swift in Sources */,
+				9AFE02120000000000000002 /* StartupCrashAnalyzer.swift in Sources */,
+				9AFE02130000000000000002 /* StartupProblemsSheet.swift in Sources */,
+				9AFE02140000000000000002 /* AppViewModel+ClientExport.swift in Sources */,
+				9AFE02150000000000000002 /* ClientExportSheet.swift in Sources */,
+				9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */,
+				9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */,
+				9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */,
 				9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */,
 				9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */,
 				9A5632EE2F65AD6D00FB8246 /* ServerLifecycleManager.swift in Sources */,

@@ -27,6 +27,7 @@ enum HealthCardAction: Equatable {
     case triggerDownload
     case openComponentsTab   // deep-link from health card into the Components tab
     case openRouterPortForwardGuide
+    case diagnoseStartup     // reopen the startup-problems sheet from a failed start
 }
 
 // MARK: - HealthCardResult
@@ -46,6 +47,9 @@ struct LastStartupResult: Codable {
     var wasClean: Bool
     var fatalErrors: [String]
     var warnings: [String]
+    /// Structured mod/plugin problems parsed from a failed start. Optional so older
+    /// result files (which lack the key) still decode cleanly.
+    var problems: [StartupProblem]? = nil
 }
 
 // MARK: - PortCheckRecord (persisted to {serverDir}/last_port_check.json)

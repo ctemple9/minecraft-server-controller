@@ -38,37 +38,85 @@ struct TemplatesView: View {
     @Binding var isPresented: Bool
 
     private enum TemplatesTab: Hashable {
-        case paper
-        case plugins
+        case serverJar
         case broadcastAndConnect
     }
 
-    @State private var selectedTab: TemplatesTab = .paper
+    @State private var selectedTab: TemplatesTab = .serverJar
 
     // Sheets / importers
     @State private var isShowingPaperImporter: Bool = false
-    @State private var isShowingPluginImporter: Bool = false
     @State private var isShowingXboxBroadcastImporter: Bool = false
 
-    // MARK: - Active status helpers
+    // Loader version apply confirmation
+    @State private var pendingLoaderApply: LoaderVersionRecord? = nil
+
+    // MARK: - Context helpers
+
+    private var selectedConfig: ConfigServer? {
+        guard let server = viewModel.selectedServer else { return nil }
+        return viewModel.configServer(for: server)
+    }
+
+    /// Filename prefix for the selected server's flavor in the archive.
+    private var archivePrefix: String? {
+        switch selectedConfig?.javaFlavor {
+        case .paper:       return "paper-"
+        case .purpur:      return "purpur-"
+        case .pufferfish:  return "pufferfish-paperclip-"
+        case .vanilla:     return "minecraft_server-"
+        case .fabric:      return "fabric-server-launch-"
+        default:           return nil
+        }
+    }
+
+    /// All archived server JARs that are relevant to the currently selected server.
+    private var relevantArchiveItems: [JarItem] {
+        guard let prefix = archivePrefix else { return [] }
+        return viewModel.paperTemplateItems
+            .reversed()
+            .filter { $0.filename.lowercased().hasPrefix(prefix.lowercased()) }
+            .map { .paper($0) }
+    }
+
+    private var serverJarSectionTitle: String {
+        switch selectedConfig?.javaFlavor {
+        case .paper:       return "Paper JAR"
+        case .purpur:      return "Purpur JAR"
+        case .pufferfish:  return "Pufferfish JAR"
+        case .vanilla:     return "Vanilla Server JAR"
+        case .fabric:      return "Fabric Launcher JAR"
+        case .neoforge:    return "NeoForge Version Library"
+        case .forge:       return "Forge Version Library"
+        default:           return "Server JAR"
+        }
+    }
+
+    private var serverJarSectionDescription: String {
+        guard let flavor = selectedConfig?.javaFlavor else {
+            return "Select a server to see its relevant archived JARs. Apply a saved version to skip re-downloading."
+        }
+        switch flavor {
+        case .neoforge, .forge:
+            return "Saved \(flavor.displayName) installation profiles. Apply a version to re-run the \(flavor.displayName) installer — mods and world data are not affected."
+        case .quilt:
+            return "Quilt server upgrades are managed from the Components tab. Use the create flow to provision a new version."
+        default:
+            return "Saved \(flavor.displayName) server JARs for this server. Apply a saved version to replace the current JAR without re-downloading from the internet."
+        }
+    }
+
+    private func isLoaderVersionActive(_ record: LoaderVersionRecord) -> Bool {
+        guard let cfg = selectedConfig else { return false }
+        return cfg.minecraftVersion == record.mcVersion && cfg.loaderVersion == record.loaderVersion
+    }
 
     private func isPaperTemplateActive(_ item: PaperTemplateItem) -> Bool {
-        guard let server = viewModel.selectedServer,
-              let cfgServer = viewModel.configServer(for: server) else { return false }
+        guard let cfgServer = selectedConfig else { return false }
         let serverDir = URL(fileURLWithPath: cfgServer.serverDir, isDirectory: true)
         guard let sidecar = PaperVersionSidecarManager.read(fromServerDirectory: serverDir),
               let parsed = ComponentVersionParsing.parsePaperJarFilename(item.filename) else { return false }
         return sidecar.mcVersion == parsed.mcVersion && sidecar.build == parsed.build
-    }
-
-    private func isPluginTemplateActive(_ item: PluginTemplateItem) -> Bool {
-        guard let server = viewModel.selectedServer,
-              let cfgServer = viewModel.configServer(for: server) else { return false }
-        let serverDir = URL(fileURLWithPath: cfgServer.serverDir, isDirectory: true)
-        let pluginsDir = serverDir.appendingPathComponent("plugins")
-        return FileManager.default.fileExists(
-            atPath: pluginsDir.appendingPathComponent(item.filename).path
-        )
     }
 
     var body: some View {
@@ -76,7 +124,7 @@ struct TemplatesView: View {
 
             // HEADER
             HStack(alignment: .center) {
-                Text("JARs")
+                Text("Archives")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 Spacer()
@@ -94,10 +142,11 @@ struct TemplatesView: View {
                 .padding(.bottom, MSC.Spacing.md)
 
             // TAB PICKER
+            // Cross-Play tab hidden — MCXboxBroadcast management moved out of Archives.
+            // Restore by uncommenting .broadcastAndConnect row and its case below.
             Picker("", selection: $selectedTab) {
-                Text("Paper JARs").tag(TemplatesTab.paper)
-                Text("Plugin JARs").tag(TemplatesTab.plugins)
-                Text("Cross-Play JARs").tag(TemplatesTab.broadcastAndConnect)
+                Text("Server JAR").tag(TemplatesTab.serverJar)
+                // Text("Cross-Play").tag(TemplatesTab.broadcastAndConnect)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, MSC.Spacing.lg)
@@ -106,19 +155,38 @@ struct TemplatesView: View {
             // TAB CONTENT
             Group {
                 switch selectedTab {
-                case .paper:
-                    paperTab
-                case .plugins:
-                    pluginsTab
+                case .serverJar:
+                    serverJarTab
                 case .broadcastAndConnect:
-                    broadcastAndConnectTab
+                    // Hidden — restore by re-enabling the picker tab above and this case.
+                    // broadcastAndConnectTab
+                    serverJarTab
                 }
             }
         }
         .frame(minWidth: 820, minHeight: 460)
+        .confirmationDialog(
+            "Re-install This Version?",
+            isPresented: Binding<Bool>(
+                get: { pendingLoaderApply != nil },
+                set: { if !$0 { pendingLoaderApply = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let record = pendingLoaderApply, let cfg = selectedConfig {
+                Button("Install \(record.flavor.displayName) \(record.loaderVersion)") {
+                    viewModel.applyLoaderVersionRecord(record, for: cfg)
+                    pendingLoaderApply = nil
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingLoaderApply = nil }
+        } message: {
+            if let record = pendingLoaderApply {
+                Text("Re-runs the \(record.flavor.displayName) installer for MC \(record.mcVersion). Mods and world data are not affected.")
+            }
+        }
         .onAppear {
             viewModel.loadPaperTemplates()
-            viewModel.loadPluginTemplates()
             viewModel.loadXboxBroadcastJars()
         }
         .fileImporter(
@@ -131,20 +199,7 @@ struct TemplatesView: View {
                 let jarURLs = urls.filter { $0.pathExtension.lowercased() == "jar" }
                 viewModel.addPaperTemplates(from: jarURLs)
             case .failure(let error):
-                viewModel.logAppMessage("[Paper] File import failed: \(error.localizedDescription)")
-            }
-        }
-        .fileImporter(
-            isPresented: $isShowingPluginImporter,
-            allowedContentTypes: [UTType.data],
-            allowsMultipleSelection: true
-        ) { result in
-            switch result {
-            case .success(let urls):
-                let jarURLs = urls.filter { $0.pathExtension.lowercased() == "jar" }
-                viewModel.addPluginTemplates(from: jarURLs)
-            case .failure(let error):
-                viewModel.logAppMessage("[Plugin] File import failed: \(error.localizedDescription)")
+                viewModel.logAppMessage("[Archive] File import failed: \(error.localizedDescription)")
             }
         }
         .fileImporter(
@@ -163,166 +218,64 @@ struct TemplatesView: View {
         }
     }
 
-    // MARK: - Paper Tab
+    // MARK: - Server JAR Tab (context-aware by selected server flavor)
 
-    private var paperTab: some View {
+    private var serverJarTab: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
 
                 JarSectionCard(
-                    icon: "server.rack",
+                    icon: "shippingbox.fill",
                     iconColor: .blue,
-                    title: "Paper JAR",
-                    description: "The server runtime for Minecraft Java Edition. Download builds here, then apply one to the active server."
+                    title: serverJarSectionTitle,
+                    description: serverJarSectionDescription
                 ) {
-                    JarLibraryList(
-                        items: viewModel.paperTemplateItems.reversed().map { .paper($0) },
-                        isActive: { item in
-                            if case .paper(let p) = item { return isPaperTemplateActive(p) }
-                            return false
-                        },
-                        onApply: { item in
-                            if case .paper(let p) = item {
-                                viewModel.applyPaperTemplateToSelectedServer(template: p)
+                    let flavor = selectedConfig?.javaFlavor
+                    if flavor == .neoforge || flavor == .forge, let flav = flavor {
+                        let records = viewModel.loaderVersionRecords(for: flav).map { JarItem.loaderVersion($0) }
+                        JarLibraryList(
+                            items: records,
+                            isActive: { item in
+                                if case .loaderVersion(let r) = item { return isLoaderVersionActive(r) }
+                                return false
+                            },
+                            onApply: { item in
+                                if case .loaderVersion(let r) = item { pendingLoaderApply = r }
+                            },
+                            onDelete: { item in
+                                if case .loaderVersion(let r) = item { viewModel.removeLoaderVersionRecord(r) }
+                            },
+                            applyDisabled: viewModel.isDownloadingJar
+                        )
+                    } else if archivePrefix != nil {
+                        JarLibraryList(
+                            items: relevantArchiveItems,
+                            isActive: { item in
+                                if case .paper(let p) = item { return isPaperTemplateActive(p) }
+                                return false
+                            },
+                            onApply: { item in
+                                if case .paper(let p) = item {
+                                    viewModel.applyPaperTemplateToSelectedServer(template: p)
+                                }
+                            },
+                            onDelete: { item in
+                                if case .paper(let p) = item { viewModel.removePaperTemplate(p) }
+                            },
+                            applyDisabled: viewModel.selectedServer == nil
+                        )
+
+                        JarActionRow {
+                            Button("Browse\u{2026}") {
+                                isShowingPaperImporter = true
                             }
-                        },
-                        onDelete: { item in
-                            if case .paper(let p) = item { viewModel.removePaperTemplate(p) }
-                        },
-                        applyDisabled: viewModel.selectedServer == nil
-                    )
+                            .help("Add a server JAR from your Mac to the archive.")
 
-                    JarActionRow {
-                        Button("Download Latest") {
-                            Task { await viewModel.downloadLatestPaperTemplate() }
-                        }
-                        .help("Download the latest Paper build.")
-
-                        Button("Browse\u{2026}") {
-                            isShowingPaperImporter = true
-                        }
-                        .help("Choose an existing Paper JAR from your Mac.")
-
-                        Button("Releases Page") {
-                            if let url = URL(string: "https://papermc.io/downloads/paper") {
-                                NSWorkspace.shared.open(url)
+                            Button("Open Folder") {
+                                viewModel.openPaperTemplatesFolder()
                             }
+                            .help("Open the archive folder in Finder.")
                         }
-                        .help("Open the Paper downloads page.")
-
-                        Button("Open Folder") {
-                            viewModel.openPaperTemplatesFolder()
-                        }
-                        .help("Open the Paper Templates folder in Finder.")
-                    }
-                }
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, MSC.Spacing.lg)
-            .padding(.bottom, MSC.Spacing.lg)
-        }
-    }
-
-    // MARK: - Plugins Tab
-
-    private var pluginsTab: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-
-                JarSectionCard(
-                    icon: "puzzlepiece.fill",
-                    iconColor: .purple,
-                    title: "Geyser",
-                    description: "Allows Bedrock Edition players (mobile, console, Windows) to join Java servers. Install into the server's plugins folder."
-                ) {
-                    let geyserItems = viewModel.pluginTemplateItems
-                        .filter { $0.filename.lowercased().contains("geyser") }
-                        .reversed() as [PluginTemplateItem]
-
-                    JarLibraryList(
-                        items: geyserItems.map { .plugin($0) },
-                        isActive: { item in
-                            if case .plugin(let p) = item { return isPluginTemplateActive(p) }
-                            return false
-                        },
-                        onApply: { item in
-                            if case .plugin(let p) = item {
-                                viewModel.applyPluginTemplatesToSelectedServer(selectedTemplates: [p])
-                            }
-                        },
-                        onDelete: { item in
-                            if case .plugin(let p) = item { viewModel.removePluginTemplate(p) }
-                        },
-                        applyDisabled: viewModel.selectedServer == nil
-                    )
-
-                    JarActionRow {
-                        Button("Download Latest") {
-                            Task { await viewModel.downloadLatestGeyserTemplate() }
-                        }
-                        .help("Download the latest Geyser (Spigot) build.")
-
-                        Button("Browse\u{2026}") { isShowingPluginImporter = true }
-                            .help("Choose an existing Geyser JAR from your Mac.")
-
-                        Button("Releases Page") {
-                            if let url = URL(string: "https://geysermc.org/download") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .help("Open the Geyser downloads page.")
-
-                        Button("Open Folder") { viewModel.openPluginTemplatesFolder() }
-                            .help("Open the Plugin Templates folder in Finder.")
-                    }
-                }
-
-                JarSectionCard(
-                    icon: "person.badge.key.fill",
-                    iconColor: .orange,
-                    title: "Floodgate",
-                    description: "Works alongside Geyser to allow Bedrock players to join without a Java account. Install into the server's plugins folder alongside Geyser."
-                ) {
-                    let floodgateItems = viewModel.pluginTemplateItems
-                        .filter { $0.filename.lowercased().contains("floodgate") }
-                        .reversed() as [PluginTemplateItem]
-
-                    JarLibraryList(
-                        items: floodgateItems.map { .plugin($0) },
-                        isActive: { item in
-                            if case .plugin(let p) = item { return isPluginTemplateActive(p) }
-                            return false
-                        },
-                        onApply: { item in
-                            if case .plugin(let p) = item {
-                                viewModel.applyPluginTemplatesToSelectedServer(selectedTemplates: [p])
-                            }
-                        },
-                        onDelete: { item in
-                            if case .plugin(let p) = item { viewModel.removePluginTemplate(p) }
-                        },
-                        applyDisabled: viewModel.selectedServer == nil
-                    )
-
-                    JarActionRow {
-                        Button("Download Latest") {
-                            Task { await viewModel.downloadLatestFloodgateTemplate() }
-                        }
-                        .help("Download the latest Floodgate (Spigot) build.")
-
-                        Button("Browse\u{2026}") { isShowingPluginImporter = true }
-                            .help("Choose an existing Floodgate JAR from your Mac.")
-
-                        Button("Releases Page") {
-                            if let url = URL(string: "https://geysermc.org/download") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .help("Open the Floodgate downloads page.")
-
-                        Button("Open Folder") { viewModel.openPluginTemplatesFolder() }
-                            .help("Open the Plugin Templates folder in Finder.")
                     }
                 }
 
@@ -401,28 +354,32 @@ private enum JarItem: Identifiable {
     case paper(PaperTemplateItem)
     case plugin(PluginTemplateItem)
     case library(JarLibraryItem)
+    case loaderVersion(LoaderVersionRecord)
 
     var id: String {
         switch self {
-        case .paper(let p):   return "paper-\(p.id)"
-        case .plugin(let p):  return "plugin-\(p.id)"
-        case .library(let l): return "library-\(l.id)"
+        case .paper(let p):         return "paper-\(p.id)"
+        case .plugin(let p):        return "plugin-\(p.id)"
+        case .library(let l):       return "library-\(l.id)"
+        case .loaderVersion(let r): return "loader-\(r.id)"
         }
     }
 
     var displayTitle: String {
         switch self {
-        case .paper(let p):   return p.displayTitle
-        case .plugin(let p):  return p.displayTitle
-        case .library(let l): return l.displayTitle
+        case .paper(let p):         return p.displayTitle
+        case .plugin(let p):        return p.displayTitle
+        case .library(let l):       return l.displayTitle
+        case .loaderVersion(let r): return r.displayTitle
         }
     }
 
     var filename: String {
         switch self {
-        case .paper(let p):   return p.filename
-        case .plugin(let p):  return p.filename
-        case .library(let l): return l.filename
+        case .paper(let p):         return p.filename
+        case .plugin(let p):        return p.filename
+        case .library(let l):       return l.filename
+        case .loaderVersion(let r): return r.dateLabel
         }
     }
 }

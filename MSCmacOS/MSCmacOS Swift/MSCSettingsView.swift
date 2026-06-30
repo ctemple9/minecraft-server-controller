@@ -71,6 +71,7 @@ struct MSCSettingsView: View {
     private let remoteAccessActionsAnchorID       = "preferences.remoteAccess.actions"
     private let dataFoldersCardAnchorID           = "preferences.dataFolders"
     private let storageCardAnchorID               = "preferences.storage"
+    private let archiveCardAnchorID               = "preferences.archive"
     private let portsCardAnchorID                 = "preferences.ports"
     private let learnHelpCardAnchorID             = "preferences.learnHelp"
     private let saveButtonAnchorID                = "preferences.saveButton"
@@ -381,6 +382,7 @@ struct MSCSettingsView: View {
         case .data:
             dataFoldersCard
             storageCard
+            archiveCard
             portsCard
         case .help:
             learnHelpCard
@@ -502,6 +504,11 @@ struct MSCSettingsView: View {
             },
             onOpenPlayitGuide: {
                 isShowingPlayitGuideFromSettings = true
+            },
+            onOpenGitHub: {
+                if let url = URL(string: "https://github.com/ctemple9/minecraft-server-controller") {
+                    NSWorkspace.shared.open(url)
+                }
             }
         )
         .id(learnHelpCardAnchorID)
@@ -519,6 +526,11 @@ struct MSCSettingsView: View {
             anchorID: storageCardAnchorID,
             onRefresh: computeStorageSizes
         )
+    }
+
+    private var archiveCard: some View {
+        PreferencesArchiveSection(anchorID: archiveCardAnchorID)
+            .environmentObject(viewModel)
     }
 
     // MARK: - Load

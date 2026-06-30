@@ -28,31 +28,43 @@ extension AppViewModel {
             .appendingPathComponent("playit-docker", isDirectory: true)
     }
 
-    private var playitSecretKeyURL: URL {
+    /// Legacy plain-text key file path — only used for one-time migration to Keychain.
+    private var legacyPlayitSecretKeyURL: URL {
         playitConfigDir.appendingPathComponent("secret_key")
     }
 
-    /// Reads the stored playit secret key. Returns nil if not yet configured.
+    /// Reads the stored playit secret key from Keychain.
+    /// Migrates from the old plain-text file on first access if the file exists.
+    /// Returns nil if not yet configured.
     var playitSecretKey: String? {
-        get {
-            guard let data = try? Data(contentsOf: playitSecretKeyURL),
-                  let key = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !key.isEmpty else { return nil }
-            return key
+        // One-time migration: if the legacy file exists, move it to Keychain and delete it.
+        let fm = FileManager.default
+        if fm.fileExists(atPath: legacyPlayitSecretKeyURL.path),
+           let data = try? Data(contentsOf: legacyPlayitSecretKeyURL),
+           let legacyKey = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !legacyKey.isEmpty {
+            KeychainManager.shared.writePlayitSecretKey(legacyKey)
+            try? fm.removeItem(at: legacyPlayitSecretKeyURL)
+            logAppMessage("[Playit] Migrated secret key from file to Keychain.")
         }
+        return KeychainManager.shared.readPlayitSecretKey()
     }
 
-    /// Persists the secret key to disk.
+    /// Persists the secret key to the macOS Keychain.
     func savePlayitSecretKey(_ key: String) {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        try? FileManager.default.createDirectory(at: playitConfigDir, withIntermediateDirectories: true)
-        try? trimmed.write(to: playitSecretKeyURL, atomically: true, encoding: .utf8)
-        logAppMessage("[Playit] Secret key saved.")
+        if KeychainManager.shared.writePlayitSecretKey(trimmed) {
+            logAppMessage("[Playit] Secret key saved to Keychain.")
+        } else {
+            logAppMessage("[Playit] Failed to save secret key to Keychain.")
+        }
     }
 
     func removePlayitSecretKey() {
-        try? FileManager.default.removeItem(at: playitSecretKeyURL)
+        KeychainManager.shared.writePlayitSecretKey(nil)
+        // Also clean up legacy file if it somehow still exists.
+        try? FileManager.default.removeItem(at: legacyPlayitSecretKeyURL)
     }
 
     // MARK: - Port resolution
@@ -350,6 +362,19 @@ extension AppViewModel {
             }
         }
         return (javaAddress, bedrockAddress)
+    }
+
+    // MARK: - Post-key-setup retry
+
+    /// Called immediately after the user saves a new secret key in PlayitSecretKeySheet.
+    /// If a server is currently running with playit enabled, starts the tunnel now
+    /// rather than requiring the user to restart the server.
+    func retryPlayitAfterKeySetup() {
+        guard isServerRunning,
+              let server = selectedServer,
+              let cfg = configServer(for: server),
+              cfg.playitEnabled else { return }
+        startPlayitIfNeeded(for: cfg)
     }
 
     // MARK: - Persist settings

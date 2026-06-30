@@ -10,6 +10,19 @@ import AppKit
 import Combine
 import Foundation
 
+/// Runs heavy synchronous work on a background GCD queue and awaits the result.
+/// `Task.detached` bodies can run on the main thread when scheduled very early in
+/// launch (before the cooperative pool is serving jobs), which froze the splash while
+/// the Bedrock LevelDB was parsed. GCD's global queues always run off-main, so this
+/// guarantees the parse never blocks the UI regardless of when it's kicked off.
+fileprivate func runOffMainThread<T>(_ work: @escaping () -> T) async -> T {
+    await withCheckedContinuation { (cont: CheckedContinuation<T, Never>) in
+        DispatchQueue.global(qos: .userInitiated).async {
+            cont.resume(returning: work())
+        }
+    }
+}
+
 extension AppViewModel {
 
     // MARK: - Level name helper
@@ -59,8 +72,10 @@ extension AppViewModel {
         let onlineNames = Set(onlinePlayers.map { $0.name })
 
         Task.detached(priority: .userInitiated) {
-            // 1. Scan playerdata/ directory for .dat files
-            var profiles = PlayerDataManager.scanProfiles(serverDir: serverDir, levelName: levelName)
+            // 1. Scan playerdata/ directory for .dat files (off-main, even at launch)
+            var profiles = await runOffMainThread {
+                PlayerDataManager.scanProfiles(serverDir: serverDir, levelName: levelName)
+            }
 
             guard !profiles.isEmpty else {
                 await MainActor.run {
@@ -82,7 +97,12 @@ extension AppViewModel {
                 }
             }
 
+            // Load hidden UUIDs so isProfileHidden() works immediately.
+            let hiddenJava = JavaHiddenProfiles.load(serverDir: serverDir)
+            let hiddenBedrock = BedrockHiddenProfiles.load(serverDir: serverDir)
             await MainActor.run {
+                self.hiddenJavaUUIDs = hiddenJava
+                self.hiddenBedrockXUIDs = hiddenBedrock
                 self.playerProfiles = profiles
                 self.isLoadingProfiles = false
             }
@@ -105,8 +125,11 @@ extension AppViewModel {
         let onlineXUIDs = Set(onlinePlayers.compactMap { $0.xuid })
 
         Task.detached(priority: .userInitiated) {
-            // 1. Scan LevelDB (NBT is parsed here — stats + inventory pre-populated)
-            var profiles = BedrockPlayerDataManager.scanProfiles(serverDir: serverDir, levelName: levelName)
+            // 1. Scan LevelDB (NBT is parsed here — stats + inventory pre-populated).
+            //    Forced off-main so the heavy parse never blocks the UI/splash at launch.
+            var profiles = await runOffMainThread {
+                BedrockPlayerDataManager.scanProfiles(serverDir: serverDir, levelName: levelName)
+            }
 
             guard !profiles.isEmpty else {
                 await MainActor.run {

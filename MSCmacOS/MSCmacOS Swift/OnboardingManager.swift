@@ -17,30 +17,34 @@ enum OnboardingStep: Int, CaseIterable {
     case manageServers         = 1
     case createServer          = 2
     case wizardChoosePath      = 3   // wizard Step 1: path picker
-    case serverName            = 4
-    case serverType            = 5
-    case serverSettings          = 6
-    case serverConnectivity        = 7   // network step: connectivity type cards
-    case serverConnectivityPorts   = 8   // network step: port fields (Next button)
-    case serverNetworkContinue     = 9   // network step: spotlight Continue button
-    case firstWorld                = 10  // info card with "Next" button
-    case firstWorldFill            = 11  // no card — user fills the world form
-    case createButton              = 12
-    case dismissManage             = 13
-    case acceptEula                = 14
-    case startButton               = 15
-    case console                   = 16
-    case continueDetails           = 17
-    case expandDetails             = 18
-    case detailsOverviewTab        = 19
-    case detailsPlayersTab         = 20
-    case detailsWorldsTab          = 21
-    case detailsPacksTab           = 22
-    case detailsPerformanceTab     = 23
-    case detailsComponentsTab      = 24
-    case detailsSettingsTab        = 25
-    case detailsFilesTab           = 26
-    case done                      = 27
+    case serverType            = 4
+    case serverName            = 5
+    case serverCategory        = 6   // configure: Standard vs Modded (Java, Next-driven)
+    case serverFlavor          = 7   // configure: specific flavor (Java, Next-driven)
+    case serverVersion         = 8   // configure: Source / version picker (Java, Next-driven)
+    case serverCrossplay       = 9   // configure: Geyser+Floodgate (Java + crossplay-capable)
+    case serverSettings          = 10  // configure: review + Continue
+    case serverConnectivity        = 11  // network step: connectivity type cards
+    case serverConnectivityPorts   = 12  // network step: port fields (Next button)
+    case serverNetworkContinue     = 13  // network step: spotlight Continue button
+    case firstWorld                = 14  // world page: card hides to let user fill, resumes on Continue
+    case serverAddOns              = 15  // plugins/mods page (Java w/ add-on support)
+    case createButton              = 16
+    case dismissManage             = 17
+    case acceptEula                = 18
+    case startButton               = 19
+    case console                   = 20
+    case continueDetails           = 21
+    case expandDetails             = 22
+    case detailsOverviewTab        = 23
+    case detailsPlayersTab         = 24
+    case detailsWorldsTab          = 25
+    case detailsPacksTab           = 26
+    case detailsPerformanceTab     = 27
+    case detailsComponentsTab      = 28
+    case detailsSettingsTab        = 29
+    case detailsFilesTab           = 30
+    case done                      = 31
 
     var totalSteps: Int { OnboardingStep.allCases.count - 2 }
 
@@ -61,12 +65,16 @@ enum OnboardingStep: Int, CaseIterable {
         case .wizardChoosePath:      return "Choose Your Path"
         case .serverName:            return "Name Your Server"
         case .serverType:            return "Pick a Type"
+        case .serverCategory:        return "Standard or Modded?"
+        case .serverFlavor:          return "Choose Your Software"
+        case .serverVersion:         return "Pick a Version"
+        case .serverCrossplay:       return "Bedrock Cross-play"
         case .serverSettings:          return "Review Your Settings"
         case .serverConnectivity:      return "How Will Friends Connect?"
         case .serverConnectivityPorts: return "Set Your Ports"
         case .serverNetworkContinue:   return "Ready to Continue"
         case .firstWorld:              return "Create Your First World"
-        case .firstWorldFill:          return "Create Your First World"
+        case .serverAddOns:            return "Add \(OnboardingManager.shared.tourAddOnNoun)"
         case .createButton:            return "Create It"
         case .dismissManage:         return "Back to Home"
         case .acceptEula:            return "Accept the EULA"
@@ -100,9 +108,21 @@ enum OnboardingStep: Int, CaseIterable {
             return "Give your server a name. It's just a label for this controller — the world name is set on the next screen and can be different."
         case .serverType:
             return "Java is for PC players. Bedrock is for mobile, console, and Windows 10/11. Pick whichever fits — you can switch before creating."
+        case .serverCategory:
+            return "Standard servers run plugins and let normal Minecraft clients join. Modded servers add new content, but every player must install the same mods. Pick one, then tap Next."
+        case .serverFlavor:
+            if OnboardingManager.shared.tourFlavor.category == .modded {
+                return "This is the mod loader your server runs on. Fabric is recommended — it's lightweight and great for performance mods. Every player needs the matching loader. Try the options, then tap Next."
+            } else {
+                return "This is the actual server software. Paper is recommended — it's fast and supports plugins. Try the options if you like, then tap Next."
+            }
+        case .serverVersion:
+            return "We've set the latest version for you, which is best for most servers. You can pin a specific version here if you need one. Tap Next to continue."
+        case .serverCrossplay:
+            return "Turn this on to let Bedrock players — console, mobile, and Windows — join your Java server. MSC adds the Geyser and Floodgate plugins for you. Tap Next when you're set."
         case .serverSettings:
             if OnboardingManager.shared.tourServerType == .java {
-                return "Set the Paper source and turn on Bedrock cross-play if you want console and mobile players to join. Ports are set on the next step."
+                return "Everything's set. Tap Continue at the bottom to move on and set up how players connect."
             } else {
                 return "Choose your Docker image and adjust the player limit if needed. The server port is set on the next step."
             }
@@ -114,8 +134,9 @@ enum OnboardingStep: Int, CaseIterable {
             return "Your connectivity is configured. Tap Continue at the bottom to move on and set up your world."
         case .firstWorld:
             return "Choose \"New world\" for a fresh start, then set the world name, difficulty, game mode, and optional seed. You can add more worlds later from the Worlds tab, but only one world is active at a time."
-        case .firstWorldFill:
-            return ""
+        case .serverAddOns:
+            let noun = OnboardingManager.shared.tourAddOnNoun.lowercased()
+            return "Use Browse Modrinth to search and add \(noun) by name, or Import to add your own files. Not ready? You can skip this and add \(noun) anytime after the server is created. Tap Continue when you're done."
         case .createButton:
             return "Check the summary, give your server a display name, then tap Create Server to build it."
         case .dismissManage:
@@ -173,7 +194,6 @@ enum OnboardingStep: Int, CaseIterable {
              .wizardChoosePath,
              .serverSettings,
              .serverNetworkContinue,
-             .firstWorldFill,
              .createButton,
              .dismissManage,
              .acceptEula,
@@ -187,7 +207,7 @@ enum OnboardingStep: Int, CaseIterable {
     /// Custom instruction shown instead of the default "Tap the highlighted element above".
     var instruction: String? {
         switch self {
-        case .wizardChoosePath, .serverSettings, .serverNetworkContinue, .firstWorldFill:
+        case .wizardChoosePath, .serverSettings, .serverNetworkContinue:
             return "Tap Continue at the bottom to proceed"
         case .createButton:
             return "Give your server a name, then tap Create Server"
@@ -196,8 +216,25 @@ enum OnboardingStep: Int, CaseIterable {
         }
     }
 
-    /// When false the overlay renders only the dim/spotlight layer — no card, no blocking content.
-    var showsCard: Bool { self != .firstWorldFill }
+    /// Steps that sit on a form the user needs to fill (World, Plugins/Mods). Their
+    /// card shows a "Got it" button that hides the coach mark so the whole page is
+    /// usable; the tour resumes when the user taps the wizard's Continue button.
+    var allowsCardHide: Bool {
+        switch self {
+        case .firstWorld, .serverAddOns, .createButton: return true
+        default:                                        return false
+        }
+    }
+
+    /// Steps where the whole sheet is uniformly dimmed behind the coach mark (rather than
+    /// spotlight-lit). Focuses attention on the card; the dim lifts when the card is hidden
+    /// via "Got it" so the user can fill the page. Applies to all three full-page form steps.
+    var dimsSheetBehindCard: Bool {
+        switch self {
+        case .firstWorld, .serverAddOns, .createButton: return true
+        default:                                        return false
+        }
+    }
 
 }
 
@@ -211,11 +248,16 @@ enum OnboardingAnchorID: String {
     case wizardContinueButton    = "ob_wizard_continue"
     case serverNameField         = "ob_server_name"
     case serverTypeSelector      = "ob_server_type"
+    case serverCategoryArea      = "ob_server_category"
+    case serverFlavorArea        = "ob_server_flavor"
+    case serverSourceArea        = "ob_server_source"
+    case serverCrossplayArea     = "ob_server_crossplay"
     case serverSettingsArea          = "ob_server_settings"
     case serverConnectivityArea      = "ob_server_connectivity"
     case serverConnectivityPortsArea = "ob_server_connectivity_ports"
     case confirmPageArea             = "ob_confirm_page"
     case wizardBodyArea              = "ob_wizard_body"
+    case wizardSheetArea             = "ob_wizard_sheet"
     case worldSourceArea         = "ob_world_source"
     case worldCreationArea       = "ob_world_creation"
     case createSaveButton        = "ob_create_save"
@@ -247,10 +289,41 @@ final class OnboardingManager: ObservableObject {
     @Published private(set) var currentStep: OnboardingStep = .welcome
     @Published var anchorFrames: [String: CGRect] = [:]
 
+    /// True when the user tapped "Got it" on a form step (World, Plugins) to dismiss
+    /// the coach mark and fill the page. The dim/card are suppressed; the tour resumes
+    /// (and this resets) when they tap the wizard's Continue button. See `allowsCardHide`.
+    @Published var cardHidden: Bool = false
+
     /// Accent color for the overlay UI — set by AppViewModel.syncTourAccentColor().
     @Published var accentColor: Color = .green
 
     var tourServerType: ServerType = .java
+    /// The flavor the user has selected during the tour. Drives whether the
+    /// cross-play step applies (only standard plugin servers can host Geyser).
+    var tourFlavor: JavaServerFlavor = .paper
+
+    /// "Plugins" or "Mods" for the current tour flavor (used in the add-ons step copy).
+    var tourAddOnNoun: String { tourFlavor.addOnKind?.displayName ?? "Add-ons" }
+
+    /// Whether a step is relevant given the current tour selections. Steps that
+    /// don't apply are skipped during advance() so the linear tour can branch
+    /// (e.g. Bedrock skips the Java software steps; non-Paper skips cross-play).
+    private func isApplicable(_ step: OnboardingStep) -> Bool {
+        switch step {
+        case .serverCategory, .serverFlavor, .serverVersion:
+            return tourServerType == .java
+        case .serverCrossplay:
+            return tourServerType == .java
+                && tourFlavor.category == .standard
+                && tourFlavor != .vanilla
+        case .serverAddOns:
+            // Mirrors AddServerWizardView.hasAddOnsStep: Java flavors that accept
+            // plugins/mods (everything except Vanilla).
+            return tourServerType == .java && tourFlavor.addOnKind != nil
+        default:
+            return true
+        }
+    }
 
     private let defaultsKey = "msc_onboarding_tour_complete"
 
@@ -282,15 +355,30 @@ final class OnboardingManager: ObservableObject {
         currentStep = .welcome
     }
 
+    /// Dismisses the coach mark on a form step so the user can fill the page. The tour
+    /// stays on the same step and resumes (card reappears) on the next advance/jump.
+    func hideCard() {
+        SwiftUI.withAnimation(.easeInOut(duration: 0.2)) { cardHidden = true }
+    }
+
+    /// Brings a hidden coach mark back (the "Show tip" affordance).
+    func showCard() {
+        SwiftUI.withAnimation(.easeInOut(duration: 0.2)) { cardHidden = false }
+    }
+
     func advance() {
         guard isActive else { return }
+        cardHidden = false
 
         if currentStep == .done {
             complete()
             return
         }
 
-        let next = OnboardingStep(rawValue: currentStep.rawValue + 1) ?? .done
+        var next = OnboardingStep(rawValue: currentStep.rawValue + 1) ?? .done
+        while next != .done && !isApplicable(next) {
+            next = OnboardingStep(rawValue: next.rawValue + 1) ?? .done
+        }
         SwiftUI.withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
             currentStep = next
         }
@@ -298,6 +386,7 @@ final class OnboardingManager: ObservableObject {
 
     func jumpTo(_ step: OnboardingStep) {
         guard isActive else { return }
+        cardHidden = false
 
         SwiftUI.withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
             currentStep = step
@@ -308,6 +397,8 @@ final class OnboardingManager: ObservableObject {
         anchorFrames = [:]
         currentStep = .welcome
         tourServerType = .java
+        tourFlavor = .paper
+        cardHidden = false
 
         SwiftUI.withAnimation(.easeIn(duration: 0.25)) {
             isActive = true

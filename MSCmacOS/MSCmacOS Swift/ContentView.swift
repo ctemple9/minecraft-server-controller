@@ -578,6 +578,14 @@ struct ContentView: View {
             }
             viewModel.syncTourAccentColor()
         }
+        .onChange(of: viewModel.requestConsoleExpand) { _, shouldExpand in
+            guard shouldExpand else { return }
+            viewModel.requestConsoleExpand = false
+            if isConsoleHidden { isConsoleHidden = false }
+            if consoleSplitFraction > 0.80 {
+                withAnimation(.easeInOut(duration: 0.25)) { consoleSplitFraction = 0.65 }
+            }
+        }
         .onChange(of: viewModel.resolvedAccentColor) { _, newColor in
                     bannerColor = newColor
                 }
@@ -669,6 +677,10 @@ struct ContentView: View {
         // playit.gg secret key setup — shown on first use when no key is stored
         .sheet(isPresented: $viewModel.isShowingPlayitSecretSetup) {
             PlayitSecretKeySheet()
+                .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $viewModel.isShowingStartupProblems) {
+            StartupProblemsSheet(isPresented: $viewModel.isShowingStartupProblems)
                 .environmentObject(viewModel)
         }
 
@@ -862,6 +874,7 @@ struct PlayitSecretKeySheet: View {
                 Spacer()
                 Button("Save") {
                     viewModel.savePlayitSecretKey(secretKey)
+                    viewModel.retryPlayitAfterKeySetup()
                     viewModel.isShowingPlayitSecretSetup = false
                 }
                 .buttonStyle(MSCPrimaryButtonStyle())

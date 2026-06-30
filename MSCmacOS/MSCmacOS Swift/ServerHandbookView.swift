@@ -16,10 +16,19 @@ enum HandbookTopic: String, CaseIterable, Identifiable {
     case networkingBasics
     case ramPerformance
     // Java Servers
+    case standardVsModded
     case paper
+    case vanilla
+    case purpur
     case jarsJava
     case eulaOnlineMode
     case pluginsGeyserFloodgate
+    // Java Modded
+    case fabric
+    case neoforge
+    case forge
+    case modsModBrowser
+    case clientRequirementsModded
     // Bedrock Servers
     case bedrock
     case docker
@@ -38,61 +47,80 @@ enum HandbookTopic: String, CaseIterable, Identifiable {
     case playerManagement
     // Getting Started
     case firstServer
+    case firstModdedServer
     case bedrockSetup
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .overview:               return "Overview"
-        case .networkingBasics:       return "How Servers Connect"
-        case .ramPerformance:         return "RAM & Performance"
-        case .paper:                  return "What is Paper?"
-        case .jarsJava:               return "JAR Files & Java"
-        case .eulaOnlineMode:         return "EULA & Online Mode"
-        case .pluginsGeyserFloodgate: return "Plugins & Cross-Play"
-        case .bedrock:                return "What is Bedrock Dedicated Server?"
-        case .docker:                 return "Docker & How Bedrock Runs"
-        case .portsForwardingDuckDNS: return "Port Forwarding & DuckDNS"
-        case .playitSetup:            return "Playit.gg Tunneling"
-        case .tailscale:              return "Tailscale"
-        case .broadcast:              return "Xbox Broadcast"
-        case .remoteAccess:           return "MSC Remote (iOS)"
-        case .worldsBackups:          return "Worlds & Backups"
-        case .worldConversion:        return "World Conversion"
-        case .serverTransfer:         return "Server Import & Transfer"
-        case .serverFiles:            return "Server Files Browser"
-        case .watchdog:               return "Watchdog & Crash Recovery"
-        case .playerManagement:       return "Player Management"
-        case .firstServer:            return "Your First Java Server"
-        case .bedrockSetup:           return "Your First Bedrock Server"
+        case .overview:                  return "Overview"
+        case .networkingBasics:          return "How Servers Connect"
+        case .ramPerformance:            return "RAM & Performance"
+        case .standardVsModded:         return "Standard vs Modded"
+        case .paper:                     return "What is Paper?"
+        case .vanilla:                   return "Vanilla Server"
+        case .purpur:                    return "What is Purpur?"
+        case .jarsJava:                  return "JAR Files & Java"
+        case .eulaOnlineMode:            return "EULA & Online Mode"
+        case .pluginsGeyserFloodgate:    return "Plugins & Cross-Play"
+        case .fabric:                    return "What is Fabric?"
+        case .neoforge:                  return "What is NeoForge?"
+        case .forge:                     return "What is Forge?"
+        case .modsModBrowser:            return "Mods & Mod Browser"
+        case .clientRequirementsModded:  return "Client Requirements"
+        case .bedrock:                   return "What is Bedrock Dedicated Server?"
+        case .docker:                    return "Docker & How Bedrock Runs"
+        case .portsForwardingDuckDNS:    return "Port Forwarding & DuckDNS"
+        case .playitSetup:               return "Playit.gg Tunneling"
+        case .tailscale:                 return "Tailscale"
+        case .broadcast:                 return "Xbox Broadcast"
+        case .remoteAccess:              return "MSC Remote (iOS)"
+        case .worldsBackups:             return "Worlds & Backups"
+        case .worldConversion:           return "World Conversion"
+        case .serverTransfer:            return "Server Import & Transfer"
+        case .serverFiles:               return "Server Files Browser"
+        case .watchdog:                  return "Watchdog & Crash Recovery"
+        case .playerManagement:          return "Player Management"
+        case .firstServer:               return "Your First Java Server"
+        case .firstModdedServer:         return "Your First Modded Server"
+        case .bedrockSetup:              return "Your First Bedrock Server"
         }
     }
 
     var icon: String {
         switch self {
-        case .overview:               return "house.fill"
-        case .networkingBasics:       return "globe.americas.fill"
-        case .ramPerformance:         return "memorychip.fill"
-        case .paper:                  return "server.rack"
-        case .jarsJava:               return "shippingbox.fill"
-        case .eulaOnlineMode:         return "checkmark.seal.fill"
-        case .pluginsGeyserFloodgate: return "puzzlepiece.fill"
-        case .bedrock:                return "cube.fill"
-        case .docker:                 return "shippingbox.fill"
-        case .portsForwardingDuckDNS: return "network"
-        case .playitSetup:            return "antenna.radiowaves.left.and.right"
-        case .tailscale:              return "lock.shield.fill"
-        case .broadcast:              return "dot.radiowaves.left.and.right"
-        case .remoteAccess:           return "iphone"
-        case .worldsBackups:          return "archivebox.fill"
-        case .worldConversion:        return "arrow.2.circlepath"
-        case .serverTransfer:         return "square.and.arrow.down.fill"
-        case .serverFiles:            return "folder.fill"
-        case .watchdog:               return "stethoscope"
-        case .playerManagement:       return "person.2.fill"
-        case .firstServer:            return "flag.checkered"
-        case .bedrockSetup:           return "flag.checkered"
+        case .overview:                  return "house.fill"
+        case .networkingBasics:          return "globe.americas.fill"
+        case .ramPerformance:            return "memorychip.fill"
+        case .standardVsModded:         return "tray.2.fill"
+        case .paper:                     return "server.rack"
+        case .vanilla:                   return "leaf.fill"
+        case .purpur:                    return "crown.fill"
+        case .jarsJava:                  return "shippingbox.fill"
+        case .eulaOnlineMode:            return "checkmark.seal.fill"
+        case .pluginsGeyserFloodgate:    return "puzzlepiece.fill"
+        case .fabric:                    return "gearshape.fill"
+        case .neoforge:                  return "hammer.fill"
+        case .forge:                     return "wrench.and.screwdriver.fill"
+        case .modsModBrowser:            return "puzzlepiece.extension.fill"
+        case .clientRequirementsModded:  return "person.badge.key.fill"
+        case .bedrock:                   return "cube.fill"
+        case .docker:                    return "shippingbox.fill"
+        case .portsForwardingDuckDNS:    return "network"
+        case .playitSetup:               return "antenna.radiowaves.left.and.right"
+        case .tailscale:                 return "lock.shield.fill"
+        case .broadcast:                 return "dot.radiowaves.left.and.right"
+        case .remoteAccess:              return "iphone"
+        case .worldsBackups:             return "archivebox.fill"
+        case .worldConversion:           return "arrow.2.circlepath"
+        case .serverTransfer:            return "square.and.arrow.down.fill"
+        case .serverFiles:               return "folder.fill"
+        case .watchdog:                  return "stethoscope"
+        case .playerManagement:          return "person.2.fill"
+        case .firstServer:               return "flag.checkered"
+        case .firstModdedServer:         return "flag.checkered"
+        case .bedrockSetup:              return "flag.checkered"
         }
     }
 
@@ -100,15 +128,17 @@ enum HandbookTopic: String, CaseIterable, Identifiable {
         switch self {
         case .overview, .networkingBasics, .ramPerformance:
             return .concepts
-        case .paper, .jarsJava, .eulaOnlineMode, .pluginsGeyserFloodgate:
+        case .standardVsModded, .paper, .vanilla, .purpur, .jarsJava, .eulaOnlineMode, .pluginsGeyserFloodgate:
             return .java
+        case .fabric, .neoforge, .forge, .modsModBrowser, .clientRequirementsModded:
+            return .moddedJava
         case .bedrock, .docker:
             return .bedrockCat
         case .portsForwardingDuckDNS, .playitSetup, .tailscale, .broadcast, .remoteAccess:
             return .connection
         case .worldsBackups, .worldConversion, .serverTransfer, .serverFiles, .watchdog, .playerManagement:
             return .management
-        case .firstServer, .bedrockSetup:
+        case .firstServer, .firstModdedServer, .bedrockSetup:
             return .gettingStarted
         }
     }
@@ -117,6 +147,7 @@ enum HandbookTopic: String, CaseIterable, Identifiable {
 enum HandbookCategory: String, CaseIterable {
     case concepts       = "Concepts"
     case java           = "Java Servers"
+    case moddedJava     = "Modded Servers"
     case bedrockCat     = "Bedrock Servers"
     case connection     = "Connection & Access"
     case management     = "Server Management"
@@ -126,6 +157,7 @@ enum HandbookCategory: String, CaseIterable {
         switch self {
         case .concepts:       return .blue
         case .java:           return .orange
+        case .moddedJava:     return .indigo
         case .bedrockCat:     return .green
         case .connection:     return .purple
         case .management:     return .teal
@@ -468,10 +500,18 @@ struct ServerHandbookView: View {
         case .overview:                 overviewContent
         case .networkingBasics:         networkingBasicsContent
         case .ramPerformance:           ramPerformanceContent
+        case .standardVsModded:         standardVsModdedContent
         case .paper:                    paperContent
+        case .vanilla:                  vanillaContent
+        case .purpur:                   purpurContent
         case .jarsJava:                 jarsJavaContent
         case .eulaOnlineMode:           eulaOnlineModeContent
         case .pluginsGeyserFloodgate:   pluginsGeyserFloodgateContent
+        case .fabric:                   fabricContent
+        case .neoforge:                 neoforgeContent
+        case .forge:                    forgeContent
+        case .modsModBrowser:           modsModBrowserContent
+        case .clientRequirementsModded: clientRequirementsModdedContent
         case .bedrock:                  bedrockContent
         case .docker:                   dockerContent
         case .portsForwardingDuckDNS:   portsForwardingDuckDNSContent
@@ -486,6 +526,7 @@ struct ServerHandbookView: View {
         case .watchdog:                 watchdogContent
         case .playerManagement:         playerManagementContent
         case .firstServer:              firstServerContent
+        case .firstModdedServer:        firstModdedServerContent
         case .bedrockSetup:             bedrockSetupContent
         }
     }

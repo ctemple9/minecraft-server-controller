@@ -10,6 +10,7 @@ struct OverviewAlertBannersView: View {
 
     @Binding var hasSavedDuckDNS: Bool
     @Binding var isEditingDuckDNS: Bool
+    @Binding var isShowingHostnameBanner: Bool
 
     var body: some View {
         overviewAlertBanners
@@ -39,7 +40,8 @@ struct OverviewAlertBannersView: View {
 
             let trimmedDuck = viewModel.duckdnsInput
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !hasSavedDuckDNS && trimmedDuck.isEmpty {
+            // Only show this banner when the user deliberately triggered it via the duck icon.
+            if !hasSavedDuckDNS && trimmedDuck.isEmpty && isShowingHostnameBanner && !isEditingDuckDNS {
                 overviewAlertBanner(
                     icon: "network",
                     color: MSC.Colors.info,
@@ -47,6 +49,7 @@ struct OverviewAlertBannersView: View {
                     actionLabel: "Set Hostname"
                 ) {
                     isEditingDuckDNS = true
+                    isShowingHostnameBanner = false
                 }
             }
         }

@@ -301,7 +301,7 @@ struct DetailsPlayersTabView: View {
                         .foregroundStyle(MSC.Colors.caption)
                         .padding(MSC.Spacing.md)
                 } else {
-                    ForEach(days, id: \.day) { section in
+                    let eventRows = ForEach(days, id: \.day) { section in
                         VStack(alignment: .leading, spacing: 0) {
                             // Day header
                             HStack {
@@ -323,14 +323,25 @@ struct DetailsPlayersTabView: View {
                         }
                     }
 
+                    if showAllSessionEvents {
+                        ScrollView(.vertical, showsIndicators: true) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                eventRows
+                            }
+                        }
+                        .frame(maxHeight: 320)
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            eventRows
+                        }
+                    }
+
                     // Show more / show less toggle
                     let total = totalFilteredEventCount
                     if total > Self.recentEventLimit {
                         Divider()
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showAllSessionEvents.toggle()
-                            }
+                            showAllSessionEvents.toggle()
                         } label: {
                             HStack(spacing: MSC.Spacing.xs) {
                                 Image(systemName: showAllSessionEvents

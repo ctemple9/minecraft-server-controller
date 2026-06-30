@@ -161,11 +161,19 @@ extension AppViewModel {
                         }
                     }
 
-                    // 2. World slots, backups, plugins, resource packs — all wholesale
-                    for sub in ["world_slots", "backups", "plugins", "resource-packs"] {
+                    // 2. World slots, backups, plugins, mods, resource packs — all wholesale
+                    for sub in ["world_slots", "backups", "plugins", "mods", "resource-packs"] {
                         let src = serverURL.appendingPathComponent(sub, isDirectory: true)
                         if fm.fileExists(atPath: src.path) {
                             try? fm.copyItem(at: src, to: outDir.appendingPathComponent(sub, isDirectory: true))
+                        }
+                    }
+
+                    // 2c. NeoForge/Forge: bundle libraries/ (required for server launch; not re-runnable on import)
+                    if server.javaFlavor == .neoforge || server.javaFlavor == .forge {
+                        let libSrc = serverURL.appendingPathComponent("libraries", isDirectory: true)
+                        if fm.fileExists(atPath: libSrc.path) {
+                            try? fm.copyItem(at: libSrc, to: outDir.appendingPathComponent("libraries", isDirectory: true))
                         }
                     }
 
@@ -395,23 +403,31 @@ extension AppViewModel {
                         }
                     }
 
-                    // world_slots/, backups/, plugins/, resource-packs/
-                    for sub in ["world_slots", "backups", "plugins", "resource-packs"] {
+                    // world_slots/, backups/, plugins/, mods/, resource-packs/
+                    for sub in ["world_slots", "backups", "plugins", "mods", "resource-packs"] {
                         let src = pkgDir.appendingPathComponent(sub, isDirectory: true)
                         if fm.fileExists(atPath: src.path) {
                             try fm.copyItem(at: src, to: destURL.appendingPathComponent(sub, isDirectory: true))
                         }
                     }
 
-                    // paper.jar
+                    // NeoForge/Forge: restore libraries/ (bundled on export; required for launch)
+                    if entry.server.javaFlavor == .neoforge || entry.server.javaFlavor == .forge {
+                        let libSrc = pkgDir.appendingPathComponent("libraries", isDirectory: true)
+                        if fm.fileExists(atPath: libSrc.path) {
+                            try? fm.copyItem(at: libSrc, to: destURL.appendingPathComponent("libraries", isDirectory: true))
+                        }
+                    }
+
+                    // paper.jar (only present when bundledPaperJar is true; NeoForge/Forge use @unix_args.txt instead)
                     var paperJarPath = ""
-                    if entry.server.isJava {
+                    if entry.server.isJava && entry.bundledPaperJar {
                         let jar = pkgDir.appendingPathComponent("paper.jar")
                         let destJar = destURL.appendingPathComponent("paper.jar")
                         if fm.fileExists(atPath: jar.path) {
                             try? fm.copyItem(at: jar, to: destJar)
+                            paperJarPath = destJar.path
                         }
-                        paperJarPath = destJar.path
                     }
 
                     // Apply Java port override → rewrite server.properties

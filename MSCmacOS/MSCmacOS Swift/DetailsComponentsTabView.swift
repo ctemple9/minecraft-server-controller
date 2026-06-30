@@ -7,15 +7,44 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Main View
 
 struct DetailsComponentsTabView: View {
     @EnvironmentObject var viewModel: AppViewModel
 
+    @State private var showingModrinthBrowser = false
+    @State private var isShowingModpackImporter = false
+    @State private var isShowingUpdateAllSheet = false
+    @State private var isShowingClientExportSheet = false
+
     private var isBedrock: Bool {
         guard let s = viewModel.selectedServer else { return false }
         return viewModel.configServer(for: s)?.isBedrock ?? false
+    }
+
+    private var isModded: Bool {
+        guard let s = viewModel.selectedServer, let cfg = viewModel.configServer(for: s) else { return false }
+        return cfg.isModded
+    }
+
+    private var selectedConfig: ConfigServer? {
+        guard let s = viewModel.selectedServer else { return nil }
+        return viewModel.configServer(for: s)
+    }
+
+    /// True for Java servers that accept add-ons (everything except Vanilla).
+    private var addOnSupported: Bool {
+        guard let s = viewModel.selectedServer, let cfg = viewModel.configServer(for: s) else { return false }
+        return cfg.isJava && cfg.addOnKind != nil
+    }
+
+    /// "Browse mods" / "Browse plugins" depending on the server flavor.
+    private var addOnBrowseLabel: String {
+        guard let s = viewModel.selectedServer, let cfg = viewModel.configServer(for: s),
+              let kind = cfg.addOnKind else { return "Browse" }
+        return "Browse \(kind.displayName.lowercased())"
     }
 
     var body: some View {
@@ -32,6 +61,39 @@ struct DetailsComponentsTabView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, MSC.Spacing.sm)
+        }
+        .sheet(isPresented: $showingModrinthBrowser) {
+            if let s = viewModel.selectedServer, let cfg = viewModel.configServer(for: s) {
+                ModrinthBrowserView(serverConfig: cfg)
+                    .environmentObject(viewModel)
+            }
+        }
+        .sheet(isPresented: $isShowingUpdateAllSheet) {
+            if let cfg = selectedConfig {
+                AddonUpdateSheet(cfg: cfg, isPresented: $isShowingUpdateAllSheet)
+                    .environmentObject(viewModel)
+            }
+        }
+        .sheet(isPresented: $isShowingClientExportSheet) {
+            if let cfg = selectedConfig {
+                ClientExportSheet(isPresented: $isShowingClientExportSheet, cfg: cfg)
+                    .environmentObject(viewModel)
+            }
+        }
+        .fileImporter(
+            isPresented: $isShowingModpackImporter,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result,
+                  let url = urls.first,
+                  url.pathExtension.lowercased() == "mrpack",
+                  let cfg = selectedConfig else { return }
+            Task {
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                await viewModel.importModpack(from: url, for: cfg)
+            }
         }
     }
 
@@ -55,15 +117,28 @@ struct DetailsComponentsTabView: View {
 
             Spacer()
 
-            Button {
-                viewModel.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
-            } label: {
-                Label("Refresh local", systemImage: "arrow.clockwise")
+            if isModded {
+                Button {
+                    isShowingModpackImporter = true
+                } label: {
+                    Label("Import Modpack", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
             }
-            .buttonStyle(MSCSecondaryButtonStyle())
-            .controlSize(.mini)
+
+            if addOnSupported {
+                Button {
+                    showingModrinthBrowser = true
+                } label: {
+                    Label(addOnBrowseLabel, systemImage: "magnifyingglass")
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
+            }
 
             Button {
+                viewModel.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
                 viewModel.checkComponentsOnline()
             } label: {
                 if viewModel.isCheckingComponentsOnline {
@@ -72,7 +147,7 @@ struct DetailsComponentsTabView: View {
                         Text("Checking\u{2026}")
                     }
                 } else {
-                    Label("Check online", systemImage: "cloud.fill")
+                    Label("Refresh", systemImage: "arrow.clockwise")
                 }
             }
             .buttonStyle(MSCSecondaryButtonStyle())
@@ -94,29 +169,85 @@ struct DetailsComponentsTabView: View {
         }
     }
 
-    // MARK: - Java component list (unified block)
+    // MARK: - Java component list
+
+    private var showCrossplay: Bool {
+        guard let cfg = selectedConfig else { return false }
+        return cfg.isJava && !isModded && cfg.javaFlavor != .vanilla
+    }
+
+    private func componentSectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 9.5, weight: .semibold))
+            .tracking(0.6)
+            .textCase(.uppercase)
+            .foregroundStyle(MSC.Colors.tertiary)
+    }
 
     private var javaComponentList: some View {
-        SEBlock {
-            // ── Paper ──────────────────────────────────────────────────────
-            PaperListRow(onReveal: revealPaperJarInFinder)
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-            rowDivider
+            // ── SERVER ────────────────────────────────────────────
+            componentSectionLabel("Server")
+            SEBlock {
+                if isModded {
+                    ModdedLoaderRow(cfg: selectedConfig)
+                } else {
+                    ServerJarListRow(cfg: selectedConfig, onReveal: revealPaperJarInFinder)
+                }
+            }
 
-            // ── Plugins ────────────────────────────────────────────────────
-            pluginRows
+            // ── MODS / PLUGINS ────────────────────────────────────
+            if isModded || addOnSupported {
+                HStack(spacing: MSC.Spacing.sm) {
+                    componentSectionLabel(isModded ? "Mods" : "Plugins")
+                    Spacer()
+                    let installedCount = isModded ? viewModel.discoveredMods.count : viewModel.discoveredPlugins.count
+                    if installedCount > 0 {
+                        Button {
+                            isShowingClientExportSheet = true
+                        } label: {
+                            Label("Export for clients", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.mini)
+                        Button {
+                            if let cfg = selectedConfig { viewModel.resolveAddonUpdates(for: cfg) }
+                            isShowingUpdateAllSheet = true
+                        } label: {
+                            Label("Update All", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.mini)
+                    }
+                }
+                SEBlock {
+                    if isModded {
+                        modRows
+                        rowDivider
+                        modFooter
+                    } else {
+                        pluginRows
+                        rowDivider
+                        pluginFooter
+                    }
+                }
+            }
 
-            rowDivider
-
-            // ── Broadcast ──────────────────────────────────────────────────
-            BroadcastListRow()
-
-            rowDivider
-
-            // ── Plugin folder footer ───────────────────────────────────────
-            pluginFooter
+            // ── CROSSPLAY ─────────────────────────────────────────
+            if showCrossplay {
+                componentSectionLabel("Crossplay")
+                SEBlock {
+                    BroadcastListRow()
+                }
+            }
         }
-        .task { viewModel.refreshDiscoveredPlugins() }
+        .task(id: selectedConfig?.id) {
+            if isModded { viewModel.refreshDiscoveredMods() }
+            else { viewModel.refreshDiscoveredPlugins() }
+            // Resolve-once-with-cache: drives per-row update badges. No-op when current.
+            if let cfg = selectedConfig { viewModel.resolveAddonUpdates(for: cfg) }
+        }
     }
 
     private var pluginFooter: some View {
@@ -175,6 +306,58 @@ struct DetailsComponentsTabView: View {
             .appendingPathComponent("plugins", isDirectory: true)
         try? FileManager.default.createDirectory(at: pluginsDir, withIntermediateDirectories: true)
         viewModel.revealInFinder(url: pluginsDir)
+    }
+
+    // MARK: - Mod rows (modded servers)
+
+    @ViewBuilder
+    private var modRows: some View {
+        if viewModel.discoveredMods.isEmpty {
+            HStack(spacing: MSC.Spacing.sm) {
+                Spacer().frame(width: 52)
+                Text("No mods installed.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                Spacer()
+            }
+            .padding(.horizontal, MSC.Spacing.md)
+            .padding(.vertical, MSC.Spacing.sm + 1)
+        } else {
+            ForEach(Array(viewModel.discoveredMods.enumerated()), id: \.element.id) { idx, entry in
+                if idx > 0 {
+                    Divider()
+                        .padding(.leading, 52)
+                        .opacity(0.55)
+                }
+                ModListRow(entry: entry)
+            }
+        }
+    }
+
+    private var modFooter: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            Button { revealModsFolder() } label: {
+                Label("Reveal mods folder", systemImage: "folder")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            Spacer()
+            Button { viewModel.addModFromFilePicker() } label: {
+                Label("Add Mod", systemImage: "plus")
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm)
+    }
+
+    private func revealModsFolder() {
+        guard let cfg = selectedConfig else { return }
+        let modsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            .appendingPathComponent("mods", isDirectory: true)
+        try? FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
+        viewModel.revealInFinder(url: modsDir)
     }
 
     // MARK: - Bedrock broadcast card (unchanged)
@@ -237,58 +420,76 @@ struct DetailsComponentsTabView: View {
     }
 }
 
-// MARK: - Paper List Row
+// MARK: - Server JAR List Row
 
-private struct PaperListRow: View {
+private struct ServerJarListRow: View {
     @EnvironmentObject var viewModel: AppViewModel
+    let cfg: ConfigServer?
     let onReveal: () -> Void
 
-    @State private var isExpanded = false
+    @State private var isShowingVersionPicker = false
+    @State private var availableVersions: [ServerVersionEntry] = []
+    @State private var pickerSelectedEntry: ServerVersionEntry? = nil
+    @State private var pickerDidPick: Bool = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // ── Header row ────────────────────────────────────────────
-            HStack(spacing: MSC.Spacing.sm) {
-                // Non-interactive "always on" indicator — Paper is the core JAR, it can't be disabled
-                Toggle("", isOn: .constant(true))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .frame(width: 32)
-                    .allowsHitTesting(false)
-                    .saturation(0)
-                    .opacity(0.28)
+        HStack(spacing: MSC.Spacing.sm) {
+            // Non-interactive "always on" indicator — core JAR can't be disabled
+            Toggle("", isOn: .constant(true))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .frame(width: 32)
+                .allowsHitTesting(false)
+                .saturation(0)
+                .opacity(0.28)
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.12))
-                        .frame(width: 28, height: 28)
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+            ZStack {
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "shippingbox.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(cfg?.javaFlavor.displayName ?? "Server JAR")
+                        .font(.system(size: 12.5, weight: .semibold))
+                    componentBadge("Server JAR", color: .accentColor)
                 }
+                Text(viewModel.componentsSnapshot.paper.local ?? "Not installed")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(viewModel.componentsSnapshot.paper.local == nil ? MSC.Colors.error : MSC.Colors.caption)
+            }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text("Paper")
-                            .font(.system(size: 12.5, weight: .semibold))
-                        componentBadge("Server JAR", color: .accentColor)
-                    }
-                    Text(viewModel.componentsSnapshot.paper.local ?? "Not installed")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(viewModel.componentsSnapshot.paper.local == nil ? MSC.Colors.error : MSC.Colors.caption)
+            Spacer()
+
+            ComponentStatusPill(
+                local: viewModel.componentsSnapshot.paper.local,
+                template: nil,
+                online: viewModel.componentsSnapshot.paper.online
+            )
+
+            if viewModel.isDownloadingJar {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text("Downloading\u{2026}")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
                 }
-
-                Spacer()
-
-                ComponentStatusPill(
-                    local: viewModel.componentsSnapshot.paper.local,
-                    template: nil,
-                    online: viewModel.componentsSnapshot.paper.online
-                )
-
+            } else {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) { isExpanded.toggle() }
+                    availableVersions = []
+                    pickerSelectedEntry = nil
+                    pickerDidPick = false
+                    isShowingVersionPicker = true
+                    Task {
+                        if let cfg {
+                            availableVersions = (try? await ServerJarProvider.listVersions(for: cfg.javaFlavor)) ?? []
+                        }
+                    }
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: 14))
@@ -296,129 +497,29 @@ private struct PaperListRow: View {
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
                 .controlSize(.mini)
+                .disabled(viewModel.isServerRunning)
             }
-            .padding(.horizontal, MSC.Spacing.md)
-            .padding(.vertical, MSC.Spacing.sm + 1)
-
-            // ── Expansion ─────────────────────────────────────────────
-            if isExpanded {
-                Divider().opacity(0.5)
-
-                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-                    trackSelector
-
-                    if viewModel.includeExperimentalPaperBuilds {
-                        HStack(alignment: .top, spacing: MSC.Spacing.xs) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(MSC.Colors.warning)
-                                .padding(.top, 1)
-                            Text("Experimental builds are required for console cross-play on the latest Minecraft version. Not recommended for stable play.")
-                                .font(MSC.Typography.caption)
-                                .foregroundStyle(MSC.Colors.warning)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    versionListContent
-
-                    HStack(spacing: MSC.Spacing.sm) {
-                        Button {
-                            viewModel.downloadAndApplySelectedPaperVersion()
-                        } label: {
-                            if viewModel.isDownloadingAndApplyingPaper {
-                                HStack(spacing: 4) {
-                                    ProgressView().controlSize(.mini)
-                                    Text("Downloading\u{2026}")
-                                }
-                            } else {
-                                Label("Download selected", systemImage: "arrow.down.circle.fill")
-                            }
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .controlSize(.mini)
-                        .disabled(
-                            viewModel.isServerRunning ||
-                            viewModel.isDownloadingAndApplyingPaper ||
-                            viewModel.selectedPaperVersionOption == nil
-                        )
-
-                        Button { onReveal() } label: {
-                            Label("Reveal", systemImage: "folder")
-                        }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .controlSize(.mini)
-
-                        Spacer()
-                    }
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .sheet(isPresented: $isShowingVersionPicker) {
+            VersionPickerSheet(
+                versions: availableVersions,
+                selectedEntry: Binding(
+                    get: { pickerSelectedEntry },
+                    set: { pickerSelectedEntry = $0; pickerDidPick = true }
+                ),
+                isPresented: $isShowingVersionPicker
+            )
+        }
+        .onChange(of: isShowingVersionPicker) { showing in
+            if !showing {
+                if pickerDidPick, let cfg {
+                    viewModel.downloadAndApplyJarVersion(pickerSelectedEntry, for: cfg)
                 }
-                .padding(.horizontal, MSC.Spacing.md)
-                .padding(.vertical, MSC.Spacing.md)
-                .transition(.opacity)
-            }
-        }
-    }
-
-    private var trackSelector: some View {
-        HStack(spacing: 2) {
-            trackSegment("Stable",       isSelected: !viewModel.includeExperimentalPaperBuilds) {
-                viewModel.switchPaperTrack(includeExperimental: false)
-            }
-            trackSegment("Experimental", isSelected:  viewModel.includeExperimentalPaperBuilds) {
-                viewModel.switchPaperTrack(includeExperimental: true)
-            }
-        }
-        .padding(2)
-        .background(
-            RoundedRectangle(cornerRadius: MSC.Radius.sm + 2, style: .continuous)
-                .fill(MSC.Colors.tierAtmosphere)
-        )
-    }
-
-    @ViewBuilder
-    private func trackSegment(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                .padding(.horizontal, MSC.Spacing.sm)
-                .padding(.vertical, MSC.Spacing.xxs + 1)
-                .background(
-                    Group {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                                .fill(MSC.Colors.tierContent)
-                        }
-                    }
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var versionListContent: some View {
-        if viewModel.isCheckingComponentsOnline && viewModel.availablePaperVersions.isEmpty {
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.mini)
-                Text("Fetching available versions\u{2026}")
-                    .font(MSC.Typography.caption)
-                    .foregroundStyle(MSC.Colors.tertiary)
-            }
-        } else if viewModel.availablePaperVersions.isEmpty {
-            Text("Click Check online above to see available versions.")
-                .font(MSC.Typography.caption)
-                .foregroundStyle(MSC.Colors.tertiary)
-        } else {
-            VStack(spacing: 2) {
-                ForEach(viewModel.availablePaperVersions) { option in
-                    PaperVersionRow(
-                        option: option,
-                        isSelected: viewModel.selectedPaperVersionOption == option,
-                        isCurrent: option.displayString == viewModel.componentsSnapshot.paper.local
-                    ) {
-                        viewModel.selectedPaperVersionOption = option
-                    }
-                }
+                availableVersions = []
+                pickerSelectedEntry = nil
+                pickerDidPick = false
             }
         }
     }
@@ -449,6 +550,32 @@ private struct PluginListRow: View {
         case .userSourced: return entry.sourceConfig != nil
         case .unmanaged:   return false
         }
+    }
+
+    /// The resolver's plan entry for this plugin, if any. The hash/Modrinth path is
+    /// preferred over the legacy source-URL updater when it has something to offer.
+    ///
+    /// Managed plugins (Geyser/Floodgate) are excluded: MSC installs them from GeyserMC's
+    /// CDN (download.geysermc.org), not Modrinth, so hash-matching is unreliable and would
+    /// make the two vendor-siblings behave differently. They keep their dedicated updater.
+    private var resolverItem: AddonUpdateItem? {
+        guard entry.tier != .managed else { return nil }
+        return viewModel.addonUpdatePlan.first { $0.jarStem == entry.jarStem }
+    }
+    private var hasResolverUpdate: Bool { resolverItem?.bucket == .updateAvailable }
+
+    /// True when the resolver recognizes this plugin (linked to Modrinth). When it does,
+    /// the resolver owns the update affordance — we don't also show the legacy download
+    /// button, so up-to-date managed plugins show no redundant button.
+    private var resolverOwnsCurrent: Bool {
+        guard let b = resolverItem?.bucket else { return false }
+        return b != .unlinked
+    }
+
+    /// Installed version to show: prefer the resolver's (consistent scheme with the
+    /// available build), fall back to the filename-parsed version.
+    private var displayedCurrentVersion: String? {
+        resolverItem?.currentVersion ?? localVersion
     }
 
     var body: some View {
@@ -497,12 +624,19 @@ private struct PluginListRow: View {
                 }
 
                 HStack(spacing: 4) {
-                    if let local = localVersion {
+                    if let local = displayedCurrentVersion {
                         Text(local)
                             .font(.system(size: 10.5))
                             .foregroundStyle(MSC.Colors.caption)
                     }
-                    if hasUpdate, let online = entry.onlineVersion, online != "(direct)" {
+                    if hasResolverUpdate, let online = resolverItem?.availableVersion {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(MSC.Colors.tertiary)
+                        Text(online)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(MSC.Colors.warning)
+                    } else if hasUpdate, let online = entry.onlineVersion, online != "(direct)" {
                         Image(systemName: "arrow.right")
                             .font(.system(size: 8, weight: .semibold))
                             .foregroundStyle(MSC.Colors.tertiary)
@@ -528,7 +662,12 @@ private struct PluginListRow: View {
 
             // Action buttons
             HStack(spacing: 4) {
-                if canDownload {
+                if hasResolverUpdate {
+                    // Modrinth/hash-detected update — unified resolver path.
+                    AddonRowUpdateControl(jarStem: entry.jarStem, cfg: viewModel.selectedServerConfig)
+                } else if !resolverOwnsCurrent && canDownload {
+                    // Legacy source-URL updater — only for plugins the resolver can't link
+                    // (GitHub/Hangar/direct sources not on Modrinth).
                     Button { isShowingDownloadConfirm = true } label: {
                         if isDownloading {
                             ProgressView().controlSize(.mini)
@@ -560,7 +699,10 @@ private struct PluginListRow: View {
                     }
                 }
 
-                if entry.tier != .managed {
+                // Legacy "attach a source URL" — only for plugins the resolver couldn't
+                // link to Modrinth. Once a plugin is resolver-owned, its update source is
+                // already known, so the manual link button would be redundant.
+                if entry.tier != .managed && !resolverOwnsCurrent {
                     Button { isShowingSourcePopover = true } label: {
                         Image(systemName: entry.sourceConfig != nil ? "link.badge.plus" : "link")
                     }
@@ -696,6 +838,200 @@ private struct BroadcastListRow: View {
     }
 }
 
+// MARK: - Modded Loader Row
+
+private struct ModdedLoaderRow: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let cfg: ConfigServer?
+
+    @State private var isShowingVersionPicker = false
+    @State private var availableVersions: [ServerVersionEntry] = []
+    @State private var pickerSelectedEntry: ServerVersionEntry? = nil
+    @State private var pickerDidPick: Bool = false
+
+    var body: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            Toggle("", isOn: .constant(true))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .frame(width: 32)
+                .allowsHitTesting(false)
+                .saturation(0)
+                .opacity(0.28)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: iconName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(cfg?.javaFlavor.displayName ?? "Loader")
+                        .font(.system(size: 12.5, weight: .semibold))
+                    componentBadge("Loader", color: .accentColor)
+                }
+                Text(versionSubtitle)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(MSC.Colors.caption)
+            }
+
+            Spacer()
+
+            if viewModel.isDownloadingJar {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text("Installing\u{2026}")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Button {
+                    availableVersions = []
+                    pickerSelectedEntry = nil
+                    pickerDidPick = false
+                    isShowingVersionPicker = true
+                    Task {
+                        if let cfg {
+                            availableVersions = (try? await ServerJarProvider.listVersions(for: cfg.javaFlavor)) ?? []
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.accentColor.opacity(0.65))
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.mini)
+                .disabled(viewModel.isServerRunning)
+            }
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .sheet(isPresented: $isShowingVersionPicker) {
+            VersionPickerSheet(
+                versions: availableVersions,
+                selectedEntry: Binding(
+                    get: { pickerSelectedEntry },
+                    set: { pickerSelectedEntry = $0; pickerDidPick = true }
+                ),
+                isPresented: $isShowingVersionPicker
+            )
+        }
+        .onChange(of: isShowingVersionPicker) { showing in
+            if !showing {
+                if pickerDidPick, let cfg {
+                    viewModel.upgradeModdedLoader(pickerSelectedEntry, for: cfg)
+                }
+                availableVersions = []
+                pickerSelectedEntry = nil
+                pickerDidPick = false
+            }
+        }
+    }
+
+    private var iconName: String { cfg?.javaFlavor.iconName ?? "puzzlepiece.fill" }
+
+    private var versionSubtitle: String {
+        guard let cfg else { return "" }
+        var parts: [String] = []
+        if let mc = cfg.minecraftVersion { parts.append("MC \(mc)") }
+        if let lv = cfg.loaderVersion    { parts.append("Loader \(lv)") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - Mod List Row
+
+private struct ModListRow: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let entry: ModEntry
+
+    @State private var isShowingRemoveConfirm = false
+
+    private var resolverItem: AddonUpdateItem? {
+        viewModel.addonUpdatePlan.first { $0.jarStem == entry.jarStem }
+    }
+    /// Manifest version, falling back to the resolver's installed version when the
+    /// manifest had none.
+    private var displayedVersion: String? { entry.version ?? resolverItem?.currentVersion }
+
+    var body: some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            // Enable/Disable toggle
+            Toggle("", isOn: Binding(
+                get: { entry.isEnabled },
+                set: { _ in viewModel.toggleMod(jarStem: entry.jarStem) }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .frame(width: 32)
+
+            // Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color.purple.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Image(systemName: "puzzlepiece.extension.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.purple)
+            }
+
+            // Name + version
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.displayName)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(entry.isEnabled ? Color.primary : Color.secondary)
+
+                if let ver = displayedVersion {
+                    Text(ver)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(MSC.Colors.caption)
+                } else if let mid = entry.modId {
+                    Text(mid)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(MSC.Colors.tertiary)
+                }
+            }
+
+            Spacer()
+
+            // Update affordance (only shown when Modrinth has a newer compatible build)
+            AddonRowUpdateControl(jarStem: entry.jarStem, cfg: viewModel.selectedServerConfig)
+
+            // Remove button
+            Button { isShowingRemoveConfirm = true } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 13))
+                    .foregroundStyle(MSC.Colors.error.opacity(0.7))
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            .disabled(viewModel.isServerRunning)
+            .confirmationDialog(
+                "Remove \(entry.displayName)?",
+                isPresented: $isShowingRemoveConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Remove", role: .destructive) {
+                    viewModel.removeMod(jarStem: entry.jarStem)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The mod JAR will be permanently deleted from the mods folder.")
+            }
+        }
+        .padding(.horizontal, MSC.Spacing.md)
+        .padding(.vertical, MSC.Spacing.sm + 1)
+        .opacity(entry.isEnabled ? 1.0 : 0.42)
+    }
+}
+
 // MARK: - Shared badge helper
 
 private func componentBadge(_ label: String, color: Color) -> some View {
@@ -712,6 +1048,69 @@ private func componentBadge(_ label: String, color: Color) -> some View {
                         .stroke(color.opacity(0.22), lineWidth: 0.5)
                 )
         )
+}
+
+// MARK: - Shared per-row update control (resolver-driven)
+
+/// Renders the inline "update available" affordance for a plugin/mod row by consulting
+/// `viewModel.addonUpdatePlan`. Shows nothing unless the item has a Modrinth update.
+/// Tapping offers Update / View on Modrinth / Cancel.
+private struct AddonRowUpdateControl: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let jarStem: String
+    let cfg: ConfigServer?
+
+    @State private var isShowingConfirm = false
+    @State private var detailHit: ModrinthSearchHit? = nil
+
+    private var item: AddonUpdateItem? {
+        viewModel.addonUpdatePlan.first { $0.jarStem == jarStem }
+    }
+    private var projectType: String { (cfg?.javaFlavor.addOnKind == .mod) ? "mod" : "plugin" }
+
+    var body: some View {
+        if viewModel.updatingAddonStems.contains(jarStem) {
+            ProgressView().controlSize(.mini)
+        } else if let item, item.bucket == .updateAvailable {
+            Button { isShowingConfirm = true } label: {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(MSC.Colors.warning)
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.mini)
+            .disabled(viewModel.isServerRunning)
+            .confirmationDialog(
+                "Update \(item.displayName)?",
+                isPresented: $isShowingConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Update to \(item.availableVersion ?? "latest")") {
+                    if let cfg { viewModel.updateAddon(item, for: cfg) }
+                }
+                Button("View on Modrinth") { detailHit = item.modrinthHit(projectType: projectType) }
+                Button("Delete \(item.displayName)", role: .destructive) {
+                    if cfg?.javaFlavor.addOnKind == .mod {
+                        viewModel.removeMod(jarStem: jarStem)
+                    } else {
+                        viewModel.removePlugin(jarStem: jarStem)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will replace \(item.currentVersion ?? "the current version") with \(item.availableVersion ?? "the latest build").")
+            }
+            .sheet(item: $detailHit) { hit in
+                if let cfg {
+                    NavigationStack {
+                        ModrinthProjectDetailView(hit: hit, serverConfig: cfg)
+                            .environmentObject(viewModel)
+                            .frame(width: 640, height: 680)
+                    }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Plugin Source Popover (unchanged)
@@ -828,101 +1227,6 @@ private struct PluginTierBadge: View {
                             .stroke(color.opacity(0.22), lineWidth: 0.5)
                     )
             )
-    }
-}
-
-// MARK: - Paper Version Row (unchanged)
-
-private struct PaperVersionRow: View {
-    let option: PaperVersionOption
-    let isSelected: Bool
-    let isCurrent: Bool
-    let onSelect: () -> Void
-
-    var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: MSC.Spacing.sm) {
-                ZStack {
-                    Circle()
-                        .strokeBorder(
-                            isSelected ? Color.accentColor : Color.secondary.opacity(0.35),
-                            lineWidth: 1.5
-                        )
-                        .frame(width: 13, height: 13)
-                    if isSelected {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 6, height: 6)
-                    }
-                }
-
-                HStack(spacing: 4) {
-                    Text(option.version)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Text("build \(option.build)")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                    if isCurrent {
-                        Text("— installed")
-                            .font(.system(size: 10))
-                            .foregroundStyle(MSC.Colors.tertiary)
-                    }
-                }
-
-                Spacer()
-
-                HStack(alignment: .center, spacing: 6) {
-                    channelBadge(option.channel)
-                    Text(option.formattedDate ?? "")
-                        .font(.system(size: 10))
-                        .foregroundStyle(MSC.Colors.tertiary)
-                        .frame(width: 80, alignment: .leading)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, MSC.Spacing.xs)
-        .padding(.vertical, 5)
-        .background(
-            Group {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
-                                .strokeBorder(Color.accentColor.opacity(0.2), lineWidth: 0.5)
-                        )
-                }
-            }
-        )
-    }
-
-    @ViewBuilder
-    private func channelBadge(_ channel: String) -> some View {
-        let (label, color): (String, Color) = badgeInfo(for: channel)
-        Text(label)
-            .font(.system(size: 9, weight: .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(color.opacity(0.12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .strokeBorder(color.opacity(0.25), lineWidth: 0.5)
-                    )
-            )
-    }
-
-    private func badgeInfo(for channel: String) -> (String, Color) {
-        switch channel.uppercased() {
-        case "STABLE": return ("Stable", MSC.Colors.success)
-        case "BETA":   return ("Beta",   MSC.Colors.warning)
-        default:       return ("Alpha",  Color.purple)
-        }
     }
 }
 

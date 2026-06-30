@@ -40,6 +40,11 @@ struct SidebarView: View {
     private let quickCommandsControlsAnchorID = "sidebar.quickCommands.controls"
     private let quickCommandsStateAnchorID = "sidebar.quickCommands.state"
 
+    private func serverFlavorIcon(_ server: Server) -> String {
+        guard let cfg = viewModel.configServer(for: server) else { return "server.rack" }
+        return cfg.isJava ? cfg.javaFlavor.iconName : "cube.box.fill"
+    }
+
     private var selectedServerBinding: Binding<Server?> {
         Binding(
             get: { viewModel.selectedServer },
@@ -53,7 +58,10 @@ struct SidebarView: View {
     }
 
     private var showCrossPlatform: Bool {
-        serverTypeForCrossPlay != nil
+        guard let cfg = viewModel.selectedServer.flatMap({ viewModel.configServer(for: $0) }) else { return false }
+        if cfg.isBedrock { return true }
+        // Modded and Vanilla Java servers don't support Geyser/Xbox Broadcast cross-play
+        return cfg.isJava && cfg.javaFlavor != .vanilla && cfg.javaFlavor.category != .modded
     }
 
     private var contextualHelpGuideIDs: Set<String> {
@@ -116,8 +124,8 @@ struct SidebarView: View {
                     id: "maintenance.buttons",
                     title: "What these buttons are for",
                     body: isJavaServer
-                        ? "Jars opens the Java runtime/template path, while Server Folder and Logs open the server's local files. For routine use, folder and logs are the most common shortcuts."
-                        : "For Bedrock servers, this section stays focused on local file access like the server folder and logs. The Jars shortcut is intentionally not shown here because it is a Java-only path.",
+                        ? "Archives opens the JAR archive (downloaded server and plugin JARs), while Server Folder and Logs open the server's local files. For routine use, folder and logs are the most common shortcuts."
+                        : "For Bedrock servers, this section stays focused on local file access like the server folder and logs. The Archives shortcut is intentionally not shown here because it is a Java-only path.",
                     anchorID: maintenanceButtonsAnchorID,
                     nextLabel: "Done"
                 )
@@ -240,7 +248,8 @@ struct SidebarView: View {
                             // with a system .menu Picker — the container signals identity color.
                             Picker("", selection: selectedServerBinding) {
                                 ForEach(viewModel.servers) { server in
-                                    Text(server.name).tag(server as Server?)
+                                    Label(server.name, systemImage: serverFlavorIcon(server))
+                                        .tag(server as Server?)
                                 }
                             }
                             .labelsHidden()
@@ -350,7 +359,7 @@ struct SidebarView: View {
                                 let isJavaServer = viewModel.selectedServer
                                     .flatMap { viewModel.configServer(for: $0) }?.isJava ?? true
                                 if isJavaServer {
-                                    MaintenanceButton(icon: "shippingbox", label: "Jars") {
+                                    MaintenanceButton(icon: "shippingbox", label: "Archives") {
                                         isShowingPaperTemplate = true
                                     }
                                 }

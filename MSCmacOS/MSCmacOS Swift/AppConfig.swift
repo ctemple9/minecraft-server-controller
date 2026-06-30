@@ -70,6 +70,8 @@ enum ServerType: String, Codable, CaseIterable {
     }
 }
 
+// Java server flavor / category model lives in JavaServerFlavor.swift (M0).
+
 struct ConfigServer: Codable, Identifiable {
 
     var id: String
@@ -155,6 +157,25 @@ struct ConfigServer: Codable, Identifiable {
         var bedrockDockerImage: String? = nil
     var bedrockVersion: String? = nil   // Pinned BEDROCK_SERVER_VERSION; nil = "LATEST"
 
+    // MARK: - Java Server Flavor (M0)
+
+    /// Which Java server software this runs (Paper, Purpur, Fabric, NeoForge, …).
+    /// Defaults to `.paper` so every existing/imported server is unaffected.
+    /// Only meaningful when `isJava`.
+    var javaFlavor: JavaServerFlavor = .paper
+
+    /// Pinned Minecraft version for Java servers (e.g. "1.21.4"). Nil = unknown
+    /// (older configs predate this field; backfilled when known).
+    var minecraftVersion: String? = nil
+
+    /// Loader version for modded flavors: the Fabric loader version, or the
+    /// NeoForge version. Nil for non-modded flavors or when tracking "latest".
+    var loaderVersion: String? = nil
+
+    /// Build/source identifier for the installed server jar (e.g. a Paper build
+    /// number). Nil = unknown.
+    var serverBuild: String? = nil
+
             // MARK: - Notification Preferences
         var notificationPrefs: ServerNotificationPrefs = ServerNotificationPrefs()
 
@@ -166,6 +187,16 @@ struct ConfigServer: Codable, Identifiable {
         /// True when this server runs the Bedrock Dedicated Server (Docker) backend.
         var isBedrock: Bool { serverType == .bedrock }
 
+        /// Category (Standard vs Modded) for Java servers; nil for Bedrock.
+        var javaCategory: JavaServerCategory? { isJava ? javaFlavor.category : nil }
+
+        /// True when this is a Java server running a mod loader (Fabric/NeoForge/…).
+        var isModded: Bool { isJava && javaFlavor.category == .modded }
+
+        /// What add-ons this server accepts (plugins vs mods); nil for Bedrock or
+        /// for Java flavors with no add-on API (Vanilla).
+        var addOnKind: AddOnKind? { isJava ? javaFlavor.addOnKind : nil }
+
         /// Optional alt-account fields for MCXboxBroadcast.
         var xboxBroadcastAltEmail: String? = nil
     var xboxBroadcastAltGamertag: String? = nil
@@ -176,6 +207,10 @@ struct ConfigServer: Codable, Identifiable {
     /// Per-plugin source configs, keyed by jarStem (filename without extension / .disabled).
     /// Nil for old configs — treated as empty (all plugins unmanaged).
     var pluginSources: [String: PluginSourceConfig]? = nil
+
+    /// Modrinth project associations for installed add-ons (plugins AND mods), keyed by
+    /// Modrinth projectId so they survive version bumps. Nil for old configs.
+    var addonLinks: [String: AddonLink]? = nil
 
     // MARK: - playit.gg tunnel
 
@@ -223,8 +258,14 @@ struct ConfigServer: Codable, Identifiable {
                         case bedrockDockerImage  = "bedrock_docker_image"
                         case bedrockVersion      = "bedrock_version"
 
+                        case javaFlavor          = "java_flavor"
+                        case minecraftVersion    = "minecraft_version"
+                        case loaderVersion       = "loader_version"
+                        case serverBuild         = "server_build"
+
                         case notificationPrefs   = "notification_prefs"
                         case pluginSources       = "plugin_sources"
+                        case addonLinks          = "addon_links"
 
         case playitEnabled          = "playit_enabled"
         case playitVoiceChatEnabled = "playit_voice_chat_enabled"
@@ -282,8 +323,16 @@ extension ConfigServer {
                         bedrockDockerImage = try c.decodeIfPresent(String.self,     forKey: .bedrockDockerImage)
                         bedrockVersion     = try c.decodeIfPresent(String.self, forKey: .bedrockVersion)
 
+                        // Java flavor: use try? so a future/unknown flavor string never wipes the
+                        // whole server list — it falls back to .paper (the migration default).
+                        javaFlavor         = (try? c.decodeIfPresent(JavaServerFlavor.self, forKey: .javaFlavor)) ?? .paper
+                        minecraftVersion   = try c.decodeIfPresent(String.self, forKey: .minecraftVersion)
+                        loaderVersion      = try c.decodeIfPresent(String.self, forKey: .loaderVersion)
+                        serverBuild        = try c.decodeIfPresent(String.self, forKey: .serverBuild)
+
                         notificationPrefs  = try c.decodeIfPresent(ServerNotificationPrefs.self, forKey: .notificationPrefs) ?? ServerNotificationPrefs()
                         pluginSources      = try c.decodeIfPresent([String: PluginSourceConfig].self, forKey: .pluginSources)
+                        addonLinks         = try c.decodeIfPresent([String: AddonLink].self, forKey: .addonLinks)
 
         playitEnabled          = try c.decodeIfPresent(Bool.self, forKey: .playitEnabled)          ?? false
         playitVoiceChatEnabled = try c.decodeIfPresent(Bool.self, forKey: .playitVoiceChatEnabled) ?? false
@@ -327,8 +376,14 @@ extension ConfigServer {
         try c.encode(serverType,                       forKey: .serverType)
                         try c.encodeIfPresent(bedrockDockerImage,      forKey: .bedrockDockerImage)
 
+                        try c.encode(javaFlavor,                       forKey: .javaFlavor)
+                        try c.encodeIfPresent(minecraftVersion,        forKey: .minecraftVersion)
+                        try c.encodeIfPresent(loaderVersion,           forKey: .loaderVersion)
+                        try c.encodeIfPresent(serverBuild,             forKey: .serverBuild)
+
                 try c.encode(notificationPrefs, forKey: .notificationPrefs)
                 try c.encodeIfPresent(pluginSources, forKey: .pluginSources)
+                try c.encodeIfPresent(addonLinks, forKey: .addonLinks)
 
         try c.encode(playitEnabled,          forKey: .playitEnabled)
         try c.encode(playitVoiceChatEnabled, forKey: .playitVoiceChatEnabled)
@@ -447,6 +502,13 @@ struct AppConfig: Codable {
     /// Default false so users are not interrupted after upgrade.
     var errorPopupsEnabled: Bool
 
+    /// When true, every downloaded server-core JAR (Paper, Purpur, Vanilla, Fabric)
+    /// is automatically copied into the JAR archive for offline reuse.
+    var saveDownloadedJars: Bool
+
+    /// Saved NeoForge/Forge installation profiles for the version library.
+    var loaderVersionRecords: [LoaderVersionRecord]
+
     enum CodingKeys: String, CodingKey {
         case configVersion = "config_version"
         case javaPath = "java_path"
@@ -477,6 +539,8 @@ struct AppConfig: Codable {
         case minecraftAvatarEditionRawValue = "minecraft_avatar_edition"
         case defaultBannerColorHex = "default_banner_color_hex"
         case errorPopupsEnabled = "error_popups_enabled"
+        case saveDownloadedJars = "save_downloaded_jars"
+        case loaderVersionRecords = "loader_version_records"
     }
 
     static let defaultRemoteAPIPort: Int = 48400
@@ -534,7 +598,9 @@ struct AppConfig: Codable {
             minecraftBedrockGamertag: nil,
             minecraftAvatarEditionRawValue: nil,
             defaultBannerColorHex: nil,
-            errorPopupsEnabled: false
+            errorPopupsEnabled: false,
+            saveDownloadedJars: true,
+            loaderVersionRecords: []
         )
 
     }
@@ -655,6 +721,11 @@ extension AppConfig {
         self.errorPopupsEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .errorPopupsEnabled)
                 ?? defaults.errorPopupsEnabled
+        self.saveDownloadedJars =
+            try container.decodeIfPresent(Bool.self, forKey: .saveDownloadedJars)
+                ?? true
+        self.loaderVersionRecords =
+            try container.decodeIfPresent([LoaderVersionRecord].self, forKey: .loaderVersionRecords) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
@@ -689,6 +760,10 @@ extension AppConfig {
         try container.encodeIfPresent(defaultBannerColorHex, forKey: .defaultBannerColorHex)
         try container.encodeIfPresent(minecraftAvatarEditionRawValue, forKey: .minecraftAvatarEditionRawValue)
         try container.encode(errorPopupsEnabled, forKey: .errorPopupsEnabled)
+        try container.encode(saveDownloadedJars, forKey: .saveDownloadedJars)
+        if !loaderVersionRecords.isEmpty {
+            try container.encode(loaderVersionRecords, forKey: .loaderVersionRecords)
+        }
     }
 }
 

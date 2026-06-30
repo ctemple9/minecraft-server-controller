@@ -757,6 +757,7 @@ struct PreferencesLearnHelpSection: View {
     let onRestartSetupTour: () -> Void
     let onOpenPortForwardGuide: () -> Void
     let onOpenPlayitGuide: () -> Void
+    let onOpenGitHub: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
@@ -785,6 +786,18 @@ struct PreferencesLearnHelpSection: View {
 
             Button("playit.gg Tunnel Setup Guide\u{2026}", action: onOpenPlayitGuide)
                 .buttonStyle(MSCSecondaryButtonStyle())
+
+            Divider()
+
+            Button(action: onOpenGitHub) {
+                HStack(spacing: 5) {
+                    Text("GitHub Repository")
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 11))
+                }
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .help("Open the MSC source code repository on GitHub.")
         }
         .pscCard()
     }
@@ -1082,5 +1095,52 @@ struct PreferencesPortsSection: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Archives Section
+
+struct PreferencesArchiveSection: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let anchorID: String
+
+    private var saveEnabled: Bool {
+        get { viewModel.configManager.config.saveDownloadedJars }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Label("Archives", systemImage: "shippingbox")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Auto-archive downloaded JARs")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("When enabled, newly downloaded server JARs (Paper, Purpur, Vanilla, Fabric) are automatically saved to the archive so you can reuse them without re-downloading.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { viewModel.configManager.config.saveDownloadedJars },
+                    set: { newValue in
+                        viewModel.configManager.config.saveDownloadedJars = newValue
+                        viewModel.configManager.save()
+                    }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+        }
+        .pscCard()
+        .id(anchorID)
+        .contextualHelpAnchor(anchorID)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

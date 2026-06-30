@@ -195,7 +195,8 @@ final class ServerProcessManager {
         serverDirectory: URL,
         paperJarPath: String,
         minRamGB: Int,
-        maxRamGB: Int
+        maxRamGB: Int,
+        neoForgeArgsFile: String? = nil
     ) throws {
         // Mirror Python behavior: only one process at a time.
         if isRunning {
@@ -240,19 +241,31 @@ final class ServerProcessManager {
             arguments.append(contentsOf: parts)
         }
 
-        // Paper jar: use basename only, cwd = serverDirectory (like Python)
-        let jarURL = URL(fileURLWithPath: expandingTilde(paperJarPath))
-        let jarName = jarURL.lastPathComponent
+        if let neoForgeArgsFile {
+            // NeoForge: launch from the installer-generated args file (it carries the
+            // classpath, module path, and main class). cwd = serverDirectory.
+            let argsFileURL = serverDirectory.appendingPathComponent(neoForgeArgsFile)
+            if !FileManager.default.fileExists(atPath: argsFileURL.path) {
+                throw ServerProcessError.failedToStart(
+                    validationError("NeoForge launch args file not found: \(argsFileURL.path)")
+                )
+            }
+            arguments.append(contentsOf: ["@\(neoForgeArgsFile)", "nogui"])
+        } else {
+            // Paper/Purpur/Vanilla/Fabric: single jar, basename only, cwd = serverDirectory.
+            let jarURL = URL(fileURLWithPath: expandingTilde(paperJarPath))
+            let jarName = jarURL.lastPathComponent
 
-        // Validate that the jar exists *in* the working directory, because we launch via jarName.
-        let jarInWorkingDir = serverDirectory.appendingPathComponent(jarName)
-        var isDir: ObjCBool = false
-        if !FileManager.default.fileExists(atPath: jarInWorkingDir.path, isDirectory: &isDir) || isDir.boolValue {
-            throw ServerProcessError.failedToStart(
-                validationError("Paper JAR not found in server folder: \(jarInWorkingDir.path)")
-            )
+            // Validate that the jar exists *in* the working directory, because we launch via jarName.
+            let jarInWorkingDir = serverDirectory.appendingPathComponent(jarName)
+            var isDir: ObjCBool = false
+            if !FileManager.default.fileExists(atPath: jarInWorkingDir.path, isDirectory: &isDir) || isDir.boolValue {
+                throw ServerProcessError.failedToStart(
+                    validationError("Server JAR not found in server folder: \(jarInWorkingDir.path)")
+                )
+            }
+            arguments.append(contentsOf: ["-jar", jarName, "--nogui"])
         }
-        arguments.append(contentsOf: ["-jar", jarName, "--nogui"])
 
         // ----- Wire up the Process -----
 

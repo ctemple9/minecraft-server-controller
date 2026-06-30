@@ -86,6 +86,8 @@ extension AppViewModel {
         candidates.first { FileManager.default.fileExists(atPath: $0) }
     }
 
+    // Static candidate list — no subprocess; resolveJavaHomeOutput is called
+    // asynchronously from checkJavaRuntime so it never blocks the main thread.
     private var javaSearchPaths: [String] {
         var paths: [String] = []
         let configured = configManager.config.javaPath
@@ -95,9 +97,6 @@ extension AppViewModel {
         }
         if let javaHome = ProcessInfo.processInfo.environment["JAVA_HOME"] {
             paths.append((javaHome as NSString).appendingPathComponent("bin/java"))
-        }
-        if let jhPath = resolveJavaHomeOutput() {
-            paths.append(jhPath)
         }
         paths += [
             "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java",
@@ -120,7 +119,8 @@ extension AppViewModel {
         return paths
     }
 
-    private func resolveJavaHomeOutput() -> String? {
+    // nonisolated + static: no actor state accessed, safe to call from Task.detached.
+    private nonisolated static func resolveJavaHomeOutput() -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/libexec/java_home")
         let pipe = Pipe()
@@ -187,7 +187,26 @@ extension AppViewModel {
     // MARK: - Card: Java Runtime
 
     private func checkJavaRuntime(for server: ConfigServer) async -> HealthCardResult {
-        for candidate in javaSearchPaths {
+        // Build the candidate list. Resolve java_home off the main actor (it
+        // spawns a subprocess and waits), then prepend it to the static list.
+        var searchPaths = javaSearchPaths
+        // Resolve java_home off the main actor; `process.waitUntilExit()` blocks the
+        // calling thread, so running it in Task.detached avoids freezing the UI.
+        let resolvedJH: String? = await Task.detached(priority: .userInitiated) {
+            AppViewModel.resolveJavaHomeOutput()
+        }.value
+        if let jhPath = resolvedJH, !searchPaths.contains(jhPath) {
+            // Priority: configured path, JAVA_HOME, then java_home output, then hardcoded.
+            // The first two (configured + JAVA_HOME) were already prepended above; count
+            // them so we insert java_home right after them.
+            let cfg = configManager.config.javaPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            var prefixCount = 0
+            if !cfg.isEmpty && cfg != "java" { prefixCount += 1 }
+            if ProcessInfo.processInfo.environment["JAVA_HOME"] != nil { prefixCount += 1 }
+            searchPaths.insert(jhPath, at: prefixCount)
+        }
+
+        for candidate in searchPaths {
             guard FileManager.default.fileExists(atPath: candidate) else { continue }
             let result = await runProcess(executable: candidate, arguments: ["-version"], timeoutSeconds: 5)
             let combinedOutput = result.stderr + result.stdout
@@ -228,7 +247,7 @@ extension AppViewModel {
         return HealthCardResult(
             id: "java",
             status: .red,
-            detectedValue: "Java not found. Checked \(javaSearchPaths.count) locations.\nInstall Adoptium Temurin 21 or set your Java path in Preferences.",
+            detectedValue: "Java not found. Checked \(searchPaths.count) locations.\nInstall Adoptium Temurin 21 or set your Java path in Preferences.",
             actionLabel: "Download Java",
             actionType: .openURL("https://adoptium.net")
         )
@@ -280,11 +299,46 @@ extension AppViewModel {
     // Green  — all installed JARs up to date
 
     private func checkComponentJars(for server: ConfigServer) async -> HealthCardResult {
+        // installStep flavors (Forge, NeoForge) launch from a generated args file, not a JAR.
+        // Check that the args file exists instead of paperJarPath (which is "" for these).
+        if server.javaFlavor.provisioningKind == .installStep {
+            let serverDirURL = URL(fileURLWithPath: server.serverDir, isDirectory: true)
+            let argsExists: Bool
+            switch server.javaFlavor {
+            case .neoforge: argsExists = NeoForgeInstaller.findArgsFile(in: serverDirURL) != nil
+            case .forge:    argsExists = ForgeInstaller.findArgsFile(in: serverDirURL) != nil
+            default:        argsExists = false
+            }
+            if !argsExists {
+                return HealthCardResult(
+                    id: "jar",
+                    status: .red,
+                    detectedValue: "\(server.javaFlavor.displayName) install incomplete — args file not found.\nTry recreating the server.",
+                    actionLabel: nil,
+                    actionType: nil
+                )
+            }
+            // Mods check: report how many mods are installed.
+            let modsURL = serverDirURL.appendingPathComponent("mods", isDirectory: true)
+            let modCount = (try? FileManager.default.contentsOfDirectory(atPath: modsURL.path))?.filter { $0.hasSuffix(".jar") }.count ?? 0
+            return HealthCardResult(
+                id: "jar",
+                status: .green,
+                detectedValue: modCount == 0
+                    ? "\(server.javaFlavor.displayName) ready · no mods installed yet"
+                    : "\(server.javaFlavor.displayName) ready · \(modCount) mod\(modCount == 1 ? "" : "s") installed",
+                actionLabel: "Go to Components",
+                actionType: .openComponentsTab
+            )
+        }
+
+        let flavorName = server.javaFlavor.displayName
+
         guard FileManager.default.fileExists(atPath: server.paperJarPath) else {
             return HealthCardResult(
                 id: "jar",
                 status: .red,
-                detectedValue: "Paper JAR not found at:\n\(server.paperJarPath)\nDownload it from the Components tab.",
+                detectedValue: "\(flavorName) JAR not found at:\n\(server.paperJarPath)\nDownload it from the Components tab.",
                 actionLabel: "Go to Components",
                 actionType: .openComponentsTab
             )
@@ -292,11 +346,16 @@ extension AppViewModel {
 
         let snap = await MainActor.run { componentsSnapshot }
 
+        // Only compare against the Paper online API when the server is actually Paper.
+        // For Purpur, Vanilla, Fabric, etc. snap.paper.online is always a Paper build
+        // string that will never match their local version, causing false WARN states.
+        let flavorOnline: String? = server.javaFlavor == .paper ? snap.paper.online : nil
+
         let allComponents: [(name: String, local: String?, online: String?)] = [
-            ("Paper",          snap.paper.local,          snap.paper.online),
-            ("Geyser",         snap.geyser.local,         snap.geyser.online),
-            ("Floodgate",      snap.floodgate.local,      snap.floodgate.online),
-            ("XboxBroadcast",  snap.broadcast.local,      snap.broadcast.online),
+            (flavorName,    snap.paper.local,       flavorOnline),
+            ("Geyser",      snap.geyser.local,      snap.geyser.online),
+            ("Floodgate",   snap.floodgate.local,   snap.floodgate.online),
+            ("Broadcast",   snap.broadcast.local,   snap.broadcast.online),
         ]
 
         let installed = allComponents.filter { $0.local != nil }
@@ -304,7 +363,7 @@ extension AppViewModel {
             return HealthCardResult(
                 id: "jar",
                 status: .gray,
-                detectedValue: "No component JARs found. Download Paper from the Components tab.",
+                detectedValue: "No component JARs found. Download \(flavorName) from the Components tab.",
                 actionLabel: "Go to Components",
                 actionType: .openComponentsTab
             )
@@ -833,6 +892,16 @@ extension AppViewModel {
         }
 
         if result.wasClean {
+            let softProblems = result.problems ?? []
+            if !softProblems.isEmpty {
+                return HealthCardResult(
+                    id: "lastStartup",
+                    status: .yellow,
+                    detectedValue: "Last start: \(formatDate(result.startedAt))\nServer started, but \(softProblems.count) add-on\(softProblems.count == 1 ? "" : "s") failed to load.",
+                    actionLabel: "Diagnose Add-ons",
+                    actionType: .diagnoseStartup
+                )
+            }
             return HealthCardResult(
                 id: "lastStartup",
                 status: .green,
@@ -842,12 +911,13 @@ extension AppViewModel {
             )
         } else if !result.fatalErrors.isEmpty {
             let preview = result.fatalErrors.prefix(3).joined(separator: "\n")
+            let hasProblems = !(result.problems ?? []).isEmpty
             return HealthCardResult(
                 id: "lastStartup",
                 status: .red,
                 detectedValue: "Last start: \(formatDate(result.startedAt))\n\(preview)",
-                actionLabel: "View Full Console Log",
-                actionType: .openConsoleLog
+                actionLabel: hasProblems ? "Diagnose Startup" : "View Full Console Log",
+                actionType: hasProblems ? .diagnoseStartup : .openConsoleLog
             )
         } else if !result.warnings.isEmpty {
             return HealthCardResult(
@@ -870,12 +940,13 @@ extension AppViewModel {
 
     // MARK: - LastStartupResult persistence
 
-    func writeLastStartupResult(for server: ConfigServer, wasClean: Bool, fatalErrors: [String], warnings: [String]) {
+    func writeLastStartupResult(for server: ConfigServer, wasClean: Bool, fatalErrors: [String], warnings: [String], problems: [StartupProblem] = []) {
         let result = LastStartupResult(
             startedAt: Date(),
             wasClean: wasClean,
             fatalErrors: fatalErrors,
-            warnings: warnings
+            warnings: warnings,
+            problems: problems.isEmpty ? nil : problems
         )
         let path = (server.serverDir as NSString).appendingPathComponent("last_startup_result.json")
         if let data = try? JSONEncoder().encode(result) {

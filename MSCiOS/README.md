@@ -28,6 +28,7 @@ MSC Remote is the iOS companion app for [Minecraft Server Controller](../MSCmacO
 - **Live Console** — real-time WebSocket stream with category filtering
 - **Send Commands** — quick commands, favorites, and recent history
 - **Players Tab** — see who's online, with avatar thumbnails
+- **Worlds Tab** — browse world slots, trigger a backup on demand, and restore a backup; admin-only actions require the Remote API token
 - **QR Pairing** — scan a QR code from the macOS app to pair instantly
 - **Notifications** — get notified when the server comes online, goes offline, or a player joins
 - **Join Card** — customizable card with server connection info to share with friends

@@ -16,6 +16,7 @@ struct ManageServersView: View {
     @EnvironmentObject var viewModel: AppViewModel
     @Binding var isPresented: Bool
 
+    @State private var isShowingAddWizard = false
     @State private var isShowingEditor = false
     @State private var editorMode: ServerEditorMode = .new
     @State private var editorData = ServerEditorData.empty()
@@ -23,13 +24,20 @@ struct ManageServersView: View {
     @State private var serverToDelete: ConfigServer?
     @State private var isShowingDeleteAlert = false
 
-    @State private var isShowingAddWizard = false
     @State private var isShowingTransferExport = false
     @State private var isShowingTransferImport = false
 
     // MARK: - Body
 
     var body: some View {
+        // In-place navigation: when user taps Add Server, the wizard content
+        // replaces the manage-servers list within this same sheet window.
+        // This avoids the macOS "only one sheet at a time" stacking limitation.
+        if isShowingAddWizard {
+            AddServerWizardView(isPresented: $isShowingAddWizard)
+                .environmentObject(viewModel)
+                .frame(minWidth: 640, minHeight: 520)
+        } else {
         VStack(alignment: .leading, spacing: 0) {
 
             // Header
@@ -108,9 +116,8 @@ struct ManageServersView: View {
         }
         .frame(minWidth: 640, minHeight: 440)
         .overlay {
-                    OnboardingOverlayView(ownedSteps: [.createServer, .dismissManage])
-                }
-                // Sheets & Alerts
+            OnboardingOverlayView(ownedSteps: [.createServer, .dismissManage])
+        }
 
         .sheet(isPresented: $isShowingEditor) {
             ServerEditorView(
@@ -135,11 +142,6 @@ struct ManageServersView: View {
                 }
             )
             .environmentObject(viewModel)
-        }
-
-        .sheet(isPresented: $isShowingAddWizard) {
-            AddServerWizardView(isPresented: $isShowingAddWizard)
-                .environmentObject(viewModel)
         }
 
         .sheet(isPresented: $isShowingTransferExport) {
@@ -183,6 +185,7 @@ struct ManageServersView: View {
             guard let cfg = viewModel.configServers.first(where: { $0.id == uiServer.id }) else { return }
             openEditor(for: cfg)
         }
+        } // end else (not showing wizard)
     }
 
     // MARK: - Server Card

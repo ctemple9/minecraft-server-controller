@@ -301,38 +301,85 @@ struct ServerEditorView: View {
     }
 
     var jarsHelpGuide: ContextualHelpGuide {
-        let availabilityBody = editorHasSavedServer
-            ? "Use JARs when you intentionally update Paper, Geyser, or Floodgate. Most servers only need this when you are changing versions or fixing missing components."
-            : "This tab unlocks after the first Save. Once the server exists, use it for intentional Paper, Geyser, and Floodgate updates."
+        let cfg = editingConfigServer
 
-        let actionBody = editorHasSavedServer
-            ? "Update from Template acts immediately on the saved server. The footer Save is not the commit step for those update buttons."
-            : "Save this server once before expecting JAR actions to work. After that, update buttons act immediately."
-
-        return ContextualHelpGuide(
-            id: "server-editor.jars",
-            steps: [
-                helpStep(
-                    id: "jars.scope",
-                    title: "JARs is the Java runtime/components tab",
-                    body: "This tab exists only for Java servers. It is where Paper and cross-play support are managed, not where you tune gameplay.",
-                    anchorID: tabAnchorID(.jars)
-                ),
-                helpStep(
-                    id: "jars.decisions",
-                    title: "Only change components on purpose",
-                    body: availabilityBody,
-                    anchorID: currentTabContentAnchorID
-                ),
-                helpStep(
-                    id: "jars.save",
-                    title: "Component updates do not wait for Save",
-                    body: actionBody,
-                    anchorID: saveButtonAnchorID,
-                    nextLabel: "Done"
-                )
-            ]
-        )
+        if cfg?.isModded == true {
+            // Modded server — tab is named "Mods"
+            let loaderName = cfg?.javaFlavor.displayName ?? "the loader"
+            let actionBody = editorHasSavedServer
+                ? "Delete removes the mod JAR from the mods folder immediately. To add or update mods, use the Components tab. Version changes for \(loaderName) itself are also in Components."
+                : "This tab unlocks after the first Save. Once the server exists it shows the server installation and all installed mods."
+            return ContextualHelpGuide(
+                id: "server-editor.jars",
+                steps: [
+                    helpStep(
+                        id: "jars.scope",
+                        title: "Mods shows your installed mod files",
+                        body: "This tab lists every JAR in the mods/ folder alongside the \(loaderName) server installation. Use it to review or remove mods.",
+                        anchorID: tabAnchorID(.jars)
+                    ),
+                    helpStep(
+                        id: "jars.decisions",
+                        title: "Delete is immediate and permanent",
+                        body: actionBody,
+                        anchorID: currentTabContentAnchorID,
+                        nextLabel: "Done"
+                    )
+                ]
+            )
+        } else if cfg?.javaFlavor == .vanilla {
+            // Vanilla server — read-only JAR display
+            return ContextualHelpGuide(
+                id: "server-editor.jars",
+                steps: [
+                    helpStep(
+                        id: "jars.scope",
+                        title: "JARs shows the server file",
+                        body: "Vanilla servers run directly from a single server JAR — there are no plugins or mods. This tab confirms the JAR is in place.",
+                        anchorID: tabAnchorID(.jars)
+                    ),
+                    helpStep(
+                        id: "jars.decisions",
+                        title: "No actions needed here",
+                        body: "The Vanilla JAR is managed automatically during server setup. If it appears missing, verify the server directory is correct in General.",
+                        anchorID: currentTabContentAnchorID,
+                        nextLabel: "Done"
+                    )
+                ]
+            )
+        } else {
+            // Plugin server (Paper, Purpur, Pufferfish, etc.)
+            let availabilityBody = editorHasSavedServer
+                ? "Use the Update button on the server JAR to pull the latest archived build. Delete removes a plugin JAR immediately — there is no undo."
+                : "This tab unlocks after the first Save. Once the server exists, use it to update the server JAR or remove installed plugins."
+            let actionBody = editorHasSavedServer
+                ? "Update and Delete act immediately on the saved server. The footer Save is not the commit step for those buttons."
+                : "Save this server once before JAR actions become available. After that, buttons act immediately without needing another Save."
+            return ContextualHelpGuide(
+                id: "server-editor.jars",
+                steps: [
+                    helpStep(
+                        id: "jars.scope",
+                        title: "JARs manages the server and plugin files",
+                        body: "This tab shows the server JAR and every installed plugin. Update the server JAR from your Archives, or delete plugins you no longer need.",
+                        anchorID: tabAnchorID(.jars)
+                    ),
+                    helpStep(
+                        id: "jars.decisions",
+                        title: "Only change components on purpose",
+                        body: availabilityBody,
+                        anchorID: currentTabContentAnchorID
+                    ),
+                    helpStep(
+                        id: "jars.save",
+                        title: "Actions here do not wait for Save",
+                        body: actionBody,
+                        anchorID: saveButtonAnchorID,
+                        nextLabel: "Done"
+                    )
+                ]
+            )
+        }
     }
 
     var backupsHelpGuide: ContextualHelpGuide {
@@ -808,7 +855,8 @@ struct ServerEditorView: View {
                     .contextualHelpAnchor(tabAnchorID(.general))
 
                 if data.serverType == .java {
-                    SETabButton(icon: "shippingbox.fill",    label: "JARs",      tab: .jars,      selected: $selectedTab)
+                    let jarsLabel = editingConfigServer?.isModded == true ? "Mods" : "JARs"
+                    SETabButton(icon: "shippingbox.fill",    label: jarsLabel,   tab: .jars,      selected: $selectedTab)
                         .contextualHelpAnchor(tabAnchorID(.jars))
                 }
 

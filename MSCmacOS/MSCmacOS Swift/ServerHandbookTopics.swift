@@ -28,14 +28,21 @@ extension ServerHandbookView {
             GuideBodyText("""
 Minecraft Server Controller is a native macOS app that gives you a clean interface for running Minecraft servers. Instead of typing commands in Terminal, you get buttons, toggles, and visual feedback.
 
-The app supports two types of servers \u{2014} Java (Paper) and Bedrock Dedicated Server (BDS) \u{2014} as equals. Java servers are great for plugin-heavy setups and Java Edition players. Bedrock servers natively support cross-play with mobile, console, and Windows 10/11 players out of the box.
+The app supports a wide range of server types as first-class citizens:
+
+**Standard Java servers \u{2014} Paper, Purpur, and Vanilla.** Great for plugin-heavy setups, Bedrock cross-play via Geyser, and Java Edition players. Players connect with no extra setup on their end.
+
+**Modded Java servers \u{2014} Fabric, NeoForge, and Forge.** For mods that add new blocks, items, dimensions, and gameplay systems. Every player must install the same mod loader and mods to connect.
+
+**Bedrock Dedicated Server (BDS).** The native server for mobile, console, and Windows 10/11 players. Runs via Docker. Cross-play with all Bedrock platforms is built in.
 """)
 
             InAppBox(items: [
-                "Start and stop Java (Paper) or Bedrock servers with a single click",
+                "Start and stop any server type with a single click \u{2014} Java Standard, Modded, and Bedrock",
                 "Watch the live console \u{2014} see exactly what your server is doing",
-                "Manage multiple servers from one window \u{2014} mix Java and Bedrock",
-                "Configure ports, RAM (Java), plugins, cross-play, and Playit.gg tunneling",
+                "Manage multiple servers from one window \u{2014} mix any combination of server types",
+                "Browse and download mods from Modrinth; browse and download plugins from the Components tab",
+                "Configure ports, RAM, cross-play, and Playit.gg tunneling",
                 "Handle backups, world conversions, and server transfers",
                 "Manage world slots, resource packs, and player allowlists",
                 "Monitor live performance \u{2014} TPS, CPU, RAM, player health, and in-game time",
@@ -43,15 +50,20 @@ The app supports two types of servers \u{2014} Java (Paper) and Bedrock Dedicate
                 "Watchdog crash recovery keeps your server running overnight"
             ])
 
-            GuideCallout(style: .tip, text: "Starting fresh? Use \"Your First Java Server\" or \"Your First Bedrock Server\" in the Management section for a guided walk-through. You can always come back to other topics for deeper explanations.")
+            GuideCallout(style: .tip, text: "Starting fresh? Check the Getting Started section for step-by-step checklists: Your First Java Server (Paper), Your First Modded Server (Fabric/NeoForge), or Your First Bedrock Server. Come back to other topics for deeper explanations of anything along the way.")
 
             AdvancedSection(content: """
-Under the hood, Java servers run a shell command like:
+Under the hood, Standard Java servers (Paper/Purpur/Vanilla) run a shell command like:
   java -Xms2G -Xmx4G -jar paper.jar
 
-Bedrock servers run inside a Docker container using the official itzg/minecraft-bedrock-server image. The app manages the Docker container lifecycle entirely \u{2014} start, stop, log streaming, volume mounts \u{2014} so you never have to open Docker directly.
+Fabric modded servers launch from a generated launcher JAR:
+  java -jar fabric-server-launch.jar
 
-Both approaches are fully managed. The complexity lives inside the app, not in front of you.
+NeoForge and Forge modded servers use a generated shell script that passes an @args file to Java — the installer sets all of this up, and MSC runs the resulting script automatically.
+
+Bedrock servers run inside a Docker container using the official itzg/minecraft-bedrock-server image. The app manages the container lifecycle entirely \u{2014} start, stop, log streaming, volume mounts \u{2014} so you never need to open Docker directly.
+
+All server types are fully managed. The complexity lives inside the app, not in front of you.
 """)
         }
     }
@@ -73,9 +85,11 @@ Both approaches are fully managed. The complexity lives inside the app, not in f
             )
 
             GuideBodyText("""
+Paper is the most popular server in the **Standard Java** family. Standard servers support plugins \u{2014} server-side extensions that players don\u{2019}t need to install anything to benefit from.
+
 **Vanilla Minecraft** is the official server from Mojang. It works, but it has limited configuration options and no plugin support.
 
-**Paper** is a popular "fork" \u{2014} a modified version of the vanilla server that keeps gameplay the same but adds:
+**Paper** is a "fork" \u{2014} a modified version of the vanilla server that keeps gameplay the same but adds:
 """)
 
             BulletList(items: [
@@ -94,11 +108,15 @@ Both approaches are fully managed. The complexity lives inside the app, not in f
             ])
 
             AdvancedSection(content: """
-Paper is part of a family of high-performance Minecraft server implementations. The main family tree is:
+The Standard Java server family tree:
 
-  CraftBukkit \u{2192} Spigot \u{2192} Paper \u{2192} Purpur
+  CraftBukkit \u{2192} Spigot \u{2192} Paper \u{2192} Pufferfish \u{2192} Purpur
 
-Each adds more features and performance improvements. Paper is the sweet spot between compatibility and performance for most home servers. This app is designed specifically for Paper and its direct plugin ecosystem.
+Each adds more features and performance improvements on top of the last. Vanilla sits outside this tree \u{2014} it\u{2019}s the official Mojang server with no third-party modifications.
+
+Paper is the sweet spot for most home servers. Purpur is for server operators who want hundreds of extra configuration toggles on top of Paper\u{2019}s foundation. Vanilla is for purists who want zero modifications.
+
+The Standard family is entirely separate from Modded servers (Fabric, NeoForge, Forge). Those use a different loading system and a different add-on ecosystem (mods instead of plugins). See the Modded Servers section of this handbook for details.
 """)
         }
     }
@@ -223,12 +241,19 @@ Updating BDS is as simple as pulling a newer image version. The app handles this
             )
 
             GuideBodyText("""
-**JAR** stands for Java ARchive. It's a bundle of compiled code \u{2014} essentially the server software in a single file.
+**JAR** stands for Java ARchive. It\u{2019}s a bundle of compiled code \u{2014} essentially the server software in a single file.
 
-**Java** is the runtime that executes that code. It's not specific to Minecraft; it's a general-purpose programming platform that millions of programs use.
+**Java** is the runtime that executes that code. It\u{2019}s not specific to Minecraft; it\u{2019}s a general-purpose programming platform that millions of programs use.
 
-When Minecraft Server Controller starts your Java server, it's running a command like:
+The launch command varies by server type:
+
+**Standard servers (Paper/Purpur/Vanilla):**
 `java -Xms2G -Xmx4G -jar paper.jar`
+
+**Fabric modded servers** use a launcher JAR the Fabric installer generates:
+`java -jar fabric-server-launch.jar`
+
+**NeoForge/Forge modded servers** use a shell script the installer generates. It passes a long @args file to Java with remapping flags and a classpath. MSC reads and runs this script for you \u{2014} you never have to touch it directly.
 
 Note: JAR files and Java are only needed for Java servers. Bedrock servers use Docker instead.
 """)
@@ -275,6 +300,17 @@ Geyser and Floodgate are also JAR files \u{2014} they live in your server's plug
 
             RamGuideTable()
 
+            GuideBodyText("""
+**Modded servers need significantly more RAM.** The table above covers Standard servers (Paper, Purpur, Vanilla). Fabric and NeoForge/Forge packs load many more systems at startup and keep more data in memory during play.
+
+Rough modded starting points:
+\u{2022} **Small Fabric pack (10\u{2013}30 mods):** 3\u{2013}5 GB max
+\u{2022} **Medium pack (30\u{2013}100 mods):** 5\u{2013}8 GB max
+\u{2022} **Large NeoForge/Forge pack (100+ mods):** 8\u{2013}12 GB max
+
+Check the modpack\u{2019}s documentation \u{2014} most published modpacks include server RAM recommendations.
+""")
+
             InAppBox(items: [
                 "Manage Servers \u{2192} Edit \u{2192} General tab: Min RAM and Max RAM sliders.",
                 "These map to Java's -Xms (minimum heap) and -Xmx (maximum heap) flags.",
@@ -282,7 +318,7 @@ Geyser and Floodgate are also JAR files \u{2014} they live in your server's plug
                 "TPS (ticks per second) in the console overview shows server health. 20 TPS = smooth. Below 15 = noticeable lag."
             ])
 
-            GuideCallout(style: .tip, text: "Leave at least 2\u{2013}3 GB of RAM free for macOS and other apps. Giving the server more RAM than it needs doesn't help \u{2014} the sweet spot is usually 4\u{2013}6 GB for a typical small server.")
+            GuideCallout(style: .tip, text: "Leave at least 2\u{2013}3 GB of RAM free for macOS and other apps. For a typical Paper server, 4\u{2013}6 GB is the sweet spot. For modded servers, start with the modpack\u{2019}s recommendation and adjust based on TPS and GC log entries.")
 
             AdvancedSection(content: """
 Paper exposes many performance tuning options in paper.yml, bukkit.yml, and spigot.yml. These files are created in your server folder automatically and can be edited by hand for fine-tuning.
@@ -302,6 +338,8 @@ Paper exposes many performance tuning options in paper.yml, bukkit.yml, and spig
             )
 
             GuideCallout(style: .note, text: "This topic covers cross-play for Java servers via Geyser/Floodgate. If you're running a native Bedrock server, cross-play with mobile, console, and Windows 10/11 players is built in \u{2014} no plugins needed.")
+
+            GuideCallout(style: .warning, text: "Geyser and Floodgate only work on Standard Java servers (Paper, Purpur). Modded servers (Fabric, NeoForge, Forge) cannot use Geyser. Bedrock clients would need to install the same mods as Java players, which isn\u{2019}t possible \u{2014} Bedrock Edition has no mod-loading support.")
 
             AnalogyBox(
                 title: "Think of it like this",
@@ -631,8 +669,8 @@ The API exposes endpoints for server status, console streaming (via polling or S
                 VStack(alignment: .leading, spacing: 14) {
                     ChecklistStep(number: 1, title: "Install Java", detail: "Download Temurin 21 from adoptium.net. This is the Java runtime the server needs. After installing, verify it in Preferences \u{2192} Check for Java.")
                     ChecklistStep(number: 2, title: "Run the Setup Wizard", detail: "On first launch, the Setup Wizard appears. Choose a Servers Root folder (~/MinecraftServers is fine) and confirm your Java path.")
-                    ChecklistStep(number: 3, title: "Download Paper templates", detail: "Open Jars in the sidebar. \u{2192} Download latest Paper. This saves the newest Paper build as a reusable template.")
-                    ChecklistStep(number: 4, title: "(Optional) Download plugin templates", detail: "If you want Bedrock cross-play, open Jars \u{2192} Download latest Geyser and Download latest Floodgate.")
+                    ChecklistStep(number: 3, title: "Download Paper templates", detail: "Open Archives in the sidebar \u{2192} Download latest Paper. This saves the newest Paper build as a reusable template.")
+                    ChecklistStep(number: 4, title: "(Optional) Download plugin templates", detail: "If you want Bedrock cross-play, open Archives \u{2192} Download latest Geyser and Download latest Floodgate.")
                 }
             }
 
@@ -642,7 +680,7 @@ The API exposes endpoints for server status, console streaming (via polling or S
                     .padding(.top, 8)
 
                 VStack(alignment: .leading, spacing: 14) {
-                    ChecklistStep(number: 5, title: "Add a new server", detail: "Click Manage Servers \u{2192} Add / Create Server. Select Java, give it a name, choose your Paper template, set RAM (2 GB min / 4 GB max is a good start), and enable Bedrock Cross-play if needed.")
+                    ChecklistStep(number: 5, title: "Add a new server", detail: "Click Manage Servers \u{2192} Create New Server. Choose Standard \u{2192} Paper. Give it a name, choose your Paper template, set RAM (2 GB min / 4 GB max is a good start), and enable Bedrock Cross-play if needed.")
                     ChecklistStep(number: 6, title: "Accept the EULA", detail: "Go to the Details tab for your server and click Accept EULA. The server can't start until this is done.")
                     ChecklistStep(number: 7, title: "Configure basic settings", detail: "In the Settings tab, set your MOTD (the message players see in the server list), max players, difficulty, and gamemode. Leave Online Mode ON.")
                 }
@@ -1211,6 +1249,585 @@ Changes made in the Players tab are written directly to these files. Paper reloa
 
 Floodgate assigns Bedrock players a Java UUID starting with 00000000-0000-0000-0009-... which is how whitelist.json and ops.json can track them even though they don\u{2019}t have Java Edition accounts.
 """)
+        }
+    }
+
+    // ── Standard vs Modded ────────────────────────────────────────────────
+
+    var standardVsModdedContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "tray.2.fill",
+                title: "Standard vs Modded Servers",
+                subtitle: "The two main categories of Java server and the key difference between them.",
+                color: .orange
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Standard Java servers are like a restaurant \u{2014} the kitchen adds toppings and sauces (plugins) that diners don\u{2019}t need to know about. Modded servers are like a potluck \u{2014} everyone must bring the exact same dish from the same recipe. If one person shows up with a different dish, they don\u{2019}t fit at the table."
+            )
+
+            GuideBodyText("""
+All Java servers fall into one of two categories. The choice shapes everything: who can connect, what add-ons work, and how much RAM you need.
+
+**Standard servers \u{2014} Paper, Purpur, and Vanilla**
+Run plugins: server-side extensions that add features without requiring players to install anything. Your friends connect with normal Minecraft, no changes needed.
+
+**Modded servers \u{2014} Fabric, NeoForge, and Forge**
+Run mods: code that modifies the game on both the server and every client simultaneously. Every player must install the same mod loader and the same set of mods before they can connect. If their mod list doesn\u{2019}t match, they get a connection error.
+""")
+
+            BulletList(items: [
+                "Plugins: server-side only. Players need no extra setup \u{2014} just vanilla Minecraft.",
+                "Mods: both sides. Every player installs the same mod loader and mods.",
+                "You cannot mix plugins and mods on the same server (with rare exceptions).",
+                "Geyser/Floodgate (Bedrock cross-play) only works on Standard servers \u{2014} not Modded."
+            ])
+
+            GuideCallout(style: .tip, text: "Not sure which to pick? Choose Standard if your friends aren\u{2019}t technical or if you want Bedrock cross-play. Choose Modded if you want new blocks, items, dimensions, or the experience of a specific modpack.")
+
+            InAppBox(items: [
+                "Create New Server: the first step asks you to choose Standard or Modded, then select the specific server type.",
+                "Standard options: Paper (recommended), Purpur (Paper with extras), Vanilla (official Mojang, no plugins).",
+                "Modded options: Fabric (lightweight, fast updates), NeoForge (large ecosystem), Forge (legacy/older packs)."
+            ])
+
+            AdvancedSection(content: """
+There are hybrid approaches, but they\u{2019}re advanced and not recommended for beginners:
+
+\u{2022} Fabric has some Plugin API compatibility mods (like Polymer) that allow limited plugin-like functionality on Fabric. These are still mods, so the client requirement applies.
+\u{2022} NeoForge had PluginLoader experiments historically, but the ecosystems are genuinely separate today.
+
+For the vast majority of home servers, you pick one category and stick with it. Switching later requires creating a new server \u{2014} the world data carries over but your add-ons do not.
+""")
+        }
+    }
+
+    // ── Vanilla ───────────────────────────────────────────────────────────
+
+    var vanillaContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "leaf.fill",
+                title: "Vanilla Server",
+                subtitle: "The official Mojang server \u{2014} pure, simple, and without any add-ons.",
+                color: .orange
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Vanilla is the raw, unmodified recipe straight from Mojang\u{2019}s kitchen. No extra ingredients, no substitutions. It\u{2019}s the same experience as singleplayer, just with multiple people in the same world at the same time."
+            )
+
+            GuideBodyText("""
+A **Vanilla server** runs Mojang\u{2019}s official server binary with no third-party modifications. No plugins, no mods, no performance patches. The game behaves exactly as it does in singleplayer.
+
+**When to use Vanilla:**
+""")
+
+            BulletList(items: [
+                "You want a pure, unmodified Minecraft experience for a small group",
+                "You\u{2019}re testing Minecraft behavior without any interference from plugins or mods",
+                "You want to match singleplayer exactly (same bugs, same quirks, same behavior)",
+                "Simplicity is a priority \u{2014} fewer moving parts, fewer things to break"
+            ])
+
+            GuideBodyText("""
+**What\u{2019}s missing compared to Paper:**
+""")
+
+            BulletList(items: [
+                "No plugin support \u{2014} you cannot install Bukkit/Spigot/Paper plugins",
+                "Fewer configuration options in server.properties (Paper exposes many extras)",
+                "Slower performance under load compared to Paper\u{2019}s optimizations",
+                "Slower bug fixes than the Paper team\u{2019}s rapid patching cadence"
+            ])
+
+            GuideCallout(style: .note, text: "Vanilla servers support full vanilla Java Edition clients and all vanilla gameplay features. If you later decide you want plugins, you\u{2019}d need to create a new Paper server and copy the world folder over \u{2014} the world data is compatible.")
+
+            InAppBox(items: [
+                "Create New Server \u{2192} Standard \u{2192} Vanilla.",
+                "Vanilla doesn\u{2019}t need a Paper template. MSC downloads the vanilla server JAR directly from Mojang for your chosen Minecraft version.",
+                "Edit Server \u{2192} JARs tab: shows the vanilla server JAR, read-only (no Update button \u{2014} version changes go through the Versions picker).",
+                "No EULA accept needed \u{2014} MSC handles it automatically for Vanilla servers the same as Paper."
+            ])
+
+            AdvancedSection(content: """
+The Vanilla server JAR is downloaded directly from Mojang\u{2019}s version manifest. Each Minecraft version has an exact JAR SHA1 that MSC verifies before using it.
+
+Performance notes: Vanilla\u{2019}s chunk loading and entity processing is noticeably slower than Paper under multi-player load. For 1\u{2013}2 players casually exploring, this doesn\u{2019}t matter. For 5+ players or redstone-heavy builds, Paper\u{2019}s optimizations become meaningful.
+""")
+        }
+    }
+
+    // ── Purpur ────────────────────────────────────────────────────────────
+
+    var purpurContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "crown.fill",
+                title: "What is Purpur?",
+                subtitle: "Paper with hundreds of extra configuration options on top.",
+                color: .orange
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "If Paper is a car with a good engine and sensible controls, Purpur is the same car with a cockpit full of extra dials. Most of them start in the same position as Paper \u{2014} but now you can adjust things Paper never exposed."
+            )
+
+            GuideBodyText("""
+**Purpur** is a fork of Paper (via Pufferfish) that inherits everything Paper has \u{2014} the same plugin ecosystem, the same performance improvements \u{2014} and adds hundreds of extra configuration toggles that Paper doesn\u{2019}t expose.
+
+**All Paper plugins work on Purpur without modification.** If you\u{2019}ve been running Paper, switching to Purpur is a JAR swap, not a migration.
+
+Examples of what Purpur adds:
+""")
+
+            BulletList(items: [
+                "Per-entity behavior toggles (disable silverfish spawning, change zombie burn thresholds, set spider climb height)",
+                "Per-material settings (how blocks behave in specific situations)",
+                "Extra mob controls \u{2014} aggression radius, spawn caps, entity-specific damage values",
+                "Spectator and creative mode tweaks beyond Paper\u{2019}s options",
+                "Additional server gameplay adjustments (fall damage, hunger, sleep mechanics)"
+            ])
+
+            GuideCallout(style: .note, text: "Purpur\u{2019}s extra options are all disabled or set to Paper-equivalent defaults out of the box. You get Paper behavior unless you intentionally change something.")
+
+            GuideCallout(style: .tip, text: "Start with Paper. Switch to Purpur if you find yourself wanting to tune something that Paper\u{2019}s configuration doesn\u{2019}t expose.")
+
+            InAppBox(items: [
+                "Create New Server \u{2192} Standard \u{2192} Purpur.",
+                "Purpur uses the same JAR template system as Paper. MSC downloads Purpur builds from purpurmc.org.",
+                "Purpur\u{2019}s extra settings are in purpur.yml inside the server folder (created on first run).",
+                "Edit Server \u{2192} JARs tab: shows the Purpur Server JAR with an Update button."
+            ])
+
+            AdvancedSection(content: """
+The Standard server family tree, with Purpur at the end:
+
+  CraftBukkit \u{2192} Spigot \u{2192} Paper \u{2192} Pufferfish \u{2192} Purpur
+
+Pufferfish adds CPU optimization patches on top of Paper. Purpur builds on Pufferfish and adds the configuration layer. In practice, Purpur vs. Paper performance on a small home server is negligible \u{2014} the main reason to run Purpur is the configuration options, not the performance.
+
+Purpur maintains API compatibility with Paper plugins. Any plugin that declares compatibility with Paper (Bukkit, Spigot, or Paper API) will run on Purpur.
+""")
+        }
+    }
+
+    // ── Fabric ────────────────────────────────────────────────────────────
+
+    var fabricContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "gearshape.fill",
+                title: "What is Fabric?",
+                subtitle: "A lightweight mod loader known for fast updates and an active ecosystem.",
+                color: .indigo
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Fabric installs a minimal framework onto the Minecraft server \u{2014} like adding a thin expansion slot to a circuit board. The slot adds nothing to the game itself, but mods can plug in cleanly. Because the framework is small and makes few assumptions, it\u{2019}s easy to update when new Minecraft versions drop."
+            )
+
+            GuideBodyText("""
+**Fabric** is a lightweight mod-loading framework. Unlike NeoForge, it makes minimal changes to Minecraft\u{2019}s internals, which means it\u{2019}s typically updated to support new Minecraft versions within days of release.
+
+**Installation:** When you create a Fabric server, MSC downloads the Fabric installer and runs it automatically for your chosen Minecraft + loader version. The result is a `fabric-server-launch.jar` in your server folder. Installation takes about 10\u{2013}15 seconds.
+
+**Mods** live in the `mods/` folder inside your server directory. The Mods tab in Edit Server shows all installed mods with Delete buttons. Use the Mod Browser in the Components tab to search Modrinth and download mods directly.
+""")
+
+            GuideCallout(style: .note, text: "Many Fabric mods depend on Fabric API \u{2014} a shared library that provides common utilities. MSC adds Fabric API automatically when you create a Fabric server.")
+
+            GuideBodyText("""
+**Loader version:** Each Fabric loader version is compatible with a specific range of Minecraft versions. MSC shows available loader versions in Edit Server \u{2192} Components \u{2192} Versions. Changing the MC version or loader version re-runs the installer automatically.
+""")
+
+            GuideCallout(style: .warning, text: "Fabric has no native plugin support. Paper/Bukkit plugins will not load on a Fabric server. Every player who connects must also have Fabric and the same mods installed on their client.")
+
+            InAppBox(items: [
+                "Create New Server \u{2192} Modded \u{2192} Fabric.",
+                "Components tab \u{2192} Versions: change Minecraft or Fabric loader version. MSC re-runs the installer.",
+                "Components tab \u{2192} Mod Browser: search Modrinth and download mods directly into the server.",
+                "Edit Server \u{2192} Mods tab: shows all installed mods with Delete buttons.",
+                "Components tab \u{2192} Export: generates a client mod list so players know what to install."
+            ])
+
+            AdvancedSection(content: """
+Quilt is a community fork of Fabric with additional features and a different governance model. MSC supports Quilt servers with the same setup flow as Fabric \u{2014} Create New Server \u{2192} Modded \u{2192} Quilt. Most Fabric mods are compatible with Quilt, but check the mod\u{2019}s documentation.
+
+The Fabric loader version is different from Fabric API. The loader is the framework that loads mods at startup. Fabric API is a regular mod (JAR file) that provides shared utilities. You need both, but MSC manages them separately: the loader version is in the Versions picker, and Fabric API is a mod in your mods/ folder.
+""")
+        }
+    }
+
+    // ── NeoForge ──────────────────────────────────────────────────────────
+
+    var neoforgeContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "hammer.fill",
+                title: "What is NeoForge?",
+                subtitle: "The modern successor to Minecraft Forge, with a large modpack ecosystem.",
+                color: .indigo
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "NeoForge is like a full engine rebuild that exposes thousands of internal hooks for mod developers. It\u{2019}s more invasive than Fabric, but that depth enables mods that fundamentally change how Minecraft works \u{2014} full tech trees, magic systems, custom dimensions, and entire modpacks built around new gameplay loops."
+            )
+
+            GuideBodyText("""
+**NeoForge** is the actively-maintained community fork of the original Minecraft Forge project (forked in 2023). It makes extensive changes to Minecraft\u{2019}s internals, which is what enables mods to add deep gameplay systems \u{2014} but it also means updates to new Minecraft versions take longer than Fabric (usually weeks, sometimes months).
+
+**Installation:** NeoForge uses an installer-based setup. MSC downloads the NeoForge installer JAR and runs it automatically. The installer remaps Minecraft\u{2019}s code and generates a `libraries/` folder and a `run.sh` launch script. This process takes **30\u{2013}90 seconds** depending on download speed \u{2014} longer than Fabric, but only happens once per version.
+
+MSC reads the generated launch script and runs it for you. You never need to interact with it directly.
+""")
+
+            GuideCallout(style: .note, text: "The first start of a NeoForge server can take 2\u{2013}3 minutes as it remaps Minecraft\u{2019}s code. Subsequent starts are normal speed. The console will show progress during this phase.")
+
+            GuideBodyText("""
+**Mods** live in the `mods/` folder. The Mods tab in Edit Server shows installed mods. Use the Mod Browser in the Components tab to search Modrinth and download compatible mods.
+
+**Client requirement:** Every player who joins must have NeoForge at the same version installed on their Minecraft client, plus all required mods. See the Client Requirements topic for how to share this with your players.
+""")
+
+            GuideCallout(style: .tip, text: "For new servers on Minecraft 1.21+, NeoForge is the recommended choice over Forge. Most new large modpacks target NeoForge. Only choose Forge if your specific modpack requires it.")
+
+            InAppBox(items: [
+                "Create New Server \u{2192} Modded \u{2192} NeoForge.",
+                "Components tab \u{2192} Versions: change NeoForge or Minecraft version. Re-runs the installer.",
+                "Components tab \u{2192} Mod Browser: search and download compatible mods.",
+                "Edit Server \u{2192} Mods tab: shows all installed mods.",
+                "Components tab \u{2192} Export: generate a client mod list for your players."
+            ])
+
+            AdvancedSection(content: """
+The NeoForge installer generates:
+  libraries/        \u{2014} remapped Minecraft classes + NeoForge dependencies
+  run.sh            \u{2014} shell script that builds the full classpath and launch args
+  @user_jvm_args.txt \u{2014} JVM flags (MSC injects -Xms/-Xmx here)
+
+MSC reads run.sh to extract the launch command, injects your RAM settings, and runs the server process. When you change the NeoForge version, MSC deletes the old libraries/ and re-runs the installer to rebuild them.
+
+NeoForge loader versions look like 21.1.172 \u{2014} the first two numbers match the Minecraft minor version (21.1 = MC 1.21.1). Each MC version has many NeoForge builds; MSC\u{2019}s version picker shows all available builds from the NeoForge version manifest.
+""")
+        }
+    }
+
+    // ── Forge ─────────────────────────────────────────────────────────────
+
+    var forgeContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "wrench.and.screwdriver.fill",
+                title: "What is Forge?",
+                subtitle: "The original Minecraft mod loader \u{2014} still used for older modpacks.",
+                color: .indigo
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Forge is the original workshop where Minecraft modding was invented. NeoForge is a renovated version of the same workshop by a newer team. They use the same tools and techniques, but NeoForge gets the ongoing maintenance."
+            )
+
+            GuideBodyText("""
+**Minecraft Forge** is the original server-side mod loader, with roots going back to early Minecraft versions. It built the foundation for the modded ecosystem and still has an enormous library of mods \u{2014} particularly for older Minecraft versions like 1.12.2, 1.7.10, and earlier.
+
+In 2023, the **NeoForge** project forked from Forge to address development and governance concerns. For new servers on Minecraft 1.21 and later, NeoForge is generally the better choice. Forge remains the right option for:
+""")
+
+            BulletList(items: [
+                "Modpacks that specifically require Forge (check the pack\u{2019}s documentation)",
+                "Older Minecraft versions (1.20 and earlier) where Forge has better mod coverage",
+                "Existing Forge servers you\u{2019}re importing into MSC"
+            ])
+
+            GuideCallout(style: .note, text: "Forge and NeoForge are not interchangeable. A modpack built for Forge requires a Forge server. A modpack built for NeoForge requires a NeoForge server. Check which loader your modpack targets before creating your server.")
+
+            GuideBodyText("""
+**Installation** uses the same process as NeoForge: MSC downloads the Forge installer, runs it to generate the `libraries/` folder and launch script, and starts the server from the generated script. First-time setup takes 30\u{2013}90 seconds.
+
+**Client requirement:** Every player must have Forge (same version) and the same required mods installed. The client requirement works exactly the same as NeoForge.
+""")
+
+            InAppBox(items: [
+                "Create New Server \u{2192} Modded \u{2192} Forge.",
+                "Components tab \u{2192} Versions: change Forge or Minecraft version. Re-runs the installer.",
+                "Components tab \u{2192} Mod Browser: search and download compatible mods from Modrinth.",
+                "Edit Server \u{2192} Mods tab: shows all installed mods with Delete buttons."
+            ])
+
+            AdvancedSection(content: """
+The Forge installer generates the same libraries/ + run.sh structure as NeoForge. MSC handles them identically.
+
+Forge version numbers look like 1.21-51.0.33 \u{2014} the first part is the Minecraft version, the second is the Forge build number. MSC\u{2019}s version picker pulls available builds from Forge\u{2019}s Maven repository.
+
+For very old Minecraft versions (1.12.2 and earlier), Forge is the only option \u{2014} NeoForge doesn\u{2019}t support pre-1.20 versions. These older packs may have unusual startup behaviors; the MSC startup crash diagnostics apply the same way.
+""")
+        }
+    }
+
+    // ── Mods & Mod Browser ────────────────────────────────────────────────
+
+    var modsModBrowserContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "puzzlepiece.extension.fill",
+                title: "Mods & the Mod Browser",
+                subtitle: "Find, download, and manage mods from within the app.",
+                color: .indigo
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "The Mod Browser is like an app store built into MSC. Instead of going to a website, downloading a file, and manually placing it in a folder, you search inside the app, click download, and it ends up in the right place automatically."
+            )
+
+            GuideBodyText("""
+**Mods** are `.jar` files that live in your server\u{2019}s `mods/` folder. They are loaded when the server starts. Mods can add new blocks, items, dimensions, crafting systems, mobs, biomes, and fundamentally new gameplay loops.
+
+The **Mod Browser** in the Components tab pulls from **Modrinth** \u{2014} the primary open-source mod repository with tens of thousands of mods. The browser automatically filters results to show only mods compatible with your server\u{2019}s Minecraft version and mod loader (Fabric, NeoForge, or Forge).
+""")
+
+            GuideBodyText("**Server-side vs client-side:** not all mods need to be installed on both sides.")
+
+            BulletList(items: [
+                "Required on both sides: the most common category. Adds blocks, items, or gameplay that both the server and client must understand. Everyone installs these.",
+                "Server-side only: the server runs these, but clients don\u{2019}t need them. Examples: Spark (performance profiler), Chunky (chunk pre-generation), LuckPerms-Fabric (permissions).",
+                "Client-side only: visual or audio mods that the server doesn\u{2019}t run. Not relevant for server management.",
+                "MSC shows a badge on each mod in the browser indicating which type it is."
+            ])
+
+            GuideBodyText("""
+**Modpack import:** MSC can import a Modrinth modpack file (`.mrpack`). The import wizard automatically downloads and installs all server-compatible mods from the pack.
+
+**Update detection:** MSC compares the hash of each installed mod JAR against the latest version on Modrinth. If an update is available, it appears in the Components tab.
+
+**Export for clients:** Once you\u{2019}ve set up your mods, use the Export button in the Components tab to generate a list of required mods with Modrinth links \u{2014} or a ZIP of the JAR files themselves. Share this with your players so they know exactly what to install.
+""")
+
+            InAppBox(items: [
+                "Edit Server \u{2192} Components tab \u{2192} Mod Browser: available for Fabric, NeoForge, and Forge servers only.",
+                "Search by name, or browse by category. Filter by server-side / client-side badge.",
+                "Click a mod to see details, version history, and a Download button.",
+                "Downloaded mods appear immediately in the Mods tab. No server restart needed to install \u{2014} but the mod only loads on next server start.",
+                "Mods tab: shows installed mods. Click Delete to remove a mod (requires server restart to take effect).",
+                "Components tab \u{2192} Export: generate client mod list or ZIP."
+            ])
+
+            GuideCallout(style: .note, text: "The Mod Browser is not available for Standard servers (Paper, Purpur, Vanilla). Those servers use the Plugin tab instead. The two ecosystems \u{2014} plugins and mods \u{2014} are completely separate.")
+
+            AdvancedSection(content: """
+MSC uses Modrinth\u{2019}s v2 API for mod search. Version filtering uses both game_versions and loaders parameters to show only mods the server can actually run.
+
+Update detection works by computing the SHA512 hash of each installed JAR and comparing it to the hash of the latest version file on Modrinth. This is accurate for mods downloaded through MSC; manually-placed JARs may not have matching hashes.
+
+.mrpack files are ZIP archives containing a modrinth.index.json with a manifest of mods (download URLs + SHA512 hashes) and an optional overrides/ folder with extra files. MSC reads the manifest, downloads mods marked as server or both, verifies hashes, and places them in the mods/ folder.
+""")
+        }
+    }
+
+    // ── Client Requirements ───────────────────────────────────────────────
+
+    var clientRequirementsModdedContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "person.badge.key.fill",
+                title: "Client Requirements",
+                subtitle: "Why every player needs the same mods \u{2014} and how to make that easy.",
+                color: .indigo
+            )
+
+            AnalogyBox(
+                title: "Think of it like this",
+                text: "Joining a modded server is like joining a book club where everyone must read the same edition of the same book. If one person shows up with a different edition \u{2014} missing chapters, renamed sections \u{2014} the conversation doesn\u{2019}t line up. The server enforces this by checking what every client has before letting them in."
+            )
+
+            GuideBodyText("""
+This is the most important practical difference between Standard and Modded servers.
+
+**Standard servers (Paper, Purpur, Vanilla):** plugins run on the server only. Your friends connect with a completely unmodified Minecraft client \u{2014} no downloads, no setup, just the game they already have.
+
+**Modded servers (Fabric, NeoForge, Forge):** mods run on both the server and every client simultaneously. When a player tries to connect, the server and client exchange their mod lists during the handshake. If the lists don\u{2019}t match, the player sees an error like \u{201C}Mod list mismatch\u{201D} or \u{201C}Missing mods\u{201D} and cannot connect.
+""")
+
+            GuideBodyText("**What each player needs to install:**")
+
+            BulletList(items: [
+                "The correct Minecraft version (same as the server)",
+                "The same mod loader (Fabric, NeoForge, or Forge) at the same version as the server",
+                "All required mods \u{2014} server-side-only mods are excluded from this requirement"
+            ])
+
+            GuideCallout(style: .warning, text: "Fabric and NeoForge mods are not interchangeable. A player with Fabric installed cannot join a NeoForge server, and vice versa. Everyone must use the same loader.")
+
+            GuideBodyText("""
+**How to share mods with your players:**
+
+The easiest approach is to use MSC\u{2019}s **Export for clients** feature in the Components tab. This generates either:
+- A list of Modrinth links so players can download mods individually
+- A ZIP of the required JAR files they can drop directly into their mods/ folder
+
+Players can also use a modpack launcher like **Prism Launcher**, **ATLauncher**, or the official **Modrinth App** to install a mod bundle with a single click if you\u{2019}ve set up a Modrinth modpack.
+""")
+
+            GuideCallout(style: .tip, text: "If setting this up for non-technical friends, a Modrinth modpack (exported from your server\u{2019}s mod list) that they install in the Modrinth App is the lowest-friction option. One click installs everything they need.")
+
+            InAppBox(items: [
+                "Edit Server \u{2192} Components tab \u{2192} Export: generate client mod list.",
+                "The export lists only mods required on both sides \u{2014} server-side-only mods are automatically excluded.",
+                "Players who use Prism Launcher can import the exported list as a local modpack.",
+                "If a player gets a \"mod list mismatch\" error: compare their mod list to the server\u{2019}s Mods tab and identify the difference."
+            ])
+
+            AdvancedSection(content: """
+Server-side-only mods are identified by their environment metadata. Fabric mods declare this in their fabric.mod.json: "environment": "server". NeoForge/Forge mods use the @Mod annotation and declare client-side dependencies.
+
+MSC reads this metadata for Fabric mods automatically. For NeoForge/Forge mods, it uses Modrinth\u{2019}s server_side field when the mod was downloaded through the Mod Browser.
+
+Common server-side-only mods that do NOT need to be on clients:
+\u{2022} Spark (profiler)
+\u{2022} Chunky (pre-generation)
+\u{2022} LuckPerms-Fabric (permissions)
+\u{2022} Lithium, Ferrite Core, Krypton (performance, server-side effect only)
+""")
+        }
+    }
+
+    // ── Your First Modded Server ──────────────────────────────────────────
+
+    var firstModdedServerContent: some View {
+        GuideSection {
+            GuideTopicHeader(
+                icon: "flag.checkered",
+                title: "Your First Modded Server",
+                subtitle: "A step-by-step checklist for getting a Fabric or NeoForge server running.",
+                color: .mint
+            )
+
+            GuideCallout(style: .tip, text: "Not sure which loader to pick? Fabric is the easier starting point: faster setup, snappier updates, and less RAM overhead. Choose NeoForge if your friends have a specific NeoForge modpack they want to play.")
+
+            Group {
+                Text("Phase 1 \u{2014} Before You Create the Server")
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.top, 4)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ChecklistStep(
+                        number: 1,
+                        title: "Install Java 21",
+                        detail: "Modded servers require Java, same as Standard Java servers. Download Temurin 21 from adoptium.net. Verify it in Preferences \u{2192} Check for Java."
+                    )
+                    ChecklistStep(
+                        number: 2,
+                        title: "Decide: Fabric or NeoForge?",
+                        detail: "Fabric: simpler, faster to set up, lighter RAM usage, great ecosystem. NeoForge: larger ecosystem, required for most big modpacks (1.21+). If you have a specific modpack in mind, check which loader it requires \u{2014} the pack page will say."
+                    )
+                    ChecklistStep(
+                        number: 3,
+                        title: "(Optional) Find your modpack",
+                        detail: "Browse modrinth.com for modpacks. Filter by server-side support. Note the Minecraft version and loader. You\u{2019}ll need this information when creating the server."
+                    )
+                }
+            }
+
+            Group {
+                Text("Phase 2 \u{2014} Create the Server")
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ChecklistStep(
+                        number: 4,
+                        title: "Create a new server",
+                        detail: "Click Manage Servers \u{2192} Create New Server \u{2192} Modded. Choose Fabric or NeoForge, then select your Minecraft version and loader version. Set RAM: at least 4 GB min / 6 GB max for a small Fabric pack; 6 GB min / 10 GB max for a NeoForge pack."
+                    )
+                    ChecklistStep(
+                        number: 5,
+                        title: "Wait for installation",
+                        detail: "Fabric installs in about 10\u{2013}15 seconds. NeoForge takes 30\u{2013}90 seconds \u{2014} it\u{2019}s downloading and remapping Minecraft\u{2019}s code. The console shows progress. Don\u{2019}t interrupt it."
+                    )
+                    ChecklistStep(
+                        number: 6,
+                        title: "(Optional) Import a modpack",
+                        detail: "If you have a .mrpack file: in the Components tab, use Import Modpack to install all server-compatible mods automatically. If installing mods manually, continue to Phase 3."
+                    )
+                }
+            }
+
+            Group {
+                Text("Phase 3 \u{2014} Install Mods")
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ChecklistStep(
+                        number: 7,
+                        title: "Open the Mod Browser",
+                        detail: "Edit Server \u{2192} Components tab \u{2192} Mod Browser. Search for mods by name. The browser only shows mods compatible with your server\u{2019}s MC version and loader. Click Download to add a mod."
+                    )
+                    ChecklistStep(
+                        number: 8,
+                        title: "Check Fabric API (Fabric servers only)",
+                        detail: "Most Fabric mods depend on Fabric API. MSC adds it automatically, but verify it\u{2019}s in the Mods tab. If it\u{2019}s missing, search \u{201C}Fabric API\u{201D} in the Mod Browser and download it."
+                    )
+                    ChecklistStep(
+                        number: 9,
+                        title: "Start the server once to test",
+                        detail: "Click Start. The server loads all mods at startup \u{2014} watch the console for errors. A successful Fabric start ends with \u{201C}Done!\u{201D}. NeoForge takes longer on first start due to remapping; progress shows in the console. Stop the server after confirming it starts cleanly."
+                    )
+                }
+            }
+
+            Group {
+                Text("Phase 4 \u{2014} Set Up Your Players")
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ChecklistStep(
+                        number: 10,
+                        title: "Export the client mod list",
+                        detail: "Edit Server \u{2192} Components tab \u{2192} Export. This generates a list of required mods. Share it with your players. Each player needs to install the same Minecraft version, same loader, and the same mods."
+                    )
+                    ChecklistStep(
+                        number: 11,
+                        title: "Have each player install the mods",
+                        detail: "Easiest: point them to Prism Launcher or the Modrinth App and import the mod list. Manual: they download each mod JAR and place it in their .minecraft/mods folder. Each player must also have the correct mod loader installed (Fabric Installer or NeoForge Installer from their respective websites)."
+                    )
+                }
+            }
+
+            Group {
+                Text("Phase 5 \u{2014} Go Live")
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ChecklistStep(
+                        number: 12,
+                        title: "Set up external access",
+                        detail: "Same as a Standard server: port forwarding (TCP 25565 on your router) or Playit.gg tunneling (Edit Server \u{2192} Settings \u{2192} Network). See Connection & Access in this handbook."
+                    )
+                    ChecklistStep(
+                        number: 13,
+                        title: "Test with one player first",
+                        detail: "Have one friend test the connection before inviting everyone. Confirm they can load into the world and that the mods are working. A mod mismatch shows as an error during the connection handshake \u{2014} compare the Mods tab with what the player has installed."
+                    )
+                    ChecklistStep(
+                        number: 14,
+                        title: "Create a first backup",
+                        detail: "Once everything works, open Server Details \u{2192} Worlds and create your first backup. Modded worlds can be harder to recover from corruption, so back up before installing new mods or updating."
+                    )
+                }
+            }
+
+            GuideCallout(style: .note, text: "Congratulations! Modded servers take more setup than Standard servers, but the result is a much richer gameplay experience. Check the Mods & Mod Browser and Client Requirements topics in this handbook whenever you need more detail on any step.")
         }
     }
 

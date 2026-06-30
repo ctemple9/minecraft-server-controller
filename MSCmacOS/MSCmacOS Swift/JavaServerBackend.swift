@@ -61,6 +61,14 @@ final class JavaServerBackend: ServerBackend {
     func start(config: ConfigServer, appConfig: AppConfig) throws {
         let serverDirURL = URL(fileURLWithPath: config.serverDir)
 
+        // NeoForge and Forge launch from installer-generated args files rather than a jar.
+        let neoForgeArgs: String?
+        switch config.javaFlavor {
+        case .neoforge: neoForgeArgs = NeoForgeInstaller.findArgsFile(in: serverDirURL)
+        case .forge:    neoForgeArgs = ForgeInstaller.findArgsFile(in: serverDirURL)
+        default:        neoForgeArgs = nil
+        }
+
         let jarPath = config.paperJarPath.isEmpty
             ? serverDirURL.appendingPathComponent("paper.jar").path
             : config.paperJarPath
@@ -72,7 +80,8 @@ final class JavaServerBackend: ServerBackend {
                 serverDirectory: serverDirURL,
                 paperJarPath: jarPath,
                 minRamGB: config.minRam,
-                maxRamGB: config.maxRam
+                maxRamGB: config.maxRam,
+                neoForgeArgsFile: neoForgeArgs
             )
         } catch let error as ServerProcessManager.ServerProcessError {
             // Translate to the protocol-level error type so callers are

@@ -47,6 +47,7 @@ extension AppViewModel {
 
         componentsSnapshot = snapshot
         refreshDiscoveredPlugins()
+        refreshDiscoveredMods()
     }
 
     /// Full online check: Paper version list + Geyser, Floodgate, Broadcast,
@@ -422,6 +423,194 @@ extension AppViewModel {
         }
     }
 
+    /// Downloads the given version (nil = latest) for the server's flavor, applies it to
+    /// the active JAR path, archives it if the setting is on, and refreshes the snapshot.
+    func downloadAndApplyJarVersion(_ entry: ServerVersionEntry?, for cfg: ConfigServer) {
+        guard !isDownloadingJar else { return }
+        isDownloadingJar = true
+
+        Task.detached { [weak self] in
+            guard let self else { return }
+
+            let serverDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            let trimmed   = cfg.paperJarPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            let destURL   = trimmed.isEmpty
+                ? serverDir.appendingPathComponent("paper.jar")
+                : URL(fileURLWithPath: trimmed)
+
+            do {
+                try FileManager.default.createDirectory(
+                    at: destURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+            } catch {
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Failed to create destination directory: \(error.localizedDescription)")
+                    self.isDownloadingJar = false
+                }
+                return
+            }
+
+            let label = entry.flatMap { $0.isLatest ? nil : $0.displayLabel } ?? "latest"
+            await MainActor.run {
+                self.logAppMessage("[\(cfg.javaFlavor.displayName)] Downloading \(label)…")
+            }
+
+            do {
+                let result: ServerJarDownloadResult
+                if let e = entry, !e.isLatest {
+                    result = try await ServerJarProvider.downloadVersion(e, flavor: cfg.javaFlavor, to: destURL)
+                } else {
+                    result = try await ServerJarProvider.downloadLatest(flavor: cfg.javaFlavor, to: destURL)
+                }
+
+                let shouldArchive = await MainActor.run { self.configManager.config.saveDownloadedJars }
+                if shouldArchive {
+                    await MainActor.run { self.archiveServerJar(flavor: cfg.javaFlavor, result: result, from: destURL) }
+                }
+
+                if cfg.javaFlavor == .paper, let buildInt = Int(result.build) {
+                    await MainActor.run {
+                        PaperVersionSidecarManager.write(
+                            mcVersion: result.version,
+                            build: buildInt,
+                            toServerDirectory: serverDir
+                        )
+                    }
+                }
+
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Applied \(result.version) (build \(result.build)).")
+                    self.isDownloadingJar = false
+                    self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+                }
+            } catch {
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Download failed: \(error.localizedDescription)")
+                    self.isDownloadingJar = false
+                }
+            }
+        }
+    }
+
+    /// Upgrades a modded server's loader/runtime:
+    /// - Fabric: downloads a new server JAR and updates the stored MC + loader versions.
+    /// - NeoForge / Forge: re-runs the installer into the existing server directory and
+    ///   updates the stored versions. The installer handles cleanup of old libraries.
+    func upgradeModdedLoader(_ entry: ServerVersionEntry?, for cfg: ConfigServer) {
+        guard !isDownloadingJar else { return }
+        isDownloadingJar = true
+
+        Task.detached { [weak self] in
+            guard let self else { return }
+
+            let serverDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            let label = entry.flatMap { $0.isLatest ? nil : $0.displayLabel } ?? "latest"
+
+            await MainActor.run {
+                self.logAppMessage("[\(cfg.javaFlavor.displayName)] Upgrading to \(label)…")
+            }
+
+            do {
+                switch cfg.javaFlavor {
+
+                case .fabric:
+                    let trimmed = cfg.paperJarPath.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let destURL = trimmed.isEmpty
+                        ? serverDir.appendingPathComponent("paper.jar")
+                        : URL(fileURLWithPath: trimmed)
+                    try FileManager.default.createDirectory(
+                        at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+                    let result: ServerJarDownloadResult
+                    if let e = entry, !e.isLatest {
+                        result = try await ServerJarProvider.downloadVersion(e, flavor: .fabric, to: destURL)
+                    } else {
+                        result = try await ServerJarProvider.downloadLatest(flavor: .fabric, to: destURL)
+                    }
+
+                    await MainActor.run {
+                        if let idx = self.configManager.config.servers.firstIndex(where: { $0.id == cfg.id }) {
+                            self.configManager.config.servers[idx].minecraftVersion = result.version
+                            self.configManager.config.servers[idx].loaderVersion = result.loaderVersion
+                            self.configManager.save()
+                        }
+                        self.logAppMessage("[Fabric] Upgraded to MC \(result.version), loader \(result.loaderVersion ?? result.build).")
+                        self.isDownloadingJar = false
+                        self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+                    }
+
+                case .neoforge:
+                    await MainActor.run { self.requestConsoleExpand = true }
+                    let javaPath = await MainActor.run { self.configManager.config.javaPath }
+                    let info: NeoForgeInstaller.InstallResult
+                    if let e = entry, !e.isLatest, let nfv = e.loaderVersion {
+                        info = try await NeoForgeInstaller.install(
+                            specificVersion: nfv, into: serverDir, javaPath: javaPath,
+                            onLog: { line in Task { @MainActor in self.logAppMessage("[NeoForge] \(line)") } }
+                        )
+                    } else {
+                        info = try await NeoForgeInstaller.install(
+                            into: serverDir, javaPath: javaPath,
+                            onLog: { line in Task { @MainActor in self.logAppMessage("[NeoForge] \(line)") } }
+                        )
+                    }
+                    await MainActor.run {
+                        if let idx = self.configManager.config.servers.firstIndex(where: { $0.id == cfg.id }) {
+                            self.configManager.config.servers[idx].minecraftVersion = info.minecraftVersion
+                            self.configManager.config.servers[idx].loaderVersion = info.neoForgeVersion
+                            self.configManager.config.servers[idx].serverBuild = info.neoForgeVersion
+                            self.configManager.save()
+                        }
+                        self.recordLoaderVersion(flavor: .neoforge, mc: info.minecraftVersion, loader: info.neoForgeVersion)
+                        self.logAppMessage("[NeoForge] Upgraded to \(info.neoForgeVersion) (MC \(info.minecraftVersion)).")
+                        self.isDownloadingJar = false
+                        self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+                    }
+
+                case .forge:
+                    await MainActor.run { self.requestConsoleExpand = true }
+                    let javaPath = await MainActor.run { self.configManager.config.javaPath }
+                    let info: ForgeInstaller.InstallResult
+                    if let e = entry, !e.isLatest, let fv = e.loaderVersion {
+                        info = try await ForgeInstaller.install(
+                            mcVersion: e.mcVersion, forgeVersion: fv, into: serverDir, javaPath: javaPath,
+                            onLog: { line in Task { @MainActor in self.logAppMessage("[Forge] \(line)") } }
+                        )
+                    } else {
+                        info = try await ForgeInstaller.install(
+                            into: serverDir, javaPath: javaPath,
+                            onLog: { line in Task { @MainActor in self.logAppMessage("[Forge] \(line)") } }
+                        )
+                    }
+                    await MainActor.run {
+                        if let idx = self.configManager.config.servers.firstIndex(where: { $0.id == cfg.id }) {
+                            self.configManager.config.servers[idx].minecraftVersion = info.minecraftVersion
+                            self.configManager.config.servers[idx].loaderVersion = info.forgeVersion
+                            self.configManager.config.servers[idx].serverBuild = info.forgeVersion
+                            self.configManager.save()
+                        }
+                        self.recordLoaderVersion(flavor: .forge, mc: info.minecraftVersion, loader: info.forgeVersion)
+                        self.logAppMessage("[Forge] Upgraded to \(info.forgeVersion) (MC \(info.minecraftVersion)).")
+                        self.isDownloadingJar = false
+                        self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+                    }
+
+                default:
+                    await MainActor.run {
+                        self.logAppMessage("[\(cfg.javaFlavor.displayName)] Upgrade not supported for this flavor.")
+                        self.isDownloadingJar = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Upgrade failed: \(error.localizedDescription)")
+                    self.isDownloadingJar = false
+                }
+            }
+        }
+    }
+
     /// Reveals a file or folder in Finder.
     func revealInFinder(url: URL) {
         NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -441,7 +630,7 @@ extension AppViewModel {
             return parsed.displayString
         }
 
-        return jarURL.lastPathComponent
+        return cfg.minecraftVersion ?? jarURL.lastPathComponent
     }
 
     private func localPluginBuildString(for cfg: ConfigServer, matching keyword: String) -> String? {
@@ -607,5 +796,35 @@ extension AppViewModel {
                 self.refreshHealthCardsForSelectedServer()
             }
         }
+    }
+
+    // MARK: - Loader version library
+
+    func recordLoaderVersion(flavor: JavaServerFlavor, mc: String, loader: String) {
+        let record = LoaderVersionRecord(flavor: flavor, mcVersion: mc, loaderVersion: loader, addedAt: Date())
+        guard !configManager.config.loaderVersionRecords.contains(where: { $0.id == record.id }) else { return }
+        configManager.config.loaderVersionRecords.insert(record, at: 0)
+        configManager.save()
+    }
+
+    func loaderVersionRecords(for flavor: JavaServerFlavor) -> [LoaderVersionRecord] {
+        configManager.config.loaderVersionRecords.filter { $0.flavor == flavor }
+    }
+
+    func removeLoaderVersionRecord(_ record: LoaderVersionRecord) {
+        configManager.config.loaderVersionRecords.removeAll { $0.id == record.id }
+        configManager.save()
+    }
+
+    func applyLoaderVersionRecord(_ record: LoaderVersionRecord, for cfg: ConfigServer) {
+        let entry = ServerVersionEntry(
+            id: "\(record.mcVersion)-\(record.loaderVersion)",
+            displayLabel: "\(record.flavor.displayName) \(record.loaderVersion) (MC \(record.mcVersion))",
+            mcVersion: record.mcVersion,
+            loaderVersion: record.loaderVersion,
+            buildLabel: record.loaderVersion,
+            isStable: true
+        )
+        upgradeModdedLoader(entry, for: cfg)
     }
 }

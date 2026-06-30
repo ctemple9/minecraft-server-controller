@@ -116,11 +116,29 @@ struct ServerEditorSidebarView: View {
                     Divider().opacity(0.4).padding(.vertical, 6)
 
                     if data.serverType == .java, let cfg = editingConfigServer {
-                        let summary = viewModel.jarSummary(for: cfg)
-                        sbRow("JARs") {
-                            Text(summary.paperFilename != nil ? "✓ Found" : "Missing")
-                                .font(.system(size: 10))
-                                .foregroundStyle(summary.paperFilename != nil ? Color.green : Color.orange)
+                        if cfg.isModded {
+                            let isInstalled: Bool = {
+                                let dir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+                                let fm = FileManager.default
+                                switch cfg.javaFlavor {
+                                case .fabric: return fm.fileExists(atPath: dir.appendingPathComponent("fabric-server-launch.jar").path)
+                                case .quilt:  return fm.fileExists(atPath: dir.appendingPathComponent("quilt-server-launch.jar").path)
+                                default:      return fm.fileExists(atPath: dir.appendingPathComponent("run.sh").path)
+                                                  || fm.fileExists(atPath: dir.appendingPathComponent("libraries").path)
+                                }
+                            }()
+                            sbRow("Server") {
+                                Text(isInstalled ? "✓ Installed" : "Not installed")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(isInstalled ? Color.green : Color.orange)
+                            }
+                        } else {
+                            let summary = viewModel.jarSummary(for: cfg)
+                            sbRow("JARs") {
+                                Text(summary.paperFilename != nil ? "✓ Found" : "Missing")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(summary.paperFilename != nil ? Color.green : Color.orange)
+                            }
                         }
                     }
 

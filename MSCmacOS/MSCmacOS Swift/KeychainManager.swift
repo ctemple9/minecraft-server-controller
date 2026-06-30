@@ -7,11 +7,12 @@ import Security
 
 /// Handles reading and writing sensitive credentials to the macOS Keychain.
 ///
-/// Two values are managed here:
+/// Values managed here:
 ///   - The Remote API owner token (one global value)
 ///   - The Xbox Broadcast alt-account password (one value per server, keyed by server ID)
+///   - The playit.gg Docker agent secret key (one global value)
 ///
-/// Both use `kSecClassGenericPassword`, which is the correct Keychain item class
+/// All use `kSecClassGenericPassword`, which is the correct Keychain item class
 /// for application secrets that are not internet credentials.
 final class KeychainManager {
 
@@ -28,6 +29,12 @@ final class KeychainManager {
 
     /// Keychain service name for per-server Xbox Broadcast alt-account passwords.
     private static let xboxBroadcastPasswordService = "com.camerontemple.minecraftservercontroller.xboxbroadcast.altpassword"
+
+    /// Keychain service name for the playit.gg Docker agent secret key.
+    private static let playitSecretKeyService = "com.camerontemple.minecraftservercontroller.playit.secretkey"
+
+    /// Fixed account name for the playit secret key (there is only one global key).
+    private static let playitSecretKeyAccount = "agent"
 
     /// Fixed account name for the Remote API token (there is only one owner token).
     private static let remoteAPITokenAccount = "owner"
@@ -81,6 +88,21 @@ final class KeychainManager {
         return write(value: password, service: Self.xboxBroadcastPasswordService, account: serverId)
     }
 
+    // MARK: - playit.gg Secret Key
+
+    func readPlayitSecretKey() -> String? {
+        return read(service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount)
+    }
+
+    /// Writes the playit secret key to Keychain. Passing `nil` deletes the existing entry.
+    @discardableResult
+    func writePlayitSecretKey(_ key: String?) -> Bool {
+        guard let key, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return delete(service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount)
+        }
+        return write(value: key, service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount)
+    }
+
     // MARK: - Reset helpers
 
     /// Deletes the global Remote API token and every per-server Xbox Broadcast alt password.
@@ -94,6 +116,10 @@ final class KeychainManager {
         }
 
         if !delete(service: Self.remoteAPIGuestTokenService, account: Self.remoteAPIGuestTokenAccount) {
+            allSucceeded = false
+        }
+
+        if !delete(service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount) {
             allSucceeded = false
         }
 

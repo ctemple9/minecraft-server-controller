@@ -38,6 +38,28 @@ final class AppViewModel: ObservableObject {
 
     @Published var discoveredPlugins: [PluginEntry] = []
     @Published var downloadingPlugins: Set<String> = []   // jarStem keys
+    @Published var discoveredMods: [ModEntry] = []
+
+    // Add-on (plugin/mod) update planning — drives the Update All sheet + per-row badges.
+    @Published var addonUpdatePlan: [AddonUpdateItem] = []
+    @Published var isResolvingAddonUpdates: Bool = false
+    @Published var addonUpdateError: String? = nil
+    /// jarStems currently being downloaded/applied, for per-row progress.
+    @Published var updatingAddonStems: Set<String> = []
+    /// Which server `addonUpdatePlan` was computed for. Acts as the cache key so the plan
+    /// is resolved once per server and reused until invalidated (server change / mutation).
+    @Published var addonPlanServerId: String? = nil
+
+    // Startup crash diagnostics — parsed mod/plugin problems from a failed start.
+    @Published var startupProblems: [StartupProblem] = []
+    @Published var isShowingStartupProblems: Bool = false
+    /// The server the current `startupProblems` belong to (for the sheet's actions).
+    @Published var startupProblemsServerId: String? = nil
+    /// StartupProblem ids currently being repaired (update/install), for per-row spinners.
+    @Published var repairingProblemIds: Set<String> = []
+    /// True when the current problems are a "soft fail" (server started but some add-ons
+    /// failed to load) vs a hard fail (server couldn't start). Tunes the sheet's copy.
+    @Published var startupProblemsAreSoftFail: Bool = false
 
     @Published var componentsSnapshot: ComponentsVersionSnapshot = ComponentsVersionSnapshot()
     @Published var isCheckingComponentsOnline: Bool = false
@@ -45,14 +67,25 @@ final class AppViewModel: ObservableObject {
         @Published var isDownloadingAndApplyingPaper: Bool = false
         @Published var isDownloadingAndApplyingGeyser: Bool = false
         @Published var isDownloadingAndApplyingFloodgate: Bool = false
+    @Published var isDownloadingJar: Bool = false
     @Published var includeExperimentalPaperBuilds: Bool = false
     @Published var availablePaperVersions: [PaperVersionOption] = []
     @Published var selectedPaperVersionOption: PaperVersionOption? = nil
     @Published var bedrockAvailableVersions: [BedrockVersionEntry] = []
     @Published var isFetchingBedrockVersions: Bool = false
     @Published var bedrockVersionFetchError: String? = nil
+    /// Human-readable reason the most recent server creation failed, surfaced in the
+    /// Add Server wizard. Nil when no failure is pending.
+    @Published var lastServerCreateError: String? = nil
+    /// Set when the configured Java is too old for the Minecraft version of the
+    /// server being started (the common cause of a silent boot failure). Nil when fine.
+    @Published var javaCompatibilityWarning: String? = nil
     @Published var isUpdatingBedrockImage: Bool = false
     @Published var isRepairingWorld: Bool = false
+    /// Fires true when a long-running operation (e.g. NeoForge installer) wants the
+    /// console to be visible so the user can see streaming output. ContentView reacts
+    /// by unhiding / expanding the console panel, then resets this to false.
+    @Published var requestConsoleExpand: Bool = false
 
     // MARK: - Published UI state
 
@@ -1058,21 +1091,15 @@ final class AppViewModel: ObservableObject {
                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
                     self.fireNotificationIfEnabled(event: .serverStopped, serverName: cfg.displayName, serverId: cfg.id)
                 }
-                if !reachedReadyState {
-                    if let server = self.selectedServer, let cfg = self.configServer(for: server) {
+                if !wasUserRequestedStop {
+                    // Diagnose: present the mod-problems sheet (modded hard fail) or a
+                    // generic alert; also writes last_startup_result + refreshes cards.
+                    self.diagnoseUnexpectedStop(reachedReadyState: reachedReadyState)
+                } else {
+                    if !reachedReadyState, let server = self.selectedServer, let cfg = self.configServer(for: server) {
                         self.writeLastStartupResult(for: cfg, wasClean: false, fatalErrors: ["Server stopped before reaching ready state."], warnings: [])
                     }
-                }
-                self.refreshHealthCardsForSelectedServer()
-                if !wasUserRequestedStop {
-                    let recentErrors = self.console.entries
-                        .filter { $0.source == .server && $0.level == .error }
-                        .suffix(5)
-                        .map { $0.raw }
-                    let detail = recentErrors.isEmpty
-                        ? "The server process stopped unexpectedly with no error output in the log."
-                        : recentErrors.joined(separator: "\n")
-                    self.showError(title: "Server Stopped Unexpectedly", message: detail)
+                    self.refreshHealthCardsForSelectedServer()
                 }
                 self.logAppMessage("[App] Server process ended.")
                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
@@ -1271,6 +1298,36 @@ final class AppViewModel: ObservableObject {
         let line = "[\(ts)] \(msg)"
         console.appendRaw(line, source: .controller)
         remoteAPIServer?.publishConsoleLine(source: "app", text: line)
+    }
+
+    /// Buffer of formatted console lines emitted while creating a server. Selecting
+    /// the new server clears the console, so these are replayed afterwards so the
+    /// creation/install output (e.g. NeoForge) survives into the new server's console.
+    var pendingCreationConsole: [String] = []
+
+    /// Live-observable log of installer output during the current server creation.
+    /// Populated by noteCreation; cleared when a new creation starts; shown in the wizard
+    /// as a scrolling log for installStep flavors (NeoForge, Forge).
+    @Published var creationLogLines: [String] = []
+
+    /// Like `logAppMessage`, but also buffers the line for replay into the newly
+    /// created server's console (see `replayCreationConsole`).
+    func noteCreation(_ msg: String) {
+        let ts = AppUtilities.timestampString()
+        let line = "[\(ts)] \(msg)"
+        console.appendRaw(line, source: .controller)
+        remoteAPIServer?.publishConsoleLine(source: "app", text: line)
+        pendingCreationConsole.append(line)
+        creationLogLines.append(msg)
+    }
+
+    /// Replays buffered creation lines into the (now-selected) server's console.
+    func replayCreationConsole() {
+        guard !pendingCreationConsole.isEmpty else { return }
+        for line in pendingCreationConsole {
+            console.appendRaw(line, source: .controller)
+        }
+        pendingCreationConsole.removeAll()
     }
 
     func clearConsole() {

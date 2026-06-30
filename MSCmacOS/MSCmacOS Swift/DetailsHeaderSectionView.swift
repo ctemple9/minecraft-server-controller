@@ -29,6 +29,9 @@ struct DetailsHeaderSectionView: View {
                         if let server = viewModel.selectedServer,
                            let cfgServer = viewModel.configServer(for: server) {
                             ServerTypeBadge(serverType: cfgServer.serverType)
+                            if cfgServer.isJava {
+                                JavaFlavorBadge(flavor: cfgServer.javaFlavor)
+                            }
                         }
                     }
 
@@ -104,6 +107,32 @@ struct DetailsHeaderSectionView: View {
 }
 
 // MARK: - Server Type Badge
+
+private struct JavaFlavorBadge: View {
+    let flavor: JavaServerFlavor
+
+    var body: some View {
+        Label(flavor.displayName, systemImage: flavor.iconName)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.94))
+            .padding(.horizontal, MSC.Spacing.sm)
+            .padding(.vertical, 4)
+            .background {
+                ZStack {
+                    Capsule().fill(.ultraThinMaterial)
+                    Capsule().fill(Color.purple.opacity(0.18))
+                    Capsule().fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.15), Color.clear],
+                            startPoint: .top,
+                            endPoint: UnitPoint(x: 0.5, y: 0.72)
+                        )
+                    )
+                }
+            }
+            .overlay { Capsule().stroke(Color.purple.opacity(0.35), lineWidth: 0.7) }
+    }
+}
 
 private struct ServerTypeBadge: View {
     let serverType: ServerType

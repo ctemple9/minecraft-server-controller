@@ -18,6 +18,19 @@ struct ScannedServerInfo {
     var eulaAccepted: Bool
     var worlds: [DetectedWorld]
     var defaultWorldName: String?
+    // Java flavor detection (nil for Bedrock)
+    var javaFlavor: JavaServerFlavor?
+    var detectedMCVersion: String?
+    var detectedLoaderVersion: String?
+}
+
+// MARK: - Flavor detection result
+
+struct DetectedJavaFlavor {
+    var flavor: JavaServerFlavor
+    var mcVersion: String?
+    var loaderVersion: String?
+    var primaryJarPath: String?  // nil for NeoForge (uses unix_args.txt)
 }
 
 struct DetectedWorld: Identifiable {
@@ -119,12 +132,15 @@ extension AppViewModel {
         // If the zip contained a single top-level folder, unwrap it
         let effectiveDir = resolvedImportDir(in: destURL, fm: fm)
 
-        // Locate paper.jar for Java
+        // Detect Java flavor and locate primary jar
+        let detectedFlavor: DetectedJavaFlavor?
         let paperJarPath: String
         if serverType == .java {
-            paperJarPath = findImportedJar(in: effectiveDir)?.path
-                ?? effectiveDir.appendingPathComponent("paper.jar").path
+            let d = AppViewModel.detectJavaFlavor(in: effectiveDir)
+            detectedFlavor = d
+            paperJarPath = d.primaryJarPath ?? ""
         } else {
+            detectedFlavor = nil
             paperJarPath = ""
         }
 
@@ -173,6 +189,11 @@ extension AppViewModel {
         cfgServer.bedrockPort    = serverType == .bedrock ? port : nil
         cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
         cfgServer.playitEnabled  = enablePlayit
+        if let d = detectedFlavor {
+            cfgServer.javaFlavor       = d.flavor
+            cfgServer.minecraftVersion = d.mcVersion
+            cfgServer.loaderVersion    = d.loaderVersion
+        }
 
         // Create initial world slot from whatever world data is in the server folder
         let logLine: (String) -> Void = { [weak self] msg in
@@ -324,14 +345,128 @@ extension AppViewModel {
                     return a.name < b.name
                 }
 
+        let flavorInfo = detectedType == .java ? AppViewModel.detectJavaFlavor(in: dirURL) : nil
+
         return ScannedServerInfo(
             serverType: detectedType,
             port: port,
             maxPlayers: maxPlayers,
             eulaAccepted: eulaAccepted,
             worlds: worlds,
-            defaultWorldName: worlds.first?.name ?? configuredLevelName
+            defaultWorldName: worlds.first?.name ?? configuredLevelName,
+            javaFlavor: flavorInfo?.flavor,
+            detectedMCVersion: flavorInfo?.mcVersion,
+            detectedLoaderVersion: flavorInfo?.loaderVersion
         )
+    }
+
+    // MARK: - Java flavor detection
+
+    /// Inspects a Java server directory and returns the detected flavor, MC version,
+    /// loader version, and path to the primary jar (nil for NeoForge).
+    static func detectJavaFlavor(in dir: URL) -> DetectedJavaFlavor {
+        let fm = FileManager.default
+
+        // 1. NeoForge — unique libraries/net/neoforged/neoforge/<version>/unix_args.txt
+        let neoBase = dir.appendingPathComponent("libraries/net/neoforged/neoforge", isDirectory: true)
+        if let vDirs = try? fm.contentsOfDirectory(at: neoBase, includingPropertiesForKeys: nil) {
+            for vDir in vDirs {
+                if fm.fileExists(atPath: vDir.appendingPathComponent("unix_args.txt").path) {
+                    let loaderVer = vDir.lastPathComponent
+                    let mcVer = NeoForgeInstaller.minecraftVersion(forNeoForge: loaderVer)
+                    return DetectedJavaFlavor(flavor: .neoforge, mcVersion: mcVer,
+                                              loaderVersion: loaderVer, primaryJarPath: nil)
+                }
+            }
+        }
+
+        // 2. Forge — libraries/net/minecraftforge/forge/<mc>-<forgeVersion>/unix_args.txt
+        let forgeBase = dir.appendingPathComponent("libraries/net/minecraftforge/forge", isDirectory: true)
+        if let vDirs = try? fm.contentsOfDirectory(at: forgeBase, includingPropertiesForKeys: nil) {
+            for vDir in vDirs {
+                if fm.fileExists(atPath: vDir.appendingPathComponent("unix_args.txt").path) {
+                    // dir name is "{mcVersion}-{forgeVersion}", e.g. "1.21.4-54.1.0"
+                    let parts = vDir.lastPathComponent.split(separator: "-", maxSplits: 1)
+                    let mcVer = parts.count >= 1 ? String(parts[0]) : nil
+                    let forgeVer = parts.count >= 2 ? String(parts[1]) : vDir.lastPathComponent
+                    return DetectedJavaFlavor(flavor: .forge, mcVersion: mcVer,
+                                              loaderVersion: forgeVer, primaryJarPath: nil)
+                }
+            }
+        }
+
+        // 4. Fabric — fabric-server-launch*.jar in root
+        let rootFiles = (try? fm.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+        )) ?? []
+        if let jar = rootFiles.first(where: {
+            $0.lastPathComponent.lowercased().hasPrefix("fabric-server-launch") &&
+            $0.pathExtension.lowercased() == "jar"
+        }) {
+            let stem = jar.deletingPathExtension().lastPathComponent
+            let mcVer = parseFabricMCVersion(from: stem)
+            let loaderVer = detectFabricLoaderVersion(in: dir, fm: fm)
+            return DetectedJavaFlavor(flavor: .fabric, mcVersion: mcVer,
+                                      loaderVersion: loaderVer, primaryJarPath: jar.path)
+        }
+
+        // 5. Match remaining jars by well-known prefixes
+        let jars = rootFiles.filter { $0.pathExtension.lowercased() == "jar" }
+
+        if let jar = jars.first(where: { $0.lastPathComponent.lowercased().hasPrefix("purpur") }) {
+            return DetectedJavaFlavor(flavor: .purpur,
+                                      mcVersion: parseJarMCVersion(jar.deletingPathExtension().lastPathComponent, prefix: "purpur-"),
+                                      loaderVersion: nil, primaryJarPath: jar.path)
+        }
+
+        if let jar = jars.first(where: { $0.lastPathComponent.lowercased().hasPrefix("minecraft_server") }) {
+            return DetectedJavaFlavor(flavor: .vanilla,
+                                      mcVersion: parseJarMCVersion(jar.deletingPathExtension().lastPathComponent, prefix: "minecraft_server-"),
+                                      loaderVersion: nil, primaryJarPath: jar.path)
+        }
+
+        // 6. Paper (default) — prefer paper*.jar, fall back to any jar
+        let paperJar = jars.first(where: { $0.lastPathComponent.lowercased().hasPrefix("paper") }) ?? jars.first
+        return DetectedJavaFlavor(flavor: .paper,
+                                  mcVersion: paperJar.map { parseJarMCVersion($0.deletingPathExtension().lastPathComponent, prefix: "paper-") } ?? nil,
+                                  loaderVersion: nil,
+                                  primaryJarPath: paperJar?.path)
+    }
+
+    /// Parses the MC version from a Fabric launcher filename stem.
+    /// "fabric-server-launch-1.21.5" → "1.21.5"; "fabric-server-launch" → nil.
+    private static func parseFabricMCVersion(from stem: String) -> String? {
+        let prefix = "fabric-server-launch-"
+        let lower = stem.lowercased()
+        guard lower.hasPrefix(prefix) else { return nil }
+        let ver = String(stem.dropFirst(prefix.count))
+        return ver.isEmpty ? nil : ver
+    }
+
+    /// Finds the Fabric loader version from .fabric/server/libraries/net/fabricmc/fabric-loader/.
+    private static func detectFabricLoaderVersion(in dir: URL, fm: FileManager) -> String? {
+        let loaderBase = dir.appendingPathComponent(
+            ".fabric/server/libraries/net/fabricmc/fabric-loader", isDirectory: true)
+        guard let vDirs = try? fm.contentsOfDirectory(at: loaderBase, includingPropertiesForKeys: nil)
+        else { return nil }
+        return vDirs.map(\.lastPathComponent).sorted().last
+    }
+
+    /// Extracts the MC version from a jar filename stem given its known prefix.
+    /// "paper-1.21.5-123" with prefix "paper-" → "1.21.5" (trailing -build stripped).
+    /// "minecraft_server-1.21.5" with prefix "minecraft_server-" → "1.21.5".
+    private static func parseJarMCVersion(_ stem: String, prefix: String) -> String? {
+        let lower = stem.lowercased()
+        guard lower.hasPrefix(prefix.lowercased()) else { return nil }
+        var remainder = String(stem.dropFirst(prefix.count))
+        // Strip trailing -<build> if the part after the last dash is purely numeric
+        if let dashIdx = remainder.lastIndex(of: "-") {
+            let afterDash = remainder[remainder.index(after: dashIdx)...]
+            if afterDash.allSatisfy(\.isNumber) {
+                remainder = String(remainder[..<dashIdx])
+            }
+        }
+        return remainder.isEmpty ? nil : remainder
     }
 
     // MARK: - Private helpers
@@ -353,16 +488,6 @@ extension AppViewModel {
 
         if subdirs.count == 1 && files.isEmpty { return subdirs[0] }
         return destURL
-    }
-
-    /// Returns the first .jar in `dir`, preferring one with "paper" in its name.
-    private func findImportedJar(in dir: URL) -> URL? {
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
-        ) else { return nil }
-        let jars = files.filter { $0.pathExtension.lowercased() == "jar" }
-        return jars.first(where: { $0.lastPathComponent.lowercased().contains("paper") })
-            ?? jars.first
     }
 
     /// Recursively sums file sizes under `url`.

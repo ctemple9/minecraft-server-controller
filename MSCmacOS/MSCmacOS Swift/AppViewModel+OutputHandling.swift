@@ -25,6 +25,7 @@ extension AppViewModel {
             if let server = selectedServer, let cfg = configServer(for: server) {
                 writeLastStartupResult(for: cfg, wasClean: true, fatalErrors: [], warnings: [])
                 refreshHealthCardsForSelectedServer()
+                scanPaperSoftFailures(for: cfg)
             }
         }
 
@@ -64,6 +65,104 @@ extension AppViewModel {
         parseBedrockVersion(from: line)
         parseBedrockPlayerEvent(from: line)
         parseJavaPlayerEvent(from: line)
+    }
+
+    // MARK: - Unexpected-stop diagnostics
+
+    /// Called when a server process stops without a user request. For modded servers that
+    /// never reached ready state, runs the crash analyzer off-main and, if it attributes
+    /// problems to specific mods, presents the diagnostics sheet. Otherwise falls back to
+    /// the generic "stopped unexpectedly" alert. Always refreshes the health cards.
+    func diagnoseUnexpectedStop(reachedReadyState: Bool) {
+        guard let server = selectedServer, let cfg = configServer(for: server) else {
+            refreshHealthCardsForSelectedServer()
+            return
+        }
+
+        // Recent server console output, used as a fallback when the log file isn't readable.
+        let excerpt = console.entries
+            .filter { $0.source == .server }
+            .suffix(120)
+            .map { $0.raw }
+        let errorExcerpt = console.entries
+            .filter { $0.source == .server && $0.level == .error }
+            .suffix(5)
+            .map { $0.raw }
+        let mods = discoveredMods
+        let isHardFail = !reachedReadyState
+        let shouldAnalyze = isHardFail && cfg.isModded
+
+        Task.detached { [weak self] in
+            guard let self else { return }
+            let problems: [StartupProblem] = shouldAnalyze
+                ? StartupCrashAnalyzer.analyze(
+                    serverDir: cfg.serverDir, flavor: cfg.javaFlavor,
+                    consoleExcerpt: excerpt, installedMods: mods)
+                : []
+
+            await MainActor.run {
+                if !problems.isEmpty {
+                    let summaries = problems.map { "\($0.offenderName): \($0.requirement ?? $0.kind.title)" }
+                    self.writeLastStartupResult(for: cfg, wasClean: false, fatalErrors: summaries, warnings: [], problems: problems)
+                    self.startupProblems = problems
+                    self.startupProblemsServerId = cfg.id
+                    self.startupProblemsAreSoftFail = false
+                    self.isShowingStartupProblems = true
+                } else {
+                    if isHardFail {
+                        self.writeLastStartupResult(for: cfg, wasClean: false,
+                            fatalErrors: ["Server stopped before reaching ready state."], warnings: [])
+                    }
+                    let detail = errorExcerpt.isEmpty
+                        ? "The server process stopped unexpectedly with no error output in the log."
+                        : errorExcerpt.joined(separator: "\n")
+                    self.showError(title: "Server Stopped Unexpectedly", message: detail)
+                }
+                self.refreshHealthCardsForSelectedServer()
+            }
+        }
+    }
+
+    /// Reloads the persisted startup problems for the selected server and reopens the
+    /// diagnostics sheet — used by the "Last startup" health card after the sheet has
+    /// been dismissed. `wasClean` distinguishes a soft fail (started, add-ons failed)
+    /// from a hard fail (couldn't start).
+    func reopenStartupProblems() {
+        guard let server = selectedServer, let cfg = configServer(for: server) else { return }
+        let path = (cfg.serverDir as NSString).appendingPathComponent("last_startup_result.json")
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let result = try? JSONDecoder().decode(LastStartupResult.self, from: data),
+              let problems = result.problems, !problems.isEmpty else {
+            logAppMessage("[Health] No structured startup problems recorded for this server.")
+            return
+        }
+        startupProblems = problems
+        startupProblemsServerId = cfg.id
+        startupProblemsAreSoftFail = result.wasClean
+        isShowingStartupProblems = true
+    }
+
+    /// On a *successful* Paper-family start, scans for plugins that failed to load and,
+    /// if any, records them on the startup result so the health card can flag them. Runs
+    /// off-main; never auto-opens a modal (the server is up and otherwise healthy).
+    func scanPaperSoftFailures(for cfg: ConfigServer) {
+        guard cfg.isJava, cfg.javaFlavor.addOnKind == .plugin else { return }
+        let excerpt = console.entries.filter { $0.source == .server }.suffix(400).map { $0.raw }
+        let plugins = discoveredPlugins
+
+        Task.detached { [weak self] in
+            guard let self else { return }
+            let problems = StartupCrashAnalyzer.analyzePaperPlugins(
+                serverDir: cfg.serverDir, consoleExcerpt: excerpt, installedPlugins: plugins)
+            guard !problems.isEmpty else { return }
+            await MainActor.run {
+                let warnings = problems.map { "\($0.offenderName): \($0.requirement ?? $0.kind.title)" }
+                // wasClean stays true — the server did start; these are non-fatal.
+                self.writeLastStartupResult(for: cfg, wasClean: true, fatalErrors: [], warnings: warnings, problems: problems)
+                self.refreshHealthCardsForSelectedServer()
+                self.logAppMessage("[Health] \(problems.count) plugin issue(s) detected at startup — see the Last Startup card.")
+            }
+        }
     }
 
     // MARK: - Bedrock version parsing
