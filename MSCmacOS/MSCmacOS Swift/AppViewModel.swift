@@ -325,11 +325,14 @@ final class AppViewModel: ObservableObject {
 
     let javaBackend = JavaServerBackend()
     let bedrockBackend = BedrockServerBackend()
+    /// Native VM Bedrock backend (Docker replacement). Selected over bedrockBackend
+    /// when AppConfig.useVMBedrockBackend is true.
+    let vmBedrockBackend = VMBedrockServerBackend()
     var activeBackend: ServerBackend?
 
     let broadcastManager = XboxBroadcastProcessManager()
     let bedrockBroadcastManager = BedrockBroadcastManager()
-    let playitDockerManager = PlayitDockerManager()
+    let playitAgentManager = PlayitAgentManager()
 
     static var sharedRemoteAPIServer: RemoteAPIServer?
     var remoteAPIServer: RemoteAPIServer?
@@ -1158,6 +1161,11 @@ final class AppViewModel: ObservableObject {
                             }
                         }
 
+        // The VM Bedrock backend reuses the exact same output/termination handlers
+        // as the Docker Bedrock backend — identical lifecycle handling either way.
+        vmBedrockBackend.onOutputLine = bedrockBackend.onOutputLine
+        vmBedrockBackend.onDidTerminate = bedrockBackend.onDidTerminate
+
                         // Broadcast output handlers
         broadcastManager.onOutputLine = { [weak self] line in
             guard let self else { return }
@@ -1181,7 +1189,7 @@ final class AppViewModel: ObservableObject {
             guard let self else { return }
             Task { @MainActor in
                 self.isBedrockBroadcastRunning = false
-                self.logAppMessage("[BroadcastBDS] Broadcast container ended.")
+                self.logAppMessage("[BroadcastBDS] Broadcast stopped.")
             }
         }
 

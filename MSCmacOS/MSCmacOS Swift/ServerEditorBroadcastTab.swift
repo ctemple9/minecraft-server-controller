@@ -184,7 +184,9 @@ extension ServerEditorView {
                 )
             } else if let cfg = editingConfigServer {
                 let hostForDisplay = viewModel.previewBroadcastHost(for: cfg, mode: broadcastIPMode)
-                let port = viewModel.effectiveBedrockPort(for: cfg) ?? 19132
+                // Use the broadcast transfer port (playit tunnel port when playit is on),
+                // matching what the broadcast actually sends to joining players.
+                let port = viewModel.broadcastPortForConfig(for: cfg) ?? 19132
 
                 SESection(icon: "dot.radiowaves.left.and.right", title: "Xbox Broadcast for This Server", color: .green) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.md) {
@@ -194,7 +196,7 @@ extension ServerEditorView {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("Enable Xbox Broadcast when this server starts")
                                     .font(.system(size: 12, weight: .medium))
-                                Text("Starts the MCXboxBroadcast Standalone container so Xbox friends can see and join via the Friends tab.")
+                                Text("Starts MCXboxBroadcast Standalone so Xbox friends can see and join via the Friends tab.")
                                     .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -204,7 +206,7 @@ extension ServerEditorView {
                         Divider().opacity(0.5)
 
                         SEInlineField(label: "Transfers to", hint: "The address sent to joining players") {
-                            Text("\(hostForDisplay):\(port)")
+                            Text(verbatim: "\(hostForDisplay):\(port)")
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(.secondary)
                         }
@@ -222,6 +224,21 @@ extension ServerEditorView {
 
                         Divider().opacity(0.5)
 
+                        HStack(spacing: MSC.Spacing.sm) {
+                            Circle()
+                                .fill(viewModel.isXboxBroadcastHelperInstalled ? Color.green : Color.red)
+                                .frame(width: 8, height: 8)
+                            Text(viewModel.isXboxBroadcastHelperInstalled
+                                 ? "Broadcast helper JAR installed."
+                                 : "Broadcast helper JAR not installed yet.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Download…") { viewModel.downloadOrUpdateXboxBroadcastJar() }
+                                .buttonStyle(MSCSecondaryButtonStyle())
+                                .controlSize(.small)
+                        }
+
                         Button("Open Data Folder…") {
                             let url = BedrockBroadcastManager.dataDirectoryURL(for: cfg)
                             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -236,7 +253,7 @@ extension ServerEditorView {
                     SECallout(
                         icon: "info.circle.fill",
                         color: .blue,
-                        text: "MCXboxBroadcast Standalone runs as a Docker container. It authenticates with Xbox Live using your alt account and redirects friends to your BDS server. Use Auto mode unless you need friends outside your home network to connect — in that case, set IP Mode to Public IP and forward your BDS UDP port on your router."
+                        text: "MCXboxBroadcast Standalone runs as a background process. It authenticates with Xbox Live using your alt account and redirects friends to your BDS server. Use Auto mode unless you need friends outside your home network to connect — in that case, set IP Mode to Public IP and forward your BDS UDP port on your router."
                     )
                 }
             }

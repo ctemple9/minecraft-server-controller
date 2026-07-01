@@ -46,7 +46,11 @@ extension AppViewModel {
         }
     }
 
-    private func broadcastPortForConfig(for server: ConfigServer) -> Int? {
+    /// The port the broadcast transfers joining players to. When playit is enabled this is the
+    /// playit Bedrock *tunnel* port (e.g. 64009), not the local BDS port — matching the host
+    /// returned by previewBroadcastHost. Falls back to the local port when playit is off.
+    /// Used by both the broadcast start path and the Edit Server "Transfers to" preview.
+    func broadcastPortForConfig(for server: ConfigServer) -> Int? {
         if let override = server.xboxBroadcastPortOverride { return override }
         // Use playit Bedrock tunnel port when active
         if server.playitEnabled,
@@ -204,7 +208,7 @@ extension AppViewModel {
         openInFinder(dir, description: "broadcast config folder for \(configServer.displayName)")
     }
 
-    // MARK: - Bedrock broadcast (Docker container)
+    // MARK: - Bedrock broadcast
 
     func startBedrockBroadcast() {
         guard !bedrockBroadcastManager.isRunning else {
@@ -216,18 +220,26 @@ extension AppViewModel {
             showError(title: "Xbox Broadcast", message: "No Bedrock server config found.")
             return
         }
-        let port = effectiveBedrockPort(for: cfgServer)
+        // Use broadcastPortForConfig (not effectiveBedrockPort) so that when playit is
+        // enabled the transfer target uses the playit Bedrock *tunnel* port, matching the
+        // playit host returned by previewBroadcastHost. Using the local port here sends
+        // external clients to playit-host:local-port, which is a dead endpoint.
+        let port = broadcastPortForConfig(for: cfgServer)
         let ip = previewBroadcastHost(for: cfgServer, mode: cfgServer.xboxBroadcastIPMode)
+        let javaPath = configManager.config.javaPath
+        guard let jarPath = configManager.config.xboxBroadcastJarPath,
+              !jarPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            logAppMessage("[BroadcastBDS] JAR not configured — download it in Edit Server → Broadcast.")
+            showError(title: "Xbox Broadcast", message: "MCXboxBroadcast JAR not configured. Download it in Edit Server → Broadcast.")
+            return
+        }
         logAppMessage("[BroadcastBDS] Writing config: clients will be transferred to \(ip):\(port.map(String.init) ?? "19132") for \(cfgServer.displayName).")
         do {
-            try bedrockBroadcastManager.start(for: cfgServer, ip: ip, port: port)
+            try bedrockBroadcastManager.start(for: cfgServer, ip: ip, port: port, javaPath: javaPath, jarPath: jarPath)
             isBedrockBroadcastRunning = true
-            logAppMessage("[BroadcastBDS] Manually started MCXboxBroadcast container.")
+            logAppMessage("[BroadcastBDS] Manually started MCXboxBroadcast.")
         } catch BedrockBroadcastManager.BroadcastError.alreadyRunning {
             logAppMessage("[BroadcastBDS] Already running.")
-        } catch BedrockBroadcastManager.BroadcastError.dockerNotAvailable(let reason) {
-            logAppMessage("[BroadcastBDS] Docker not available: \(reason)")
-            showError(title: "Xbox Broadcast", message: reason)
         } catch BedrockBroadcastManager.BroadcastError.failedToStart(let reason) {
             logAppMessage("[BroadcastBDS] Failed to start: \(reason)")
             showError(title: "Xbox Broadcast Failed", message: reason)
@@ -241,30 +253,19 @@ extension AppViewModel {
         guard bedrockBroadcastManager.isRunning else { return }
         bedrockBroadcastManager.stop()
         isBedrockBroadcastRunning = false
-        logAppMessage("[BroadcastBDS] Manually stopped MCXboxBroadcast container.")
+        logAppMessage("[BroadcastBDS] Manually stopped MCXboxBroadcast.")
     }
 
     func stopBedrockBroadcastIfRunning() {
-        guard bedrockBroadcastManager.isRunning || bedrockBroadcastManager.currentContainerName != nil else { return }
+        guard bedrockBroadcastManager.isRunning else { return }
         bedrockBroadcastManager.stop()
         isBedrockBroadcastRunning = false
-        logAppMessage("[BroadcastBDS] Stopped MCXboxBroadcast container.")
+        logAppMessage("[BroadcastBDS] Stopped MCXboxBroadcast.")
     }
 
-    func pullBedrockBroadcastImage() {
-        guard let docker = DockerUtility.dockerPath() else {
-            logAppMessage("[BroadcastBDS] Docker not available — cannot pull image.")
-            return
-        }
-        logAppMessage("[BroadcastBDS] Pulling ghcr.io/mcxboxbroadcast/standalone:latest…")
-        Task.detached { [weak self] in
-            DockerUtility.pullImage("ghcr.io/mcxboxbroadcast/standalone:latest", dockerPath: docker) { line in
-                self?.logAppMessage("[BroadcastBDS] \(line)")
-            }
-            await MainActor.run {
-                self?.logAppMessage("[BroadcastBDS] Pull complete.")
-            }
-        }
+    /// Downloads (or updates) the MCXboxBroadcast JAR — same JAR used for Java servers.
+    func downloadBedrockBroadcastJar() {
+        downloadOrUpdateXboxBroadcastJar()
     }
 
     func startBedrockBroadcastIfNeeded(for configServer: ConfigServer) {
@@ -288,7 +289,9 @@ extension AppViewModel {
 
         let delay = 15.0
         let serverCopy = configServer
-        logAppMessage("[BroadcastBDS] Queued container start in \(Int(delay))s for \(configServer.displayName).")
+        let javaPath = configManager.config.javaPath
+        let jarPath = configManager.config.xboxBroadcastJarPath ?? ""
+        logAppMessage("[BroadcastBDS] Queued broadcast start in \(Int(delay))s for \(configServer.displayName).")
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard let self else { return }
@@ -297,19 +300,17 @@ extension AppViewModel {
                   !self.lifecycle.isStopRequested,
                   self.lifecycle.runningServerId == serverCopy.id,
                   self.lifecycle.initiatingFirstRunServerId != serverCopy.id else { return }
-            let port = self.effectiveBedrockPort(for: serverCopy)
+            let port = self.broadcastPortForConfig(for: serverCopy)
             let ip = self.previewBroadcastHost(for: serverCopy, mode: serverCopy.xboxBroadcastIPMode)
             self.logAppMessage("[BroadcastBDS] Writing config: clients will be transferred to \(ip):\(port.map(String.init) ?? "19132") for \(serverCopy.displayName).")
             do {
-                try self.bedrockBroadcastManager.start(for: serverCopy, ip: ip, port: port)
+                try self.bedrockBroadcastManager.start(for: serverCopy, ip: ip, port: port, javaPath: javaPath, jarPath: jarPath)
                 await MainActor.run { self.isBedrockBroadcastRunning = true }
-                self.logAppMessage("[BroadcastBDS] Started MCXboxBroadcast container for \(serverCopy.displayName).")
+                self.logAppMessage("[BroadcastBDS] Started MCXboxBroadcast for \(serverCopy.displayName).")
             } catch BedrockBroadcastManager.BroadcastError.alreadyRunning {
                 self.logAppMessage("[BroadcastBDS] Already running.")
-            } catch BedrockBroadcastManager.BroadcastError.dockerNotAvailable(let reason) {
-                self.logAppMessage("[BroadcastBDS] Docker not available: \(reason)")
             } catch BedrockBroadcastManager.BroadcastError.failedToStart(let reason) {
-                self.logAppMessage("[BroadcastBDS] Failed to start container: \(reason)")
+                self.logAppMessage("[BroadcastBDS] Failed to start: \(reason)")
             } catch {
                 self.logAppMessage("[BroadcastBDS] Failed: \(error.localizedDescription)")
             }

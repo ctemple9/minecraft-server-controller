@@ -7,7 +7,7 @@
 //  clearer header/footer, context menus preserved.
 //  All functionality, state, and sheet connections are identical to the original.
 //
-//  Bedrock servers show "Docker" + "Native cross-play" instead of JAR/Geyser status.
+//  Bedrock servers show "Built-in VM" + "Native cross-play" instead of JAR/Geyser status.
 //
 
 import SwiftUI
@@ -291,8 +291,8 @@ struct ManageServersView: View {
         HStack(spacing: MSC.Spacing.sm) {
             if server.isBedrock {
                 MSChip(
-                    icon: "shippingbox.fill",
-                    label: "Docker",
+                    icon: "memorychip",
+                    label: "Built-in VM",
                     color: .blue
                 )
                 MSChip(

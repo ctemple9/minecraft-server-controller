@@ -36,7 +36,7 @@ struct PerformanceHelpSheetView: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.primary)
                     Text(isBedrock
-                         ? "What the Docker container metrics mean for your Bedrock server."
+                         ? "What the VM metrics mean for your Bedrock server."
                          : "What the metrics mean for your Java server.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
@@ -80,7 +80,7 @@ struct PerformanceHelpSheetView: View {
                             icon: "waveform.path.ecg",
                             color: .orange,
                             title: "Load — 1m / 5m / 15m",
-                            description: "These rolling averages are based on Docker CPU usage for the Bedrock container. Higher values mean the server is working harder over time. A 1m spike is normal; a high 15m average means sustained load.",
+                            description: "These rolling averages are based on CPU usage reported by the Bedrock VM. Higher values mean the server is working harder over time. A 1m spike is normal; a high 15m average means sustained load.",
                             note: nil
                         )
                     }
@@ -91,10 +91,10 @@ struct PerformanceHelpSheetView: View {
                         color: .blue,
                         title: "CPU",
                         description: isBedrock
-                            ? "The percentage of CPU used by the Bedrock Docker container. Very high values mean the server is handling a lot of players, world simulation, or entity activity."
+                            ? "The percentage of CPU used by the Bedrock VM. Very high values mean the server is handling a lot of players, world simulation, or entity activity."
                             : "The percentage of CPU used by the Java server process. Very high values usually mean lots of entities, complex redstone, or heavy plugin activity.",
                         note: isBedrock
-                            ? "Docker shares CPU with your Mac. If performance feels sluggish, check whether other apps are competing for CPU."
+                            ? "The VM shares CPU with your Mac. If performance feels sluggish, check whether other apps are competing for CPU."
                             : "Short CPU spikes are normal. If CPU is consistently above 90%, reduce player count or optimise your plugin stack."
                     )
 
@@ -104,7 +104,7 @@ struct PerformanceHelpSheetView: View {
                         color: .purple,
                         title: "RAM",
                         description: isBedrock
-                            ? "How much memory the Bedrock Docker container is currently using. If it stays close to the container memory limit, reduce load or raise the container memory cap if applicable."
+                            ? "How much memory the Bedrock VM is currently using. If it stays close to the VM memory limit, reduce load or raise the VM memory cap in Edit Server → General."
                             : "How much of the Java heap is currently in use. If it consistently sits near the maximum you configured, consider raising the max or reducing plugin and chunk-load overhead.",
                         note: isBedrock
                             ? nil

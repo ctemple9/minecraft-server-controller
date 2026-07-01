@@ -10,11 +10,13 @@ struct RemoteAPIStatus: Codable {
     /// Raw value of ServerType for the active server: "java" or "bedrock".
     /// Nil when no server is selected.
     let serverType: String?
-    /// For Bedrock servers: true when the Docker container is confirmed running.
+    /// For Bedrock servers: true when the server VM is confirmed running.
     /// Nil for Java servers (use `running` and `pid` instead).
+    /// Field name kept as-is for iOS app wire-format compatibility.
     let dockerContainerRunning: Bool?
     /// For Bedrock servers: "running", "stopped", or "unknown".
     /// Nil for Java servers. Additive alongside dockerContainerRunning.
+    /// Field name kept as-is for iOS app wire-format compatibility.
     let dockerContainerStatus: String?
 
     enum CodingKeys: String, CodingKey {

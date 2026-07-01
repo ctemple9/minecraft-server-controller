@@ -901,6 +901,7 @@ struct AddServerWizardView: View {
 
     private var bedrockFreshSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            /* Docker Image field — hidden; VM backend downloads BDS directly
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("Docker Image")
                     .font(MSC.Typography.sectionHeader)
@@ -909,6 +910,7 @@ struct AddServerWizardView: View {
                 Text("Change only if you use a custom Bedrock image.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            */
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("Bedrock Version")
@@ -1585,7 +1587,7 @@ struct AddServerWizardView: View {
                     return nameOk && implementedFlavors.contains(selectedFlavor)
                 } else {
                     return nameOk
-                        && !bedrockDockerImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        // Docker image validation removed — VM backend ignores this field
                 }
             }
         case 3:

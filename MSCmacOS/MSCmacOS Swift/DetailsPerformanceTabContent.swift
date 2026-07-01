@@ -85,12 +85,15 @@ extension DetailsPerformanceTabView {
                             icon: "person.2"
                         )
 
+                        let useVM = viewModel.configManager.config.useVMBedrockBackend
+                        let bedrockRuntimeLabel = useVM ? "Virtual machine" : "Docker container"
+
                         let cpuValue = viewModel.performanceCpuPercentForSelectedServer
                         enhancedMetricTile(
                             title: "CPU Usage",
                             value: formatPercent(cpuValue),
                             status: cpuHealthStatus(cpuValue),
-                            subtitle: isBedrock ? "Docker container" : "Java process",
+                            subtitle: isBedrock ? bedrockRuntimeLabel : "Java process",
                             icon: "cpu"
                         )
 
@@ -101,7 +104,7 @@ extension DetailsPerformanceTabView {
                             value: formatRamCompact(ramMB, maxGB: maxRamGB),
                             status: ramHealthStatus(ramMB, maxGB: maxRamGB),
                             subtitle: isBedrock
-                                ? (maxRamGB.map { "of \($0) GB Docker limit" } ?? "Docker container")
+                                ? (maxRamGB.map { "of \($0) GB \(useVM ? "VM" : "Docker") limit" } ?? bedrockRuntimeLabel)
                                 : (maxRamGB.map { "of \($0) GB" } ?? "Heap"),
                             icon: "memorychip"
                         )
@@ -136,7 +139,9 @@ extension DetailsPerformanceTabView {
                             if isBedrock {
                                 if viewModel.bedrockCpuHistory.isEmpty {
                                     emptyChartPlaceholder(
-                                        message: "Start server to collect Docker metrics",
+                                        message: viewModel.configManager.config.useVMBedrockBackend
+                                            ? "Start server to collect metrics"
+                                            : "Start server to collect Docker metrics",
                                         icon: "chart.xyaxis.line"
                                     )
                                 } else {
@@ -209,7 +214,9 @@ extension DetailsPerformanceTabView {
                             label: "Status",
                             value: viewModel.isServerRunning ? "Online" : "Offline",
                             subtitle: viewModel.isServerRunning
-                                ? (isBedrock ? "Container running" : "Accepting connections")
+                                ? (isBedrock
+                                    ? (viewModel.configManager.config.useVMBedrockBackend ? "VM running" : "Container running")
+                                    : "Accepting connections")
                                 : ""
                         )
                         .foregroundStyle(viewModel.isServerRunning ? .green : .secondary)

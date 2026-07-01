@@ -725,6 +725,33 @@ extension AppViewModel {
         logAppMessage("[Bedrock] Version pinned to: \(pinned ?? "LATEST (auto)")")
     }
 
+    /// VM-backend equivalent of "pull latest image": download + install the pinned
+    /// (or latest) Bedrock server files into serverDir. The server must be stopped.
+    func updateBedrockVMFiles(cfg: ConfigServer) {
+        isUpdatingBedrockImage = true
+        let serverDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+        let version = cfg.bedrockVersion
+        Task.detached { [weak self] in
+            guard let self else { return }
+            do {
+                try BedrockProvisioner.ensureInstalled(serverDir: serverDir, version: version, force: true) { line in
+                    Task { @MainActor in self.logAppMessage(line) }
+                }
+                await MainActor.run {
+                    self.isUpdatingBedrockImage = false
+                    self.logAppMessage("[Bedrock] Server files updated.")
+                    self.refreshHealthCardsForSelectedServer()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isUpdatingBedrockImage = false
+                    self.logAppMessage("[Bedrock] Update failed: \(error.localizedDescription)")
+                    self.refreshHealthCardsForSelectedServer()
+                }
+            }
+        }
+    }
+
     func updateBedrockImageAndRestart() {
         if isServerRunning {
             logAppMessage("[Bedrock] Stop the server before pulling the Bedrock image.")
@@ -736,6 +763,12 @@ extension AppViewModel {
         }
         guard let cfg = selectedServerConfig, cfg.isBedrock else {
             logAppMessage("[Bedrock] Select a Bedrock server first.")
+            return
+        }
+
+        // VM backend: update the BDS files in serverDir instead of pulling a Docker image.
+        if configManager.config.useVMBedrockBackend {
+            updateBedrockVMFiles(cfg: cfg)
             return
         }
 

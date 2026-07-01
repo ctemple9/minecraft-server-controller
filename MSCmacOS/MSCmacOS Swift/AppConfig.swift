@@ -509,6 +509,11 @@ struct AppConfig: Codable {
     /// Saved NeoForge/Forge installation profiles for the version library.
     var loaderVersionRecords: [LoaderVersionRecord]
 
+    /// Run Bedrock servers in the native Virtualization.framework VM appliance instead
+    /// of Docker. Transitional flag while the VM backend is validated; once stable this
+    /// becomes the only path and Docker is removed.
+    var useVMBedrockBackend: Bool = true
+
     enum CodingKeys: String, CodingKey {
         case configVersion = "config_version"
         case javaPath = "java_path"
@@ -541,6 +546,7 @@ struct AppConfig: Codable {
         case errorPopupsEnabled = "error_popups_enabled"
         case saveDownloadedJars = "save_downloaded_jars"
         case loaderVersionRecords = "loader_version_records"
+        case useVMBedrockBackend = "use_vm_bedrock_backend"
     }
 
     static let defaultRemoteAPIPort: Int = 48400
@@ -616,6 +622,9 @@ extension AppConfig {
         self.configVersion =
             try container.decodeIfPresent(Int.self, forKey: .configVersion)
                 ?? defaults.configVersion
+        self.useVMBedrockBackend =
+            try container.decodeIfPresent(Bool.self, forKey: .useVMBedrockBackend)
+                ?? defaults.useVMBedrockBackend
         self.javaPath =
             try container.decodeIfPresent(String.self, forKey: .javaPath)
                 ?? defaults.javaPath

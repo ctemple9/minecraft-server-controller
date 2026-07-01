@@ -22,6 +22,7 @@ struct MSCSettingsView: View {
     @State private var javaPath: String = ""
     @State private var extraFlags: String = ""
     @State private var remoteAPIExposeOnLAN: Bool = false
+    @State private var useVMBedrockBackend: Bool = false
     @State private var preferredPairingHostInput: String = ""
     @State private var newSharedAccessLabel: String = ""
     @State private var newSharedAccessRole: String = "admin"
@@ -290,6 +291,7 @@ struct MSCSettingsView: View {
                     } else {
                         viewModel.configManager.config.defaultBannerColorHex = newHex
                     }
+                    viewModel.configManager.config.useVMBedrockBackend = useVMBedrockBackend
                     viewModel.configManager.save()
                     viewModel.syncTourAccentColor()
                     dismiss()
@@ -373,6 +375,7 @@ struct MSCSettingsView: View {
         case .general:
             appearanceCard
             javaCard
+            bedrockRuntimeCard
             PreferencesProcessCleanupSection()
                 .environmentObject(viewModel)
                 .id(processManagementCardAnchorID)
@@ -397,6 +400,30 @@ struct MSCSettingsView: View {
             extraFlags: $extraFlags,
             anchorID: javaCardAnchorID
         )
+    }
+
+    /// Transitional toggle: run Bedrock servers in the native Virtualization.framework
+    /// VM appliance instead of Docker. Staged in @State; persisted on Save.
+    private var bedrockRuntimeCard: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Label("Bedrock Runtime", systemImage: "cpu")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            HStack(alignment: .top, spacing: MSC.Spacing.sm) {
+                Toggle("", isOn: $useVMBedrockBackend).labelsHidden()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Run Bedrock servers without Docker (native VM)")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("Experimental — runs Bedrock Dedicated Server in a bundled lightweight Linux VM (Apple Virtualization) instead of Docker. Stop and restart the server to apply.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 
     private var remoteAccessCard: some View {
@@ -540,6 +567,7 @@ struct MSCSettingsView: View {
         javaPath = cfg.javaPath
         extraFlags = cfg.extraFlags
         remoteAPIExposeOnLAN = cfg.remoteAPIExposeOnLAN
+        useVMBedrockBackend = cfg.useVMBedrockBackend
         preferredPairingHostInput = cfg.remoteAPIPreferredPairingHost ?? ""
 
         if let server = viewModel.selectedServer,

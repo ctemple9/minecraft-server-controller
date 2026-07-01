@@ -70,7 +70,7 @@ struct PlayitSetupGuideSheet: View {
                     // Guide header
                     VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
                         MSCOverline("External Access — No Router Needed")
-                        Text("playit.gg Docker Tunnel")
+                        Text("playit.gg Tunnel")
                             .font(MSC.Typography.pageTitle)
                             .foregroundStyle(.primary)
                     }
@@ -138,7 +138,7 @@ struct PlayitSetupGuideSheet: View {
                     Text("playit.gg creates an outbound tunnel from your Mac to their relay servers. Friends connect to a public address playit.gg gives you — no router or port forwarding needed on your end.")
                         .font(.system(size: 12)).foregroundStyle(.primary.opacity(0.85))
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("A Docker container runs the playit agent automatically alongside your Minecraft server. The whole process is managed by MSC — you only need to set it up once on the playit.gg website.")
+                    Text("A native playitd agent runs automatically alongside your Minecraft server. The whole process is managed by MSC — you only need to set it up once on the playit.gg website.")
                         .font(.system(size: 12)).foregroundStyle(.primary.opacity(0.85))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -161,7 +161,6 @@ struct PlayitSetupGuideSheet: View {
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 ForEach([
-                    "Docker Desktop must be installed and running — already required if you use Bedrock servers.",
                     "A free playit.gg account (no credit card, takes about 2 minutes to create).",
                     "About 5 minutes total for the one-time website setup.",
                 ], id: \.self) { bullet in
@@ -192,7 +191,7 @@ struct PlayitSetupGuideSheet: View {
             .padding(.horizontal, MSC.Spacing.md).padding(.top, MSC.Spacing.md).padding(.bottom, MSC.Spacing.sm)
 
             let rows: [(String, String)] = [
-                ("Create agent", "playit.gg → Setup Wizard → Docker"),
+                ("Create agent", "playit.gg → Setup Wizard → New Agent"),
                 ("Copy secret key", "Shown at the end of the wizard"),
                 ("Create Java tunnel", "Minecraft Java · TCP · port \(localPort)"),
                 ("Create Bedrock tunnel", bedrockPort != nil ? "Minecraft Bedrock · UDP · port \(bedrockPort!)" : "Skip if not using Geyser"),
@@ -225,12 +224,12 @@ struct PlayitSetupGuideSheet: View {
             .padding(.horizontal, MSC.Spacing.md).padding(.top, MSC.Spacing.md).padding(.bottom, MSC.Spacing.xs)
 
             let steps: [(String, String)] = [
-                ("Go to the playit.gg Docker wizard",
-                 "Open playit.gg → Setup → New Agent → Docker. Name your agent (e.g. msc-server) and copy the Secret Key shown at the end of the wizard."),
+                ("Go to the playit.gg Setup Wizard",
+                 "Open playit.gg → Setup → New Agent. Name your agent (e.g. msc-server) and copy the Secret Key shown at the end of the wizard."),
                 ("Enable the tunnel in MSC",
                  "When creating a server choose Tunnel (playit.gg) in the Network step, or toggle it on in Edit Server → Settings → Network for an existing server."),
                 ("Start your server",
-                 "MSC starts the playit Docker container automatically. A secret key prompt appears — paste the key you copied in step 1 and click Save."),
+                 "MSC starts the playit agent automatically. A secret key prompt appears — paste the key you copied in step 1 and click Save."),
                 ("Create your tunnels on playit.gg",
                  "Go to playit.gg → Tunnels → New Tunnel. Create a Minecraft Java tunnel (port \(localPort)).\(bedrockPort != nil ? " Also create a Minecraft Bedrock tunnel (port \(bedrockPort!)) for Geyser/iPad players." : "")"),
                 ("Assign tunnels to your agent",

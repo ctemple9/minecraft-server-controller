@@ -2,8 +2,9 @@
 //  PlayitAgentManager.swift
 //  MinecraftServerController
 //
-//  Manages the playit CLI agent process lifecycle.
-//  The binary is a native executable (not a JAR), so no Java validation needed.
+//  Manages the native playitd subprocess lifecycle.
+//  Invocation: playitd --secret-path <file>  (foreground, streams logs to stdout/stderr)
+//  The binary is downloaded on demand by PlayitBinaryManager and cached in Application Support.
 //
 
 import Foundation
@@ -29,7 +30,7 @@ final class PlayitAgentManager {
         case failedToStart(Swift.Error)
     }
 
-    func start(binaryURL: URL, configURL: URL) throws {
+    func start(binaryURL: URL, secretFilePath: URL) throws {
         guard !isRunning else { throw AgentError.alreadyRunning }
 
         pendingOutput.removeAll(keepingCapacity: false)
@@ -38,7 +39,7 @@ final class PlayitAgentManager {
         let pipe = Pipe()
 
         proc.executableURL = binaryURL
-        proc.arguments = ["--config", configURL.path]
+        proc.arguments = ["--secret-path", secretFilePath.path]
         proc.standardOutput = pipe
         proc.standardError = pipe
 

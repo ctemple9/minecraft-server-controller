@@ -216,19 +216,37 @@ extension PaperDownloader {
     }
 
     static func downloadVersion(_ version: String, to destination: URL) async throws -> ServerJarDownloadResult {
-        let buildsURL = URL(string: "https://api.papermc.io/v2/projects/paper/versions/\(version)/builds")!
+        // v3 API — v2 (api.papermc.io) does not recognise new-scheme versions like 26.x.x
+        let buildsURL = URL(string: "https://fill.papermc.io/v3/projects/paper/versions/\(version)/builds")!
         let (data, resp) = try await MSCHTTP.get(buildsURL)
         try ensureOK(resp, "Paper builds for \(version)")
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let builds = root["builds"] as? [[String: Any]],
-              let latest = builds.last,
-              let buildNumber = latest["build"] as? Int,
-              let downloads = latest["downloads"] as? [String: Any],
-              let app = downloads["application"] as? [String: Any],
-              let filename = app["name"] as? String else {
-            throw ServerJarProviderError.invalidResponse("Paper build info for \(version) malformed.")
+        guard let buildsAny = try JSONSerialization.jsonObject(with: data) as? [Any] else {
+            throw ServerJarProviderError.invalidResponse("Paper build list for \(version) malformed.")
         }
-        let jarURL = URL(string: "https://api.papermc.io/v2/projects/paper/versions/\(version)/builds/\(buildNumber)/downloads/\(filename)")!
+
+        var bestId: Int? = nil
+        var bestURL: URL? = nil
+
+        for entryAny in buildsAny {
+            guard let entry = entryAny as? [String: Any],
+                  let downloads = entry["downloads"] as? [String: Any],
+                  let serverDefault = downloads["server:default"] as? [String: Any],
+                  let urlString = serverDefault["url"] as? String,
+                  let downloadURL = URL(string: urlString) else { continue }
+            let buildId: Int
+            if let i = entry["id"] as? Int { buildId = i }
+            else if let n = entry["id"] as? NSNumber { buildId = n.intValue }
+            else { continue }
+            if bestId == nil || buildId > bestId! {
+                bestId = buildId
+                bestURL = downloadURL
+            }
+        }
+
+        guard let buildNumber = bestId, let jarURL = bestURL else {
+            throw ServerJarProviderError.invalidResponse("No builds found for Paper \(version).")
+        }
+
         let (jarData, jarResp) = try await MSCHTTP.get(jarURL)
         try ensureOK(jarResp, "Paper download \(version)")
         try jarData.write(to: destination, options: [.atomic])

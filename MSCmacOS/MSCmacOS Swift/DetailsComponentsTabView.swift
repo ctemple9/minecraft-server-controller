@@ -377,19 +377,19 @@ struct DetailsComponentsTabView: View {
                 }
 
                 HStack {
-                    Text("Image").font(MSC.Typography.caption).foregroundStyle(MSC.Colors.tertiary).frame(width: 44, alignment: .leading)
-                    Text("ghcr.io/mcxboxbroadcast/standalone:latest")
+                    Text("JAR").font(MSC.Typography.caption).foregroundStyle(MSC.Colors.tertiary).frame(width: 44, alignment: .leading)
+                    Text(viewModel.configManager.config.xboxBroadcastJarPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "Not downloaded")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
 
                 if let server = viewModel.selectedServer,
                    let cfg = viewModel.configServer(for: server) {
-                    let port = viewModel.effectiveBedrockPort(for: cfg) ?? 19132
+                    let port = viewModel.broadcastPortForConfig(for: cfg) ?? 19132
                     let transferHost = viewModel.previewBroadcastHost(for: cfg, mode: cfg.xboxBroadcastIPMode)
                     HStack {
                         Text("Transfers to").font(MSC.Typography.caption).foregroundStyle(MSC.Colors.tertiary).frame(width: 72, alignment: .leading)
-                        Text("\(transferHost):\(port)")
+                        Text(verbatim: "\(transferHost):\(port)")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.secondary)
                     }
@@ -403,7 +403,7 @@ struct DetailsComponentsTabView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: MSC.Spacing.sm) {
-                    Button("Pull Latest") { viewModel.pullBedrockBroadcastImage() }
+                    Button("Download JAR") { viewModel.downloadBedrockBroadcastJar() }
                     Button("Open Data Folder") {
                         if let server = viewModel.selectedServer,
                            let cfg = viewModel.configServer(for: server) {
@@ -1361,7 +1361,7 @@ private struct BedrockRuntimeSectionCard: View {
         SEBlock {
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 HStack(spacing: MSC.Spacing.sm) {
-                    Label("Docker Image", systemImage: "shippingbox")
+                    Label("Bedrock Server", systemImage: "memorychip")
                         .font(MSC.Typography.cardTitle)
                         .foregroundStyle(.primary)
                     Spacer()
@@ -1373,7 +1373,6 @@ private struct BedrockRuntimeSectionCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                    ComponentVersionRow(label: "Image",  value: imageName)
                     ComponentVersionRow(label: "Pinned", value: pinnedVersion == "LATEST" ? "Latest (auto)" : pinnedVersion)
                     ComponentVersionRow(label: "Running", value: viewModel.bedrockRunningVersion ?? "\u{2014}")
                 }
@@ -1390,10 +1389,10 @@ private struct BedrockRuntimeSectionCard: View {
                         if viewModel.isUpdatingBedrockImage {
                             HStack(spacing: 4) {
                                 ProgressView().controlSize(.mini)
-                                Text("Pulling image\u{2026}")
+                                Text("Updating\u{2026}")
                             }
                         } else {
-                            Label("Update to latest", systemImage: "arrow.down.circle.fill")
+                            Label("Update server files", systemImage: "arrow.down.circle.fill")
                         }
                     }
                     .buttonStyle(MSCSecondaryButtonStyle())

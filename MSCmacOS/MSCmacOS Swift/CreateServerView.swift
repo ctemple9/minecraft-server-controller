@@ -315,6 +315,7 @@ struct CreateServerView: View {
 
     private var bedrockSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            /* Docker Image field — hidden; VM backend downloads BDS directly
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("Docker Image")
                     .font(MSC.Typography.sectionHeader)
@@ -326,6 +327,7 @@ struct CreateServerView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            */
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("Bedrock Version")
@@ -568,7 +570,7 @@ struct CreateServerView: View {
             if sourceMode == .template && selectedTemplate == nil { return false }
             if Int(javaPort) == nil { return false }
         } else {
-            if bedrockDockerImage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
+            // Docker image validation removed — VM backend ignores this field
             if Int(bedrockPort) == nil { return false }
         }
 

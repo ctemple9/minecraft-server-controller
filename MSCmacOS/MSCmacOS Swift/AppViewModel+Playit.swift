@@ -2,17 +2,16 @@
 //  AppViewModel+Playit.swift
 //  MinecraftServerController
 //
-//  Docker-based playit.gg tunnel manager.
-//  Starts a single shared container (msc_playit_agent) when a playit-enabled
-//  server starts; stops it when the server stops.
+//  Native playit.gg tunnel manager.
+//  Starts a shared playitd subprocess when a playit-enabled server starts;
+//  stops it when the server stops.
 //
-//  The container runs:
-//    - socat TCP proxy  → Mac host port (Java)
-//    - socat UDP proxy  → Mac host port (Bedrock / Geyser)
-//    - socat UDP proxy  → Mac host port (Simple Voice Chat, optional)
-//    - playit Linux binary — auto-creates tunnels for active ports
+//  playitd is a self-contained daemon (built from Rust source, signed, hosted on
+//  MSC's GitHub releases). It reads the secret key from a chmod-600 file and
+//  forwards tunnel traffic directly to 127.0.0.1:<port> — no socat, no Docker.
+//  Port→tunnel mapping is managed on the playit.gg account (server-side).
 //
-//  Claim URL and tunnel addresses are parsed from the container's log stream.
+//  Claim URL and tunnel addresses are parsed from the daemon's log stream.
 //
 
 import Foundation
@@ -22,7 +21,8 @@ extension AppViewModel {
 
     // MARK: - Paths & secret key
 
-    var playitConfigDir: URL {
+    /// Legacy Docker config dir — kept only for the one-time Keychain migration.
+    private var playitConfigDir: URL {
         configManager.configURL
             .deletingLastPathComponent()
             .appendingPathComponent("playit-docker", isDirectory: true)
@@ -102,7 +102,6 @@ extension AppViewModel {
         let javaPort    = javaPortForPlayit(for: server)
         let bedrockPort = bedrockPortForPlayit(for: server)
         let voicePort   = voicePortForPlayit(for: server)
-        let configDir   = playitConfigDir
 
         // Secret key required — show setup sheet if not yet configured
         guard let secretKey = playitSecretKey else {
@@ -111,47 +110,34 @@ extension AppViewModel {
             return
         }
 
-        if !DockerUtility.isDockerAvailable() {
-            logAppMessage("[Playit] Docker is not running. Starting Docker Desktop — tunnel will connect shortly…")
-            DockerUtility.openDockerDesktopIfInstalled()
-        }
-
-        // All Docker work runs on a background thread so the Minecraft server starts immediately.
+        // Binary download and process launch happen on a background thread so the
+        // Minecraft server starts immediately.
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
 
-            if !DockerUtility.isDockerAvailable() {
-                let ready = DockerUtility.waitForDockerDaemon(timeout: 60)
-                guard ready else {
-                    await MainActor.run {
-                        self.logAppMessage("[Playit] Docker did not start in time. Start Docker Desktop manually and restart the server.")
-                    }
-                    return
-                }
-            }
-
             await MainActor.run {
-                self.playitDockerManager.onOutputLine = { [weak self] line in
+                self.playitAgentManager.onOutputLine = { [weak self] line in
                     self?.handlePlayitContainerOutput(line)
                 }
-                self.playitDockerManager.onDidTerminate = { [weak self] in
+                self.playitAgentManager.onDidTerminate = { [weak self] in
                     DispatchQueue.main.async {
                         self?.isPlayitRunning = false
                         self?.playitTunnelAddress = nil
-                        self?.logAppMessage("[Playit] Container stopped.")
+                        self?.logAppMessage("[Playit] Tunnel stopped.")
                     }
                 }
             }
 
             do {
-                try self.playitDockerManager.start(
-                    secretKey: secretKey,
-                    javaPort: javaPort,
-                    bedrockPort: bedrockPort,
-                    voicePort: voicePort,
-                    configDir: configDir
-                )
+                // Ensure playitd binary is downloaded and cached.
+                let binaryURL = try await PlayitBinaryManager.ensureBinary()
 
+                // Write secret to a chmod-600 file for --secret-path.
+                let secretFileURL = try PlayitBinaryManager.writeSecretFile(secretKey)
+
+                try self.playitAgentManager.start(binaryURL: binaryURL, secretFilePath: secretFileURL)
+
+                // Build a port summary for the log (mapping comes from the playit.gg account).
                 var portSummary = [String]()
                 if let p = javaPort    { portSummary.append("Java TCP \(p)") }
                 if let p = bedrockPort { portSummary.append("Bedrock UDP \(p)") }
@@ -159,18 +145,13 @@ extension AppViewModel {
 
                 await MainActor.run {
                     self.isPlayitRunning = true
-                    self.logAppMessage("[Playit] Tunnel container started (\(portSummary.joined(separator: ", "))).")
+                    self.logAppMessage("[Playit] Tunnel started (\(portSummary.joined(separator: ", "))).")
                     // Fetch immediately if we already have stored addresses (refresh them)
                     // plus again after 5s for first-time setup when the daemon is still loading.
                     self.fetchAndStorePlayitTunnelAddresses()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                         self.fetchAndStorePlayitTunnelAddresses()
                     }
-                }
-            } catch let error as PlayitDockerManager.PlayitError {
-                await MainActor.run {
-                    self.logAppMessage("[Playit] \(error.localizedDescription)")
-                    self.showError(title: "playit.gg Failed", message: error.localizedDescription)
                 }
             } catch {
                 await MainActor.run {
@@ -182,29 +163,28 @@ extension AppViewModel {
     }
 
     func stopPlayitIfRunning() {
-        guard isPlayitRunning || playitDockerManager.isRunning else { return }
-        // Update state immediately on main thread so UI reflects stopped state
+        guard isPlayitRunning || playitAgentManager.isRunning else { return }
+        // Update state immediately on main thread so UI reflects stopped state.
         isPlayitRunning = false
         playitTunnelAddress = nil
         logAppMessage("[Playit] Stopping tunnel…")
-        // docker stop blocks for up to 5s — always run on a background thread
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            self.playitDockerManager.stop()
+            self.playitAgentManager.terminate()
             await MainActor.run {
                 self.logAppMessage("[Playit] Tunnel stopped.")
             }
         }
     }
 
-    // MARK: - Container log parsing
+    // MARK: - Daemon log parsing
 
     func handlePlayitContainerOutput(_ line: String) {
         logAppMessage("[Playit] \(line)")
 
         // Claim URL — shown on first run before account is linked
         if let _ = Self.parsePlayitClaimURL(from: line) {
-            // With the Docker/secret-key approach, claim URLs shouldn't appear.
+            // With the secret-key approach, claim URLs shouldn't appear.
             // Log it in case something unexpected happens.
             logAppMessage("[Playit] Unexpected claim URL in output — secret key may be invalid.")
             return

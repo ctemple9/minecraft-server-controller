@@ -34,6 +34,22 @@ extension AppViewModel {
     var bedrockLoad5mAverage: Double? { rollingAverage(from: bedrockCpuHistory, sampleCount: 60) }
     var bedrockLoad15mAverage: Double? { rollingAverage(from: bedrockCpuHistory, sampleCount: 180) }
 
+    /// VM-backend metrics: pull the latest CPU/memory snapshot the appliance reported
+    /// over the console (no Docker involved).
+    private func updateBedrockVMMetrics() {
+        guard activeBackend === vmBedrockBackend, vmBedrockBackend.isRunning else {
+            clearBedrockPerformanceMetrics()
+            updateUptimeDisplay()
+            return
+        }
+        let stats = vmBedrockBackend.currentStats()
+        bedrockCpuPercent = stats.cpuPercent
+        bedrockMemoryUsedMB = stats.memUsedMB
+        bedrockMemoryLimitMB = stats.memTotalMB
+        appendBedrockMetricSample(cpu: stats.cpuPercent)
+        updateUptimeDisplay()
+    }
+
     func clearBedrockPerformanceMetrics() {
         bedrockCpuPercent = nil
         bedrockMemoryUsedMB = nil
@@ -46,6 +62,12 @@ extension AppViewModel {
               let cfg = configServer(for: server),
               cfg.isBedrock else {
             clearBedrockPerformanceMetrics()
+            return
+        }
+
+        // VM backend: read CPU/memory from the in-guest stats reporter, not docker stats.
+        if configManager.config.useVMBedrockBackend {
+            updateBedrockVMMetrics()
             return
         }
 

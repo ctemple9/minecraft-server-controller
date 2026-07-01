@@ -239,7 +239,7 @@ struct QuickStartView: View {
             icon: "lightbulb.fill",
             color: .blue,
             title: "Before you begin",
-            text: "Install Docker Desktop (docker.com) before creating a Bedrock server. It's free for personal use. The app will detect it automatically. No Java installation needed."
+            text: "Bedrock servers run in a lightweight built-in virtual machine — no extra software needed. No Java installation required either."
         )
 
         // Step 1
@@ -279,15 +279,15 @@ struct QuickStartView: View {
             icon: "play.fill",
             color: .orange,
             title: "Start and test",
-            subtitle: "First start pulls the Docker image automatically.",
+            subtitle: "First start downloads the Bedrock server binary automatically.",
             rows: [
                 QSRow(label: "1", value: "Click Start"),
-                QSRow(label: "2", value: "First launch: the app pulls the Docker image (may take a minute \u{2014} watch the console)"),
+                QSRow(label: "2", value: "First launch: the app downloads the BDS binary (may take a moment \u{2014} watch the console)"),
                 QSRow(label: "3", value: "Ready when the console shows: \"Server started\""),
                 QSRow(label: "4", value: "Test: Bedrock client \u{2192} Add Server \u{2192} your Mac's LAN IP + port 19132"),
                 QSRow(label: "5", value: "Mobile (iOS/Android), console, and Windows 10/11 all connect the same way"),
             ],
-            note: "Docker Desktop must be open and running before you can start a Bedrock server. The app shows a warning if it's not."
+            note: nil
         )
 
         // Step 4

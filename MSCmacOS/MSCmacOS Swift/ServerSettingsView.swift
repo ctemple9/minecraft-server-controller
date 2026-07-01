@@ -249,13 +249,15 @@ struct ServerSettingsView: View {
     private var bedrockSettingsForm: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-            SettingsSection(title: "Runtime", icon: "shippingbox", fill: sectionFill) {
+            SettingsSection(title: "Runtime", icon: "memorychip", fill: sectionFill) {
+                /* Docker Image row — hidden; VM backend downloads BDS directly
                 SettingsRow(label: "Docker Image") {
                     Text(configServer.bedrockDockerImage ?? "itzg/minecraft-bedrock-server")
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
+                */
                 SettingsRow(label: "Pinned Version") {
                     if viewModel.isFetchingBedrockVersions {
                         HStack(spacing: 6) {
@@ -447,7 +449,7 @@ struct ServerSettingsView: View {
                     .padding(.top, 2)
                     .padding(.bottom, MSC.Spacing.sm)
             } else {
-                Text("Tunnel starts automatically with the server via Docker. Requires a playit.gg secret key (free).")
+                Text("Tunnel starts automatically with the server via the native playit agent. Requires a playit.gg secret key (free).")
                     .font(MSC.Typography.caption)
                     .foregroundStyle(MSC.Colors.caption)
                     .fixedSize(horizontal: false, vertical: true)

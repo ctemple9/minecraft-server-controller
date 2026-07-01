@@ -399,8 +399,16 @@ struct OverviewConnectionCardView: View {
     @ViewBuilder
     private var bedrockDedicatedColumns: some View {
         let rawAddr = resolvedBedrockAddress ?? viewModel.javaAddressForDisplay
-        let addr = effectiveBedrockAddress(fallback: rawAddr)
-        let ipv4Port = resolvedBedrockPort ?? 19132
+        // In Public mode with playit active, the public endpoint is the playit *Bedrock*
+        // tunnel (its own host + port) — NOT the Java tunnel host or the local port.
+        let playitBedrock: (host: String, port: Int)? = {
+            guard showPublicIP, isPlayitActive,
+                  let host = effectivePlayitBedrockAddress,
+                  let portStr = effectivePlayitBedrockPort, let port = Int(portStr) else { return nil }
+            return (host, port)
+        }()
+        let addr = playitBedrock?.host ?? effectiveBedrockAddress(fallback: rawAddr)
+        let ipv4Port = playitBedrock?.port ?? (resolvedBedrockPort ?? 19132)
         let ipv6Port = resolvedBedrockPortV6 ?? 19133
 
         HStack(alignment: .top, spacing: MSC.Spacing.sm) {

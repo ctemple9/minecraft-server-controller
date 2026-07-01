@@ -160,7 +160,7 @@ struct ServerEditorView: View {
 
     var safeTab: EditorTab {
         if data.serverType == .bedrock {
-            let bedrockTabs: Set<EditorTab> = [.general, .backups, .world, .settings, .docker, .broadcast]
+            let bedrockTabs: Set<EditorTab> = [.general, .backups, .world, .settings, .broadcast] // .docker hidden (VM backend, no Docker tab needed)
             return bedrockTabs.contains(selectedTab) ? selectedTab : .general
         }
         return selectedTab
@@ -569,8 +569,8 @@ struct ServerEditorView: View {
                 ),
                 helpStep(
                     id: "settings.bedrock.runtime",
-                    title: "Runtime controls the Bedrock image version",
-                    body: "Docker Image is reference info. Pinned Version writes immediately when you change it, and Running Version is status only.",
+                    title: "Runtime shows the Bedrock version",
+                    body: "Pinned Version writes immediately when you change it. Running Version reflects what's currently on disk.",
                     anchorID: settingsRuntimeAnchorID
                 ),
                 helpStep(
@@ -875,8 +875,9 @@ struct ServerEditorView: View {
                 if data.serverType == .bedrock {
                     SETabButton(icon: "dot.radiowaves.left.and.right", label: "Broadcast", tab: .broadcast, selected: $selectedTab)
                         .contextualHelpAnchor(tabAnchorID(.broadcast))
-                    SETabButton(icon: "shippingbox.fill", label: "Docker", tab: .docker, selected: $selectedTab)
-                        .contextualHelpAnchor(tabAnchorID(.docker))
+                    // Docker tab hidden — Bedrock now uses built-in VM; no Docker config needed
+                    // SETabButton(icon: "shippingbox.fill", label: "Docker", tab: .docker, selected: $selectedTab)
+                    //     .contextualHelpAnchor(tabAnchorID(.docker))
                 }
             }
             .padding(.horizontal, MSC.Spacing.xl)

@@ -68,7 +68,7 @@ var generalTab: some View {
             }
         } else {
             SEBlock {
-                SERow(label: "Memory Limit", hint: "Docker --memory · 0 = no limit") {
+                SERow(label: "Memory Limit", hint: "VM memory limit · 0 = no limit") {
                     HStack(spacing: 4) {
                         TextField("0", text: $data.maxRamGB)
                             .textFieldStyle(.roundedBorder)
@@ -83,7 +83,7 @@ var generalTab: some View {
             color: .blue,
             text: data.serverType == .java
                 ? "2 GB min / 4 GB max is a solid starting point for a small friend server. Don't exceed ~60% of your Mac's total RAM."
-                : "Sets the Docker container memory limit. 0 = no limit (Docker default). 4–6 GB is typical for a Bedrock server."
+                : "Sets the VM memory limit. 0 = no limit. 4–6 GB is typical for a Bedrock server."
         )
 
         // ── EULA (Java only) ─────────────────────────────────────────

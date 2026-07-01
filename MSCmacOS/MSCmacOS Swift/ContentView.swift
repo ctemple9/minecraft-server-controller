@@ -846,7 +846,7 @@ struct PlayitSecretKeySheet: View {
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 Text("1.  Click the button below to open the playit.gg setup page in your browser.")
-                Text("2.  Create a free account (or log in) and follow the Docker setup wizard.")
+                Text("2.  Create a free account (or log in) and follow the Setup Wizard to create a new agent.")
                 Text("3.  Copy the Secret Key shown at the end and paste it below.")
                 Text("4.  Click Save. The tunnel starts automatically with your server from now on.")
             }

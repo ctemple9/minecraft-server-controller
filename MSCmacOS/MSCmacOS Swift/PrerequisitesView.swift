@@ -45,7 +45,18 @@ struct PrerequisitesView: View {
         detail: nil
     )
 
-    @State private var dockerItem = PrerequisiteItem(
+    @State private var vmItem = PrerequisiteItem(
+        id: "vm",
+        name: "Built-in VM Runtime",
+        description: "Bedrock Dedicated Server runs in a lightweight built-in virtual machine. No external software required.",
+        status: .ready(detail: "Apple Virtualization — no install needed"),
+        downloadURL: nil,
+        downloadLabel: nil,
+        detail: nil
+    )
+
+    // Kept for reference — Docker no longer required for Bedrock
+    /* @State private var dockerItem = PrerequisiteItem(
         id: "docker",
         name: "Docker Desktop",
         description: "Required to run Bedrock servers on macOS. Hosts the Linux BDS binary in a container.",
@@ -53,7 +64,7 @@ struct PrerequisitesView: View {
         downloadURL: "https://www.docker.com/products/docker-desktop/",
         downloadLabel: "Download Docker Desktop",
         detail: nil
-    )
+    ) */
 
     @State private var tailscaleItem = PrerequisiteItem(
         id: "tailscale",
@@ -97,7 +108,7 @@ struct PrerequisitesView: View {
                     trackCard(
                         title: "Bedrock Servers",
                         systemImage: "shippingbox",
-                        items: [dockerItem, tailscaleItem]
+                        items: [vmItem, tailscaleItem]
                     )
 
                     // NOTES
@@ -276,8 +287,8 @@ struct PrerequisitesView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                noteRow(icon: "cup.and.heat.waves", text: "Java is only required for Java/Paper servers. Bedrock servers run via Docker and don't need Java.")
-                noteRow(icon: "shippingbox", text: "Docker Desktop is only required for Bedrock servers. Start Docker Desktop before launching a Bedrock server.")
+                noteRow(icon: "cup.and.heat.waves", text: "Java is only required for Java/Paper servers. Bedrock servers run in a built-in VM and don't need Java.")
+                noteRow(icon: "memorychip", text: "Bedrock servers run in a lightweight built-in virtual machine — no Docker or external software required.")
                 noteRow(icon: "iphone.and.arrow.forward", text: "Tailscale is optional for both server types. It enables MSC Remote to connect to this Mac from outside your home network.")
                 noteRow(icon: "wifi", text: "For friends to join, you'll need to port-forward TCP 2 (Java) or UDP (Bedrock) on your router.")
             }
@@ -303,14 +314,14 @@ struct PrerequisitesView: View {
     // MARK: - Detection Logic
 
     private func runAllChecks() {
-        // Set all to checking first
         javaItem.status = .checking
-        dockerItem.status = .checking
         tailscaleItem.status = .checking
+        // vmItem is always ready — no check needed
+        vmItem.status = .ready(detail: "Apple Virtualization — no install needed")
 
         checkJava()
-        checkDocker()
         checkTailscale()
+        // checkDocker() — no longer needed; Bedrock uses built-in VM
     }
 
     private func checkJava() {
@@ -322,14 +333,7 @@ struct PrerequisitesView: View {
         }
     }
 
-    private func checkDocker() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = detectDocker()
-            DispatchQueue.main.async {
-                self.dockerItem.status = result
-            }
-        }
-    }
+    // private func checkDocker() { ... } — no longer called; Bedrock uses built-in VM
 
     private func checkTailscale() {
         DispatchQueue.global(qos: .userInitiated).async {
@@ -445,9 +449,9 @@ struct PrerequisitesView: View {
         return major
     }
 
-    // MARK: - Docker Detection
+    // MARK: - Docker Detection (kept for reference — no longer called)
 
-    private func detectDocker() -> PrerequisiteStatus {
+    /* private func detectDocker() -> PrerequisiteStatus {
         // Check if Docker CLI exists
         guard let dockerPath = DockerUtility.dockerPath() else {
             return .missing(reason: "Docker Desktop not found. Install Docker Desktop, then restart the app.")
@@ -481,6 +485,7 @@ struct PrerequisitesView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return out.isEmpty ? nil : out
     }
+    */ // end commented-out Docker detection
 
     // MARK: - Tailscale Detection
 
@@ -554,11 +559,11 @@ extension PrerequisitesView {
             let javaOK = isJavaInstalled()
             if !javaOK { return true }
         }
-        // Check Docker if any Bedrock servers are configured
-        if serverTypes.contains(.bedrock) {
-            let dockerOK = DockerUtility.dockerPath() != nil
-            if !dockerOK { return true }
-        }
+        // Bedrock VM backend: built-in virtualization — no Docker check needed
+        // if serverTypes.contains(.bedrock) {
+        //     let dockerOK = DockerUtility.dockerPath() != nil
+        //     if !dockerOK { return true }
+        // }
         return false
     }
 

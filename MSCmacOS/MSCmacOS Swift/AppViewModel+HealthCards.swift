@@ -8,6 +8,7 @@
 import Foundation
 import AppKit
 import Network
+import Virtualization
 
 // MARK: - Health card refresh entry point
 
@@ -53,7 +54,7 @@ extension AppViewModel {
         return await [dir, java, jar, ram, port, start]
     }
 
-    // MARK: - Bedrock cards (6 cards: directory, docker, components(BDS+BC), worldData, port, lastStartup)
+    // MARK: - Bedrock cards (6 cards: directory, vm-runtime, components(BDS), worldData, port, lastStartup)
 
     private func buildBedrockCards(for server: ConfigServer) async -> [HealthCardResult] {
         // Read the actual Bedrock port (from config or Geyser config), fall back to 19132.
@@ -61,12 +62,12 @@ extension AppViewModel {
         let playerCount = await MainActor.run { onlinePlayers.count }
         let (running, startTime, host) = await currentPortCheckContext()
         async let dir    = checkDirectory(for: server)
-        async let docker = checkDockerForHealthCard()
+        async let vm     = checkVMRuntimeForHealthCard()
         async let comps  = checkBedrockComponents(for: server)
         async let world  = checkBedrockWorldData(for: server)
         async let port   = checkPortReachability(port: bedrockPort, isUDP: true, serverHasEverStarted: server.hasEverStarted, isRunning: running, serverStartTime: startTime, host: host, serverDir: server.serverDir, onlinePlayerCount: playerCount)
         async let start  = checkLastStartup(for: server)
-        return await [dir, docker, comps, world, port, start]
+        return await [dir, vm, comps, world, port, start]
     }
 
     /// Reads the live state the port check needs from the main actor in one hop:
@@ -253,43 +254,33 @@ extension AppViewModel {
         )
     }
 
-    // MARK: - Card: Docker Runtime (Bedrock)
+    // MARK: - Card: VM Runtime (Bedrock)
 
-    private func checkDockerForHealthCard() async -> HealthCardResult {
-        guard let dockerPath = resolvedPath(candidates: dockerSearchPaths) else {
+    private func checkVMRuntimeForHealthCard() async -> HealthCardResult {
+        // The VM runtime is bundled with the app — always available when the app runs.
+        // VZVirtualMachine.isSupported is the only real gating condition.
+        let supported = VZVirtualMachine.isSupported
+        if supported {
             return HealthCardResult(
-                id: "docker",
-                status: .red,
-                detectedValue: "Docker binary not found.\nChecked \(dockerSearchPaths.count) locations.\nInstall Docker Desktop to run Bedrock servers.",
-                actionLabel: "Download Docker Desktop",
-                actionType: .openURL("https://www.docker.com/products/docker-desktop")
-            )
-        }
-
-        let versionResult = await runProcess(executable: dockerPath, arguments: ["--version"], timeoutSeconds: 4)
-        let versionString = versionResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let infoResult = await runProcess(executable: dockerPath, arguments: ["info"], timeoutSeconds: 5)
-        let daemonRunning = infoResult.exitCode == 0
-
-        if daemonRunning {
-            return HealthCardResult(
-                id: "docker",
+                id: "vm",
                 status: .green,
-                detectedValue: versionString.isEmpty ? "Docker installed, daemon running." : "\(versionString)\nDaemon: running",
+                detectedValue: "Apple Virtualization — built-in\nBedrock Dedicated Server runs in a lightweight VM.",
                 actionLabel: nil,
                 actionType: nil
             )
         } else {
             return HealthCardResult(
-                id: "docker",
-                status: .yellow,
-                detectedValue: "\(versionString.isEmpty ? "Docker installed" : versionString)\nDaemon not running — open Docker Desktop first.",
-                actionLabel: "Open Docker Desktop",
-                actionType: .openDockerDesktop
+                id: "vm",
+                status: .red,
+                detectedValue: "Apple Virtualization is not supported on this Mac.\nRequires macOS 11 or later on Apple Silicon or Intel.",
+                actionLabel: nil,
+                actionType: nil
             )
         }
     }
+
+    // MARK: - Card: Docker Runtime (kept for reference — no longer used)
+    /* private func checkDockerForHealthCard() async -> HealthCardResult { ... } */
 
     // MARK: - Card: Components (Java)
     //
@@ -406,53 +397,36 @@ extension AppViewModel {
         )
     }
 
-    // MARK: - Card: Bedrock Components (BDS Image)
+    // MARK: - Card: Bedrock Components (BDS binary)
 
     private func checkBedrockComponents(for server: ConfigServer) async -> HealthCardResult {
-        let imageResult = await checkBedrockImageStatus()
+        let binaryPath = (server.serverDir as NSString).appendingPathComponent("bedrock_server")
+        let markerPath = (server.serverDir as NSString).appendingPathComponent(".msc_bds_version")
+        let fm = FileManager.default
 
-        if imageResult.status == .red {
+        if fm.isExecutableFile(atPath: binaryPath) {
+            let version = (try? String(contentsOfFile: markerPath, encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown version"
             return HealthCardResult(
                 id: "jar",
-                status: .red,
-                detectedValue: "BDS Image: not pulled\nPull the itzg/minecraft-bedrock-server image before starting your server.",
-                actionLabel: "Pull BDS Image",
-                actionType: .pullDockerImage
+                status: .green,
+                detectedValue: "BDS \(version) installed",
+                actionLabel: "Manage in Components",
+                actionType: .openComponentsTab
+            )
+        } else {
+            return HealthCardResult(
+                id: "jar",
+                status: .yellow,
+                detectedValue: "BDS not yet downloaded.\nThe server will download it automatically on first start.",
+                actionLabel: "Manage in Components",
+                actionType: .openComponentsTab
             )
         }
-
-        return HealthCardResult(
-            id: "jar",
-            status: .green,
-            detectedValue: "BDS Image: \(imageResult.summary)",
-            actionLabel: "Manage in Components",
-            actionType: .openComponentsTab
-        )
     }
 
-    private struct ComponentCheckSummary {
-        let status: HealthStatus
-        let summary: String
-    }
-
-    private func checkBedrockImageStatus() async -> ComponentCheckSummary {
-        guard let dockerPath = resolvedPath(candidates: dockerSearchPaths) else {
-            return ComponentCheckSummary(status: .gray, summary: "Docker not found")
-        }
-
-        let result = await runProcess(
-            executable: dockerPath,
-            arguments: ["images", "itzg/minecraft-bedrock-server", "--format", "{{.Tag}} {{.CreatedSince}}"],
-            timeoutSeconds: 6
-        )
-
-        let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        if result.exitCode != 0 || output.isEmpty {
-            return ComponentCheckSummary(status: .red, summary: "Not pulled")
-        }
-        let firstLine = output.components(separatedBy: "\n").first ?? output
-        return ComponentCheckSummary(status: .green, summary: firstLine)
-    }
+    // MARK: - Docker image check (kept for reference — no longer used)
+    /* private func checkBedrockImageStatus() async -> ComponentCheckSummary { ... } */
 
     // MARK: - Card: RAM Allocation (Java)
 

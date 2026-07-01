@@ -2,7 +2,7 @@
 //  OverviewHealthCardView.swift
 //  MinecraftServerController
 //
-//  Bedrock servers show Docker container status and BDS version instead.
+//  Bedrock servers show VM runtime status and BDS version instead.
 //
 
 import SwiftUI
@@ -54,21 +54,21 @@ struct OverviewHealthCardView: View {
                 Divider().opacity(0.5)
             }
 
-            // ── Bedrock-only: Docker / container status ───────────────
+            // ── Bedrock-only: VM runtime status ──────────────────────
             if isBedrock {
                 VStack(alignment: .leading, spacing: MSC.Spacing.xxs) {
-                    Text("Docker")
+                    Text("Bedrock VM")
                         .font(MSC.Typography.caption)
                         .foregroundStyle(.secondary)
                     Label(
-                        viewModel.dockerDaemonRunning ? "Running" : "Not running",
-                        systemImage: viewModel.dockerDaemonRunning
+                        viewModel.isServerRunning ? "Running" : "Ready",
+                        systemImage: viewModel.isServerRunning
                             ? "checkmark.circle.fill"
-                            : "xmark.circle.fill"
+                            : "memorychip"
                     )
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(
-                        viewModel.dockerDaemonRunning ? MSC.Colors.success : MSC.Colors.error
+                        viewModel.isServerRunning ? MSC.Colors.success : MSC.Colors.caption
                     )
                     if let ver = viewModel.bedrockRunningVersion {
                         Text("BDS \(ver)")

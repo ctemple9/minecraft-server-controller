@@ -50,6 +50,17 @@ struct HeadlessScriptSheet: View {
                 includeXboxBroadcast: includeXboxBroadcast
             )
         case .bedrock:
+            if appConfig.useVMBedrockBackend {
+                return """
+                # Headless shell scripts are not supported for the built-in VM Bedrock backend.
+                #
+                # The built-in VM is managed by the app using Apple Virtualization.framework.
+                # There is no standalone docker run equivalent.
+                #
+                # To run the server without the app, use the Minecraft Server Controller
+                # Remote API or manage the VM directly.
+                """
+            }
             return HeadlessScriptGenerator.bedrockScript(
                 config: config,
                 dockerRestart: dockerRestart
@@ -161,19 +172,30 @@ struct HeadlessScriptSheet: View {
     // MARK: - Bedrock options
 
     private var bedrockOptions: some View {
-        SESection(icon: "gearshape.fill", title: "Options", color: .blue) {
-            HStack {
-                Text("Restart policy")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                Picker("", selection: $dockerRestart) {
-                    ForEach(HeadlessDockerRestart.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
+        Group {
+            if appConfig.useVMBedrockBackend {
+                SECallout(
+                    icon: "memorychip",
+                    color: .orange,
+                    text: "This Bedrock server uses the built-in VM backend. Headless shell scripts are not applicable — the VM is managed by the app via Apple Virtualization.framework."
+                )
+            } else {
+                // Docker restart picker — only relevant when Docker backend is in use
+                SESection(icon: "gearshape.fill", title: "Options", color: .blue) {
+                    HStack {
+                        Text("Restart policy")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        Picker("", selection: $dockerRestart) {
+                            ForEach(HeadlessDockerRestart.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 280)
+                        Spacer(minLength: 0)
                     }
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 280)
-                Spacer(minLength: 0)
             }
         }
     }

@@ -82,8 +82,13 @@ extension AppViewModel {
         let wasFirstRun = isFirstRun(for: cfgServer)
 
         if cfgServer.isBedrock {
-            activeBackend = bedrockBackend
-            checkDockerDaemonRunning()
+            if configManager.config.useVMBedrockBackend {
+                // Native VM appliance — no Docker dependency.
+                activeBackend = vmBedrockBackend
+            } else {
+                activeBackend = bedrockBackend
+                checkDockerDaemonRunning()
+            }
         } else {
             activeBackend = javaBackend
         }

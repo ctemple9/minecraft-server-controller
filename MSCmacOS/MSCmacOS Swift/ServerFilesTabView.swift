@@ -130,7 +130,7 @@ struct ServerFilesTabView: View {
             Image(systemName: "info.circle")
                 .font(.system(size: 11))
                 .foregroundStyle(MSC.Colors.info)
-            Text("Bedrock server files are stored locally and bind-mounted into Docker at /data when the server runs.")
+            Text("Bedrock server files are stored locally and shared with the built-in VM at /data when the server runs.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }

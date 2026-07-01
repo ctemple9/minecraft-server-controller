@@ -132,8 +132,6 @@
 		9A5632F12F65AD6D00FB8246 /* MSCStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632462F65AD6C00FB8246 /* MSCStyles.swift */; };
 		9A5632F22F65AD6D00FB8246 /* KeychainManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632292F65AD6C00FB8246 /* KeychainManager.swift */; };
 		9A5632F32F65AD6D00FB8246 /* ServerHandbookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56326E2F65AD6C00FB8246 /* ServerHandbookView.swift */; };
-		9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */; };
-		9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */; };
 		9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632042F65AD6C00FB8246 /* BedrockServerBackend.swift */; };
 		9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56321D2F65AD6C00FB8246 /* DetailsSettingsTabView.swift */; };
 		9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5631F12F65AD6C00FB8246 /* AppViewModel+OutputHandling.swift */; };
@@ -150,6 +148,8 @@
 		9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320F2F65AD6C00FB8246 /* ContextualHelpFoundation.swift */; };
 		9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */; };
 		9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */; };
+		9AFE02180000000000000002 /* vmlinuz-kata in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02180000000000000001 /* vmlinuz-kata */; };
+		9AFE02190000000000000002 /* appliance-initramfs.gz in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02190000000000000001 /* appliance-initramfs.gz */; };
 		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
 		9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */; };
 		9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */; };
@@ -161,6 +161,8 @@
 		9A5633A12F65AD6D00FB8246 /* RemoteAPIServer+HTTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */; };
 		9A5633A32F65AD6D00FB8246 /* RemoteAPIServer+WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */; };
 		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
+		9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */; };
+		9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */; };
 		9A56A0012F65AD6D00FB8246 /* MSCSettingsSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */; };
 		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
 		9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */; };
@@ -193,12 +195,18 @@
 		9AFE02030000000000000002 /* OverviewChatCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02030000000000000001 /* OverviewChatCardView.swift */; };
 		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02050000000000000001 /* PlayerSkinStore.swift */; };
-		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
 		9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02060000000000000001 /* PlayerSkinRenderer.swift */; };
+		9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021A0000000000000001 /* BedrockProvisioner.swift */; };
+		9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02160000000000000001 /* VMBedrockServerBackend.swift */; };
+		9AFE02170000000000000002 /* UDPRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02170000000000000001 /* UDPRelay.swift */; };
+		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
 		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
 		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
 		9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020A0000000000000001 /* JavaRuntimeManager.swift */; };
 		9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020B0000000000000001 /* NeoForgeInstaller.swift */; };
+		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
+		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
+		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
 		9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020F0000000000000001 /* AddonUpdateResolver.swift */; };
 		9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */; };
 		9AFE02110000000000000002 /* AddonUpdateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02110000000000000001 /* AddonUpdateSheet.swift */; };
@@ -206,9 +214,6 @@
 		9AFE02130000000000000002 /* StartupProblemsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02130000000000000001 /* StartupProblemsSheet.swift */; };
 		9AFE02140000000000000002 /* AppViewModel+ClientExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */; };
 		9AFE02150000000000000002 /* ClientExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02150000000000000001 /* ClientExportSheet.swift */; };
-		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
-		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
-		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -225,7 +230,7 @@
 		CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */; };
 		CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */; };
 		CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */; };
-		CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */; };
+		CAFED0112F65AD6C00FB8247 /* PlayitBinaryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0112F65AD6B00FB8247 /* PlayitBinaryManager.swift */; };
 		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
 		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
 		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
@@ -365,6 +370,8 @@
 		9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWizardView.swift; sourceTree = "<group>"; };
 		9A5632662F65AD6C00FB8246 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = splash_intro.mp4; sourceTree = "<group>"; };
+		9AFE02180000000000000001 /* vmlinuz-kata */ = {isa = PBXFileReference; lastKnownFileType = file; path = "VMAppliance/vmlinuz-kata"; sourceTree = "<group>"; };
+		9AFE02190000000000000001 /* appliance-initramfs.gz */ = {isa = PBXFileReference; lastKnownFileType = file; path = "VMAppliance/appliance-initramfs.gz"; sourceTree = "<group>"; };
 		9A5632682F65AD6C00FB8246 /* SplashGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashGateView.swift; sourceTree = "<group>"; };
 		9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateItemDisplay.swift; sourceTree = "<group>"; };
 		9A56326B2F65AD6C00FB8246 /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
@@ -383,11 +390,11 @@
 		9A563315AABBCCDD00FB8246 /* HangarAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HangarAPI.swift; sourceTree = "<group>"; };
 		9A563317AABBCCDD00FB8246 /* ModrinthAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthAPI.swift; sourceTree = "<group>"; };
 		9A563319AABBCCDD00FB8246 /* AppViewModel+PluginManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+PluginManagement.swift"; sourceTree = "<group>"; };
-		9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideView.swift; sourceTree = "<group>"; };
-		9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideDiagrams.swift; sourceTree = "<group>"; };
 		9A5633A02F65AD6C00FB8246 /* RemoteAPIServer+HTTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+HTTP.swift"; sourceTree = "<group>"; };
 		9A5633A22F65AD6C00FB8246 /* RemoteAPIServer+WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+WebSocket.swift"; sourceTree = "<group>"; };
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
+		9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideView.swift; sourceTree = "<group>"; };
+		9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideDiagrams.swift; sourceTree = "<group>"; };
 		9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCSettingsSections.swift; sourceTree = "<group>"; };
 		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
 		9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuidesFoundation.swift; sourceTree = "<group>"; };
@@ -422,12 +429,18 @@
 		9AFE02030000000000000001 /* OverviewChatCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewChatCardView.swift; sourceTree = "<group>"; };
 		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		9AFE02050000000000000001 /* PlayerSkinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinStore.swift; sourceTree = "<group>"; };
-		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
 		9AFE02060000000000000001 /* PlayerSkinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinRenderer.swift; sourceTree = "<group>"; };
+		9AFE021A0000000000000001 /* BedrockProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvisioner.swift; sourceTree = "<group>"; };
+		9AFE02160000000000000001 /* VMBedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMBedrockServerBackend.swift; sourceTree = "<group>"; };
+		9AFE02170000000000000001 /* UDPRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPRelay.swift; sourceTree = "<group>"; };
+		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
 		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
 		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
 		9AFE020A0000000000000001 /* JavaRuntimeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeManager.swift; sourceTree = "<group>"; };
 		9AFE020B0000000000000001 /* NeoForgeInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoForgeInstaller.swift; sourceTree = "<group>"; };
+		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
+		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
+		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
 		9AFE020F0000000000000001 /* AddonUpdateResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateResolver.swift; sourceTree = "<group>"; };
 		9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+AddonUpdates.swift"; sourceTree = "<group>"; };
 		9AFE02110000000000000001 /* AddonUpdateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateSheet.swift; sourceTree = "<group>"; };
@@ -435,9 +448,6 @@
 		9AFE02130000000000000001 /* StartupProblemsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupProblemsSheet.swift; sourceTree = "<group>"; };
 		9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ClientExport.swift"; sourceTree = "<group>"; };
 		9AFE02150000000000000001 /* ClientExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientExportSheet.swift; sourceTree = "<group>"; };
-		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
-		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
-		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -454,7 +464,7 @@
 		CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitAgentManager.swift; sourceTree = "<group>"; };
 		CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Playit.swift"; sourceTree = "<group>"; };
 		CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitSetupGuideSheet.swift; sourceTree = "<group>"; };
-		CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitDockerManager.swift; sourceTree = "<group>"; };
+		CAFED0112F65AD6B00FB8247 /* PlayitBinaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitBinaryManager.swift; sourceTree = "<group>"; };
 		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
 		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerTransferView.swift; sourceTree = "<group>"; };
 		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkerManager.swift; sourceTree = "<group>"; };
@@ -598,6 +608,9 @@
 				9AFE02040000000000000001 /* JavaHiddenProfiles.swift */,
 				9AFE02050000000000000001 /* PlayerSkinStore.swift */,
 				9AFE02060000000000000001 /* PlayerSkinRenderer.swift */,
+				9AFE021A0000000000000001 /* BedrockProvisioner.swift */,
+				9AFE02160000000000000001 /* VMBedrockServerBackend.swift */,
+				9AFE02170000000000000001 /* UDPRelay.swift */,
 				9AFE02080000000000000001 /* JavaServerFlavor.swift */,
 				9AFE02090000000000000001 /* ServerJarProviders.swift */,
 				9AFE020A0000000000000001 /* JavaRuntimeManager.swift */,
@@ -684,6 +697,8 @@
 				9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */,
 				9A5632662F65AD6C00FB8246 /* SidebarView.swift */,
 				9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */,
+				9AFE02180000000000000001 /* vmlinuz-kata */,
+				9AFE02190000000000000001 /* appliance-initramfs.gz */,
 				9A5632682F65AD6C00FB8246 /* SplashGateView.swift */,
 				9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */,
 				9A56326B2F65AD6C00FB8246 /* TemplateView.swift */,
@@ -699,7 +714,7 @@
 				9A5632722F65AD6C00FB8246 /* XboxBroadcastProcessManager.swift */,
 				CAFED00D2F65AD6B00FB8246 /* PlayitAgentManager.swift */,
 				CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */,
-				CAFED0102F65AD6B00FB8246 /* PlayitDockerManager.swift */,
+				CAFED0112F65AD6B00FB8247 /* PlayitBinaryManager.swift */,
 				9A5632732F65AD6C00FB8246 /* YAMLHelper.swift */,
 			);
 			path = "MSCmacOS Swift";
@@ -792,6 +807,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */,
+				9AFE02180000000000000002 /* vmlinuz-kata in Resources */,
+				9AFE02190000000000000002 /* appliance-initramfs.gz in Resources */,
 				9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -905,7 +922,7 @@
 				CAFED00D2F65AD6C00FB8246 /* PlayitAgentManager.swift in Sources */,
 				CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */,
 				CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */,
-				CAFED0102F65AD6C00FB8246 /* PlayitDockerManager.swift in Sources */,
+				CAFED0112F65AD6C00FB8247 /* PlayitBinaryManager.swift in Sources */,
 				9A5632BE2F65AD6D00FB8246 /* AppViewModel+HealthCards.swift in Sources */,
 				9A5632BF2F65AD6D00FB8246 /* HealthCardModels.swift in Sources */,
 				9A5632C02F65AD6D00FB8246 /* ResourcePacksView.swift in Sources */,
@@ -971,6 +988,9 @@
 				9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */,
 				9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */,
 				9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */,
+				9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */,
+				9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */,
+				9AFE02170000000000000002 /* UDPRelay.swift in Sources */,
 				9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */,
 				9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */,
 				9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */,
@@ -1158,7 +1178,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = "MSCmacOS Swift/MinecraftServerController.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -1176,7 +1196,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.10;
+				MARKETING_VERSION = 1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1197,7 +1217,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_ENTITLEMENTS = "MSCmacOS Swift/MinecraftServerController.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -1215,7 +1235,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.10;
+				MARKETING_VERSION = 1.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

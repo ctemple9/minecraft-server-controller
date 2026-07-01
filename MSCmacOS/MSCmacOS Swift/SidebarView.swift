@@ -90,7 +90,7 @@ struct SidebarView: View {
                     id: "crossPlatform.content",
                     title: "What lives here",
                     body: isBedrockServer
-                        ? "For Bedrock servers, this section shows Xbox Broadcast status. MCXboxBroadcast Standalone runs as a Docker container alongside your BDS — the app does not manage it directly."
+                        ? "For Bedrock servers, this section shows Xbox Broadcast status. MCXboxBroadcast Standalone runs as a native background process alongside your BDS."
                         : "For Java servers, this section summarizes Xbox Broadcast so you can see what is installed and start or stop the helper without leaving the sidebar.",
                     anchorID: crossPlatformContentAnchorID
                 ),
@@ -521,7 +521,7 @@ struct BedrockCrossPlatformSidebarSection: View {
                     .popover(isPresented: $showingInfoPopover, arrowEdge: .trailing) {
                         VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                             Text("Xbox Broadcast").font(MSC.Typography.sectionHeader)
-                            Text("Runs a Docker container that broadcasts your BDS server to Xbox friends via a Microsoft alt account.")
+                            Text("Runs a background process that broadcasts your BDS server to Xbox friends via a Microsoft alt account.")
                                 .font(MSC.Typography.caption).fixedSize(horizontal: false, vertical: true)
                         }
                         .padding(MSC.Spacing.md).frame(width: 220)

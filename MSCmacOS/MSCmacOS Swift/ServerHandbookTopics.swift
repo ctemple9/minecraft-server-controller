@@ -34,7 +34,7 @@ The app supports a wide range of server types as first-class citizens:
 
 **Modded Java servers \u{2014} Fabric, NeoForge, and Forge.** For mods that add new blocks, items, dimensions, and gameplay systems. Every player must install the same mod loader and mods to connect.
 
-**Bedrock Dedicated Server (BDS).** The native server for mobile, console, and Windows 10/11 players. Runs via Docker. Cross-play with all Bedrock platforms is built in.
+**Bedrock Dedicated Server (BDS).** The native server for mobile, console, and Windows 10/11 players. Runs in a built-in lightweight VM — no extra software required. Cross-play with all Bedrock platforms is built in.
 """)
 
             InAppBox(items: [
@@ -61,7 +61,7 @@ Fabric modded servers launch from a generated launcher JAR:
 
 NeoForge and Forge modded servers use a generated shell script that passes an @args file to Java — the installer sets all of this up, and MSC runs the resulting script automatically.
 
-Bedrock servers run inside a Docker container using the official itzg/minecraft-bedrock-server image. The app manages the container lifecycle entirely \u{2014} start, stop, log streaming, volume mounts \u{2014} so you never need to open Docker directly.
+Bedrock servers run in a lightweight Linux VM bundled with the app — no Docker or external software needed. The app manages the VM lifecycle entirely — start, stop, console streaming, world file sharing — so you never need to open any external tool.
 
 All server types are fully managed. The complexity lives inside the app, not in front of you.
 """)
@@ -166,60 +166,45 @@ You can run both from this app simultaneously.
                 "Create New Server \u{2192} choose Bedrock to create a native BDS server.",
                 "Bedrock server port: Default port is 19132 UDP (not TCP). Port forwarding must be UDP.",
                 "Player management uses allowlist.json and permissions.json \u{2014} the app handles these for you.",
-                "No Java installation needed for Bedrock servers \u{2014} Docker provides the runtime."
+                "No Java installation needed for Bedrock servers \u{2014} the built-in VM provides the runtime."
             ])
         }
     }
 
-    // ── Docker ────────────────────────────────────────────────────────────
+    // ── How Bedrock Runs ──────────────────────────────────────────────────
 
     var dockerContent: some View {
         GuideSection {
             GuideTopicHeader(
-                icon: "shippingbox.fill",
-                title: "Docker & How Bedrock Runs",
-                subtitle: "Why Docker is needed and what the app does with it.",
-                color: .blue
+                icon: "memorychip",
+                title: "How Bedrock Runs",
+                subtitle: "How the app runs Bedrock Dedicated Server without Docker or any external software.",
+                color: .green
             )
 
             AnalogyBox(
                 title: "Think of it like this",
-                text: "Mojang only made BDS for Linux \u{2014} there's no Mac version. Docker is like a tiny portable Linux computer that runs inside your Mac. The BDS server thinks it's running on a Linux machine, which it is \u{2014} just a virtual one that lives in a box on your Mac."
+                text: "Mojang only made BDS for Linux \u{2014} there's no Mac version. MSC bundles a tiny lightweight Linux virtual machine that runs inside your Mac. The BDS server thinks it's running on a Linux machine, which it is \u{2014} just one that lives invisibly inside the app."
             )
 
             GuideBodyText("""
-**Why Docker?** Mojang has never released a native macOS binary for Bedrock Dedicated Server. The official BDS binary is Linux-only. Docker Desktop for Mac runs a lightweight Linux virtual machine, which allows the Linux BDS binary to run on your Mac without any compatibility hacks.
-
-This is the standard solution used by Bedrock self-hosters worldwide. It's not a workaround \u{2014} it's the correct way to run BDS on macOS.
+**Why a VM?** Mojang has never released a native macOS binary for Bedrock Dedicated Server. The official BDS binary is Linux-only. MSC bundles a minimal Linux VM (using Apple's built-in Virtualization framework) that runs the Linux BDS binary transparently. No Docker, no external downloads, no extra installs required.
 """)
 
-            GuideCallout(style: .tip, text: "Docker Desktop is free for personal use. Download it from docker.com/products/docker-desktop. It's a one-time install \u{2014} after that, you never need to open or interact with Docker directly.")
-
-            GuideBodyText("""
-**After installing Docker Desktop, the app takes over completely:**
-
-The app checks for Docker on launch. If Docker isn't running, it tells you. If Docker isn't installed, it links you to the download page. Once Docker is running, Bedrock server management is identical to Java \u{2014} click Start, click Stop, watch the console.
-""")
+            GuideCallout(style: .tip, text: "The built-in VM starts and stops automatically with the server. You never need to open or interact with any external tool — just click Start and Stop like any other server type.")
 
             InAppBox(items: [
-                "Docker image used: itzg/minecraft-bedrock-server (official, widely-used BDS image).",
-                "On first Bedrock server start, the app pulls the Docker image automatically. This takes a minute \u{2014} progress shows in the console.",
-                "Container start/stop is wired to the Start/Stop buttons \u{2014} same UI as Java servers.",
-                "World data is stored in your server folder via Docker volume mount. Your data is never inside the container.",
-                "Console output is streamed from the container in real-time, just like Java."
+                "BDS is downloaded automatically on first start and cached in your server folder.",
+                "VM start/stop is wired to the Start/Stop buttons \u{2014} same UI as Java servers.",
+                "World data is stored in your server folder and shared with the VM. Your data is never locked inside the VM image.",
+                "Console output streams from the VM in real-time, just like Java.",
+                "Updating BDS: use the version selector in the Components tab — the app downloads and installs the new version automatically."
             ])
 
-            GuideCallout(style: .note, text: "Docker Desktop must be running before you can start a Bedrock server. The app shows a clear warning if it detects Docker isn't running.")
-
             AdvancedSection(content: """
-The app uses the docker CLI commands:
-  docker run ... \u{2014} start a new container
-  docker stop ... \u{2014} stop a running container
-  docker exec ... \u{2014} send commands to the running server
+Under the hood, MSC uses Apple's Virtualization.framework to boot a compact Linux guest (a custom minimal kernel + initramfs, ~11 MB bundled with the app). The BDS binary lives in your server directory and is shared into the VM via virtio-fs — no image to pull, no layer cache.
 
-Container names are derived from your server folder name to avoid conflicts. World data is mounted from {serverDir}/worlds to the container's expected data path, so your world persists across container restarts and image updates.
-
-Updating BDS is as simple as pulling a newer image version. The app handles this via the version selector in server settings.
+Bedrock UDP port 19132 is forwarded from the host into the VM via a tiny UDP relay so LAN clients and Playit.gg tunnels reach the server transparently. Commands typed in the console go to BDS stdin over the VM serial console.
 """)
         }
     }
@@ -255,7 +240,7 @@ The launch command varies by server type:
 
 **NeoForge/Forge modded servers** use a shell script the installer generates. It passes a long @args file to Java with remapping flags and a classpath. MSC reads and runs this script for you \u{2014} you never have to touch it directly.
 
-Note: JAR files and Java are only needed for Java servers. Bedrock servers use Docker instead.
+Note: JAR files and Java are only needed for Java servers. Bedrock servers use the built-in VM instead.
 """)
 
             GuideCallout(style: .warning, text: "Java must be installed on your Mac before a Java server can start. The app recommends Temurin 21 (from Adoptium). Use Preferences \u{2192} Check for Java to verify your setup.")
@@ -296,7 +281,7 @@ Geyser and Floodgate are also JAR files \u{2014} they live in your server's plug
                 text: "RAM is like the size of your desk while you're working. The Minecraft world, players, and plugins all spread out on that desk. If the desk is too small, things fall off and the server lags or crashes. Too big, and your Mac's other apps have nothing left."
             )
 
-            GuideBodyText("RAM settings apply to Java servers only \u{2014} Bedrock servers run in Docker and manage their own memory. For Java servers, here are practical starting points:")
+            GuideBodyText("RAM settings apply to Java servers only \u{2014} Bedrock servers run in the built-in VM and manage their own memory. For Java servers, here are practical starting points:")
 
             RamGuideTable()
 
@@ -560,7 +545,7 @@ In your server folder, each world is stored as a group of folders:
 
 The base name (`world`) comes from the `level-name` setting in `server.properties`. If you change it to `myserver`, the folders become `myserver/`, `myserver_nether/`, etc.
 
-For Bedrock servers, world data is stored in a `worlds/` folder inside your server directory and is mounted into the Docker container automatically.
+For Bedrock servers, world data is stored in a `worlds/` folder inside your server directory and is shared with the VM automatically via a direct file share.
 
 **Always back up before:**
 - Installing or updating plugins
@@ -725,7 +710,7 @@ The API exposes endpoints for server status, console streaming (via polling or S
                 color: .green
             )
 
-            GuideCallout(style: .tip, text: "You don't need to memorize this. Work through it step by step. See the \"Docker & How Bedrock Runs\" topic if you want to understand why Docker is needed.")
+            GuideCallout(style: .tip, text: "You don't need to memorize this. Work through it step by step. See the \"How Bedrock Runs\" topic in the Bedrock section if you want to understand how MSC runs BDS natively.")
 
             Group {
                 Text("Phase 1 \u{2014} Initial Setup")
@@ -735,18 +720,13 @@ The API exposes endpoints for server status, console streaming (via polling or S
                 VStack(alignment: .leading, spacing: 14) {
                     ChecklistStep(
                         number: 1,
-                        title: "Install Docker Desktop",
-                        detail: "Download Docker Desktop (free for personal use) from docker.com/products/docker-desktop. Install it and open it at least once to start the Docker engine. You only do this once."
+                        title: "Open the app",
+                        detail: "Launch Minecraft Server Controller. Bedrock runs in a built-in VM — no Docker, no extra installs. The app is self-contained."
                     )
                     ChecklistStep(
                         number: 2,
-                        title: "Open the app",
-                        detail: "Launch Minecraft Server Controller. It detects Docker automatically. If Docker isn't running, the app will tell you \u{2014} just open Docker Desktop and try again."
-                    )
-                    ChecklistStep(
-                        number: 3,
                         title: "Run the Setup Wizard",
-                        detail: "On first launch, the Setup Wizard appears. Choose a Servers Root folder (~/MinecraftServers is fine). Select Bedrock as your server type. No Java path needed."
+                        detail: "On first launch, the Setup Wizard appears. Choose a Servers Root folder (~/MinecraftServers is fine). Select Bedrock as your server type. No Java path needed — no extra installs needed."
                     )
                 }
             }
@@ -777,22 +757,22 @@ The API exposes endpoints for server status, console streaming (via polling or S
 
                 VStack(alignment: .leading, spacing: 14) {
                     ChecklistStep(
-                        number: 6,
+                        number: 5,
                         title: "Start the server",
-                        detail: "Click Start. On first launch, the app pulls the Docker image automatically \u{2014} this may take a minute depending on your internet speed. Watch the console. When you see \"Server started\", it's ready."
+                        detail: "Click Start. On first launch, the app downloads BDS automatically \u{2014} this may take a moment depending on your internet speed. Watch the console. When you see \"Server started\", it's ready."
                     )
                     ChecklistStep(
-                        number: 7,
+                        number: 6,
                         title: "Test local connection",
                         detail: "Open Minecraft on your phone, tablet, or another device on your home network. Go to Servers \u{2192} Add Server. Enter your Mac's local IP (e.g. 192.168.1.x) and port 19132. You should be able to connect."
                     )
                     ChecklistStep(
-                        number: 8,
+                        number: 7,
                         title: "Enable external access",
-                        detail: "Friends outside your home need one of two approaches \u{2014} (A) Port Forwarding: forward UDP port 19132 on your router to your Mac\u{2019}s local IP. Bedrock requires UDP, not TCP \u{2014} forwarding TCP 19132 will not work. Or (B) Playit.gg Tunneling: no router access needed; Docker Desktop is already installed for Bedrock servers so no extra installs are required. Enable the tunnel in Edit Server \u{2192} Settings \u{2192} Network. See Connection & Access for full guides on both."
+                        detail: "Friends outside your home need one of two approaches \u{2014} (A) Port Forwarding: forward UDP port 19132 on your router to your Mac\u{2019}s local IP. Bedrock requires UDP, not TCP \u{2014} forwarding TCP 19132 will not work. Or (B) Playit.gg Tunneling: no router access needed; no extra installs needed. Enable the tunnel in Edit Server \u{2192} Settings \u{2192} Network. See Connection & Access for full guides on both."
                     )
                     ChecklistStep(
-                        number: 9,
+                        number: 8,
                         title: "(Optional) Set up DuckDNS",
                         detail: "Create a free hostname at duckdns.org and add it to Preferences. Share yourname.duckdns.org with friends instead of your raw IP."
                     )
@@ -806,12 +786,12 @@ The API exposes endpoints for server status, console streaming (via polling or S
 
                 VStack(alignment: .leading, spacing: 14) {
                     ChecklistStep(
-                        number: 10,
+                        number: 9,
                         title: "Create a backup",
                         detail: "Once everything works, open Server Details → Worlds and create your first backup. Label it \"initial setup\" or similar."
                     )
                     ChecklistStep(
-                        number: 11,
+                        number: 10,
                         title: "Invite friends",
                         detail: "Share your DuckDNS hostname (or public IP) and port 19132. Friends add it as a custom server in Bedrock's server list (Settings \u{2192} Servers \u{2192} Add Server). Bedrock cross-play is built in \u{2014} mobile, console, and Windows 10/11 players can all join."
                     )
@@ -838,7 +818,7 @@ The API exposes endpoints for server status, console streaming (via polling or S
             )
 
             GuideBodyText("""
-The **Files tab** gives you a full view of everything on disk inside your server's directory. For Java servers this includes your Paper JAR, plugins folder, world data, and all config files. For Bedrock servers it shows the host-side files that Docker bind-mounts into the container at /data when the server runs.
+The **Files tab** gives you a full view of everything on disk inside your server's directory. For Java servers this includes your Paper JAR, plugins folder, world data, and all config files. For Bedrock servers it shows the server directory shared with the VM — BDS binary, worlds folder, config files, and more.
 
 You can navigate into any subfolder and get back with the breadcrumb trail at the top.
 """)
@@ -857,7 +837,7 @@ You can navigate into any subfolder and get back with the breadcrumb trail at th
             GuideCallout(style: .tip, text: "The most commonly edited files are server.properties (core settings), ops.json (operator list), whitelist.json (allowlist), and plugin config YAMLs inside the plugins/ folder.")
 
             AdvancedSection(content: """
-For Bedrock servers, all files shown are on your Mac's filesystem (your server's host directory). When the server starts, Docker bind-mounts this directory to /data inside the container. Edits you make here while the server is stopped take effect the next time the container starts.
+For Bedrock servers, all files shown are on your Mac's filesystem (your server's host directory). The VM accesses this directory via a direct file share — no container layer. Edits you make here while the server is stopped take effect the next time the server starts.
 
 For Java (Paper) servers, files are read and written directly — no container layer involved. The server process and MSC both access the same directory.
 
@@ -932,7 +912,7 @@ Playit.gg and all other tunneling solutions work under CGNAT because they rely o
             )
 
             GuideBodyText("""
-**Playit.gg** is a free tunneling service for game servers. Instead of requiring your router to accept inbound connections, the app runs a small agent (via Docker) that connects outbound to Playit.gg\u{2019}s relay servers. Playit.gg gives you a stable public address \u{2014} like abc123.jth.mc.ply.gg \u{2014} that routes traffic back through the relay to your server.
+**Playit.gg** is a free tunneling service for game servers. Instead of requiring your router to accept inbound connections, the app runs a small native `playitd` agent that connects outbound to Playit.gg\u{2019}s relay servers. Playit.gg gives you a stable public address \u{2014} like abc123.jth.mc.ply.gg \u{2014} that routes traffic back through the relay to your server.
 
 **Why this matters:**
 """)
@@ -944,7 +924,7 @@ Playit.gg and all other tunneling solutions work under CGNAT because they rely o
                 "The address Playit.gg gives you is stable and doesn\u{2019}t change when your home IP changes"
             ])
 
-            GuideCallout(style: .note, text: "Playit.gg requires Docker Desktop \u{2014} the same Docker used for Bedrock servers. If you\u{2019}re already running a Bedrock server, Docker is already installed and you have everything you need.")
+            GuideCallout(style: .tip, text: "Playit.gg requires no extra software. The app downloads and manages the native playit agent automatically.")
 
             GuideBodyText("""
 **Tradeoffs vs. port forwarding:**
@@ -953,7 +933,7 @@ Playit.gg and all other tunneling solutions work under CGNAT because they rely o
             BulletList(items: [
                 "Latency: game traffic passes through Playit.gg\u{2019}s relay servers, adding roughly 10\u{2013}50 ms. For most players this is unnoticeable.",
                 "Account required: you need a free Playit.gg account (no credit card). One-time setup takes about 5 minutes.",
-                "Docker required: the agent runs as a Docker container. Bedrock users already have Docker Desktop. Java-only users need to install it.",
+                "No extra installs: the app downloads and manages the native playit agent automatically.",
                 "Free tier: Playit.gg\u{2019}s free tier supports Minecraft tunnels without player count limits."
             ])
 
@@ -968,7 +948,7 @@ Playit.gg and all other tunneling solutions work under CGNAT because they rely o
             GuideCallout(style: .tip, text: "You can use Playit.gg and port forwarding simultaneously on the same server. Players connecting via the Playit.gg address are relayed; players connecting to your direct IP go straight through. Useful as a fallback for players who have trouble with one approach.")
 
             AdvancedSection(content: """
-The app runs the Playit.gg agent as a Docker container alongside your Minecraft server. One agent (one secret key, one container) can tunnel multiple ports \u{2014} your Java port and Bedrock/Geyser port can both go through the same agent.
+The app runs the Playit.gg agent as a native background process alongside your Minecraft server. One agent (one secret key) can tunnel multiple ports \u{2014} your Java port and Bedrock/Geyser port can both go through the same agent.
 
 Individual tunnels are configured on the Playit.gg website and assigned to your agent. The agent picks them up automatically \u{2014} no server restart needed when adding or changing tunnels.
 
@@ -1122,7 +1102,7 @@ Point the app at an existing server folder. MSC reads the configuration, detects
                 "File \u{2192} Import Server (or the + button in the server list): browse to an existing server folder to add it.",
                 "The server folder must be self-contained \u{2014} all config files and world data should be inside one directory.",
                 "Java servers: your Paper JAR path may need updating after a move if the folder is now in a different location.",
-                "Bedrock servers: Docker pulls the correct image version automatically on first start after import."
+                "Bedrock servers: BDS is downloaded automatically on first start after import if not already present."
             ])
 
             GuideCallout(style: .tip, text: "The most reliable way to transfer a server is to create a backup zip from the Worlds tab first. The backup is a complete, self-contained archive that\u{2019}s easy to move and easy to restore from.")

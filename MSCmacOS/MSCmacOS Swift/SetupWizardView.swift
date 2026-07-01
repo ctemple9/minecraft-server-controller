@@ -37,6 +37,12 @@ private enum JavaCheckStatus: Equatable {
     }
 }
 
+// MARK: - Tailscale Check Status
+
+private enum TailscaleCheckStatus {
+    case unknown, checking, installed, notInstalled
+}
+
 // MARK: - SetupWizardView
 
 struct SetupWizardView: View {
@@ -55,6 +61,9 @@ struct SetupWizardView: View {
     // Detection state
     @State private var javaStatus: JavaCheckStatus = .unknown
     @State private var dockerStatus: DockerCheckStatus = .unknown
+    @State private var tailscaleStatus: TailscaleCheckStatus = .unknown
+    @State private var isDownloadingJava = false
+    @State private var isDownloadingDocker = false
 
     // MARK: - Validation
 
@@ -71,7 +80,7 @@ struct SetupWizardView: View {
         guard wantsJava || wantsBedrock else { return true }
         guard hasValidServersRoot else { return true }
         if wantsJava && !hasValidJava { return true }
-        if wantsBedrock && dockerStatus != .running { return true }
+        // Bedrock VM backend: no Docker required — virtualization is built-in.
         return false
     }
 
@@ -96,12 +105,11 @@ struct SetupWizardView: View {
                     }
 
                     if wantsBedrock {
-                        dockerCard
+                        vmBedrockCard
                             .transition(.opacity.combined(with: .move(edge: .top)))
-                            .onAppear {
-                                if dockerStatus == .unknown { checkDocker() }
-                            }
                     }
+
+                    tailscaleCard
                 }
                 .padding(MSC.Spacing.xl)
                 .animation(.easeInOut(duration: 0.2), value: wantsJava)
@@ -203,7 +211,7 @@ struct SetupWizardView: View {
             HStack(spacing: MSC.Spacing.md) {
                 serverTypeToggleCard(
                     label: "Java Servers",
-                    subtitle: "Paper-based\nPlugin ecosystem",
+                    subtitle: "Paper, Purpur, Fabric & more\nPlugin ecosystem",
                     icon: "cup.and.saucer.fill",
                     color: .orange,
                     isOn: $wantsJava
@@ -327,11 +335,10 @@ struct SetupWizardView: View {
                     .buttonStyle(.plain)
                 }
 
-                Spacer()
-
                 ColorPicker("Custom", selection: $accentColor, supportsOpacity: false)
                                     .labelsHidden()
                                     .frame(width: 28, height: 28)
+                                    .clipShape(Circle())
                                     .help("Pick a custom color")
                                     .onChange(of: accentColor) { _, newColor in
                                         let adjusted = newColor.clampedAwayFromWhite().clampedAwayFromBlack()
@@ -381,7 +388,7 @@ struct SetupWizardView: View {
             icon: "cup.and.saucer.fill",
             iconColor: .orange,
             title: "Java Executable",
-            subtitle: "Java servers require JDK 21. Point to your binary or let the app find it on PATH."
+            subtitle: "Java servers require JDK 21 or later. Point to your binary or let the app find it on PATH."
         ) {
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                 HStack(spacing: MSC.Spacing.sm) {
@@ -407,12 +414,45 @@ struct SetupWizardView: View {
                 }
 
                 if javaStatus == .notFound {
-                    inlineHelpCard(
-                        icon: "exclamationmark.triangle.fill",
-                        color: .orange,
-                        message: "No Java found on PATH. Install Temurin 21, then click Check for Java again.",
-                        actionLabel: "Download Temurin 21 \u{2192}",
-                        action: openTemurin21DownloadPage
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.orange)
+                            .padding(.top, 1)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("No Java found on PATH. Install the current Temurin LTS, then click Check for Java again.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            if isDownloadingJava {
+                                HStack(spacing: 6) {
+                                    ProgressView().scaleEffect(0.65)
+                                    Text("Downloading installer\u{2026}")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                HStack(spacing: MSC.Spacing.sm) {
+                                    Button("Install Java (Temurin LTS)") {
+                                        downloadAndInstallJava()
+                                    }
+                                    .controlSize(.mini)
+                                    .buttonStyle(.borderedProminent)
+
+                                    Button("Manual Download \u{2192}") {
+                                        openTemurin21DownloadPage()
+                                    }
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.orange)
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                    .padding(MSC.Spacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                            .fill(Color.orange.opacity(0.08))
                     )
                 }
             }
@@ -456,9 +496,36 @@ struct SetupWizardView: View {
         }
     }
 
-    // MARK: - Docker Card
+    // MARK: - Bedrock VM Card
 
-    private var dockerCard: some View {
+    private var vmBedrockCard: some View {
+        setupCard(
+            icon: "memorychip",
+            iconColor: .green,
+            title: "Bedrock Server — Built In",
+            subtitle: "No external software required. The app runs Bedrock Dedicated Server in a lightweight built-in virtual machine."
+        ) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.green)
+                    .padding(.top, 1)
+                Text("Ready. Bedrock servers start instantly — no Docker, no installs.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(MSC.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(Color.green.opacity(0.08))
+            )
+        }
+    }
+
+    // MARK: - Docker Card (kept for reference — Docker path no longer used)
+
+    /* private var dockerCard: some View {
         setupCard(
             icon: "shippingbox.fill",
             iconColor: .green,
@@ -475,13 +542,74 @@ struct SetupWizardView: View {
 
                 switch dockerStatus {
                 case .notInstalled:
-                    inlineHelpCard(
-                        icon: "arrow.down.circle.fill",
-                        color: .blue,
-                        message: "Docker Desktop is not installed. It\u{2019}s free for personal use.",
-                        actionLabel: "Download Docker Desktop \u{2192}",
-                        action: openDockerDownloadPage
-                    )
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        // Tier 3 + Tier 1: install button with DMG download, or manual link
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.blue)
+                                .padding(.top, 1)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Docker Desktop is not installed. It\u{2019}s free for personal use.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                if isDownloadingDocker {
+                                    HStack(spacing: 6) {
+                                        ProgressView().scaleEffect(0.65)
+                                        Text("Downloading installer\u{2026} (this is a large file)")
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } else {
+                                    HStack(spacing: MSC.Spacing.sm) {
+                                        Button("Install Docker Desktop") {
+                                            downloadAndInstallDocker()
+                                        }
+                                        .controlSize(.mini)
+                                        .buttonStyle(.borderedProminent)
+
+                                        Button("Manual Download \u{2192}") {
+                                            openDockerDownloadPage()
+                                        }
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.blue)
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(MSC.Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                                .fill(Color.blue.opacity(0.08))
+                        )
+
+                        // Tier 2: Docker Hub account note
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "person.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 1)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("You\u{2019}ll also need a free Docker Hub account to sign in when you first launch Docker Desktop.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                Button("Sign up at hub.docker.com \u{2192}") {
+                                    NSWorkspace.shared.open(URL(string: "https://hub.docker.com/signup")!)
+                                }
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(MSC.Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                                .fill(Color.primary.opacity(0.04))
+                        )
+                    }
                 case .notRunning:
                     inlineHelpCard(
                         icon: "exclamationmark.triangle.fill",
@@ -556,6 +684,7 @@ struct SetupWizardView: View {
             }
         }
     }
+    */ // end commented-out dockerCard + dockerStatusBadge
 
     // MARK: - Shared Components
 
@@ -630,6 +759,90 @@ struct SetupWizardView: View {
         )
     }
 
+    // MARK: - Tailscale Card
+
+    private var tailscaleCard: some View {
+        setupCard(
+            icon: "network",
+            iconColor: .blue,
+            title: "Tailscale  ·  Optional",
+            subtitle: "Access your servers remotely from anywhere, even on mobile or a different network. Not required to continue."
+        ) {
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                HStack(spacing: MSC.Spacing.sm) {
+                    Button("Check") { checkTailscale() }
+                        .controlSize(.small)
+                    tailscaleStatusBadge
+                    Spacer()
+                }
+
+                switch tailscaleStatus {
+                case .notInstalled:
+                    inlineHelpCard(
+                        icon: "info.circle.fill",
+                        color: .blue,
+                        message: "Tailscale isn\u{2019}t installed. It\u{2019}s free for personal use and takes about a minute to set up.",
+                        actionLabel: "Download Tailscale \u{2192}",
+                        action: { NSWorkspace.shared.open(URL(string: "https://tailscale.com/download/mac")!) }
+                    )
+                case .installed:
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.green)
+                            .padding(.top, 1)
+                        Text("Tailscale is installed. Enable it and join your tailnet to access servers remotely.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(MSC.Spacing.sm)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                            .fill(Color.green.opacity(0.08))
+                    )
+                default:
+                    EmptyView()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var tailscaleStatusBadge: some View {
+        switch tailscaleStatus {
+        case .unknown:
+            Text("Not checked yet")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        case .checking:
+            HStack(spacing: 4) {
+                ProgressView().scaleEffect(0.55)
+                Text("Checking\u{2026}")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        case .installed:
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.green)
+                Text("Installed")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        case .notInstalled:
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+                Text("Not installed")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     // MARK: - Footer
 
     private var footer: some View {
@@ -647,8 +860,6 @@ struct SetupWizardView: View {
                 Group {
                     if !wantsJava && !wantsBedrock {
                         Text("Select a server type above")
-                    } else if wantsBedrock && dockerStatus != .running {
-                        Text("Docker must be running to continue")
                     } else if wantsJava && !hasValidJava {
                         Text("Java path required")
                     } else if !hasValidServersRoot {
@@ -768,19 +979,76 @@ struct SetupWizardView: View {
     }
 
     private func openTemurin21DownloadPage() {
-        guard let url = URL(string: "https://adoptium.net/temurin/releases/?version=21&package=jdk&os=mac&arch=x64") else { return }
+        guard let url = URL(string: "https://adoptium.net/temurin/releases/?package=jdk&os=mac") else { return }
         NSWorkspace.shared.open(url)
     }
 
-    // MARK: - Docker Detection
+    private func downloadAndInstallJava() {
+        isDownloadingJava = true
+        Task {
+            defer { Task { @MainActor in isDownloadingJava = false } }
+            do {
+                // Detect architecture at compile time — reliable regardless of Rosetta
+                #if arch(arm64)
+                let arch = "aarch64"
+                #else
+                let arch = "x64"
+                #endif
 
-    /// Finds the docker binary by probing known Docker Desktop install locations,
-    /// then runs `docker info` to confirm the daemon is running.
-    ///
-    /// Docker Desktop for Mac installs to /usr/local/bin/docker but Process() does not
-    /// inherit the user's shell PATH, so `which docker` often fails even when Docker is
-    /// installed. We probe known paths directly instead.
-    private func checkDocker() {
+                // Find the most recent LTS version from Adoptium
+                let releasesURL = URL(string: "https://api.adoptium.net/v3/info/available_releases")!
+                let (relData, _) = try await URLSession.shared.data(from: releasesURL)
+                let ltsVersion: Int
+                if let relJson = try JSONSerialization.jsonObject(with: relData) as? [String: Any],
+                   let v = relJson["most_recent_lts"] as? Int {
+                    ltsVersion = v
+                } else {
+                    ltsVersion = 21
+                }
+
+                // Fetch the PKG asset for that LTS + this machine's architecture
+                let assetsURLString = "https://api.adoptium.net/v3/assets/latest/\(ltsVersion)/hotspot?os=mac&image_type=jdk&vendor=eclipse&architecture=\(arch)"
+                let (assetData, _) = try await URLSession.shared.data(from: URL(string: assetsURLString)!)
+                guard let assets = try JSONSerialization.jsonObject(with: assetData) as? [[String: Any]],
+                      let first = assets.first,
+                      let binary = first["binary"] as? [String: Any],
+                      let installer = binary["installer"] as? [String: Any],
+                      let pkgURLString = installer["link"] as? String,
+                      let pkgURL = URL(string: pkgURLString) else {
+                    await MainActor.run { openTemurin21DownloadPage() }
+                    return
+                }
+
+                // Download the PKG to a temp location and open it
+                let (tempURL, _) = try await URLSession.shared.download(from: pkgURL)
+                let destURL = FileManager.default.temporaryDirectory.appendingPathComponent(pkgURL.lastPathComponent)
+                try? FileManager.default.removeItem(at: destURL)
+                try FileManager.default.moveItem(at: tempURL, to: destURL)
+                await MainActor.run { NSWorkspace.shared.open(destURL) }
+            } catch {
+                await MainActor.run { openTemurin21DownloadPage() }
+            }
+        }
+    }
+
+    // MARK: - Tailscale Detection
+
+    private func checkTailscale() {
+        tailscaleStatus = .checking
+        DispatchQueue.global(qos: .userInitiated).async {
+            let paths = [
+                "/Applications/Tailscale.app",
+                "/usr/local/bin/tailscale",
+                "/opt/homebrew/bin/tailscale"
+            ]
+            let found = paths.contains { FileManager.default.fileExists(atPath: $0) }
+            DispatchQueue.main.async { tailscaleStatus = found ? .installed : .notInstalled }
+        }
+    }
+
+    // MARK: - Docker Detection (kept for reference — no longer called)
+
+    /* private func checkDocker() {
         dockerStatus = .checking
         DispatchQueue.global(qos: .userInitiated).async {
             // Known locations Docker Desktop installs its CLI on macOS.
@@ -823,5 +1091,28 @@ struct SetupWizardView: View {
         guard let url = URL(string: "https://www.docker.com/products/docker-desktop") else { return }
         NSWorkspace.shared.open(url)
     }
+
+    private func downloadAndInstallDocker() {
+        isDownloadingDocker = true
+        Task {
+            defer { Task { @MainActor in isDownloadingDocker = false } }
+            do {
+                #if arch(arm64)
+                let dmgURL = URL(string: "https://desktop.docker.com/mac/main/arm64/Docker.dmg")!
+                #else
+                let dmgURL = URL(string: "https://desktop.docker.com/mac/main/amd64/Docker.dmg")!
+                #endif
+
+                let (tempURL, _) = try await URLSession.shared.download(from: dmgURL)
+                let destURL = FileManager.default.temporaryDirectory.appendingPathComponent("Docker.dmg")
+                try? FileManager.default.removeItem(at: destURL)
+                try FileManager.default.moveItem(at: tempURL, to: destURL)
+                await MainActor.run { NSWorkspace.shared.open(destURL) }
+            } catch {
+                await MainActor.run { openDockerDownloadPage() }
+            }
+        }
+    }
+    */ // end commented-out Docker detection methods
 }
 

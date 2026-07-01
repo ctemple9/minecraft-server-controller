@@ -337,6 +337,7 @@ fileprivate struct HealthGridCardFront: View {
         switch card.id {
         case "directory":  return "folder.fill"
         case "java":       return "cup.and.saucer.fill"
+        case "vm":         return "memorychip"
         case "docker":     return "shippingbox.fill"
         case "jar":        return "puzzlepiece.extension.fill"
         case "bdsImage":   return "arrow.down.circle.fill"
@@ -358,6 +359,7 @@ fileprivate struct HealthGridCardFront: View {
         switch card.id {
         case "directory":   return "Directory"
         case "java":        return "Java"
+        case "vm":          return "VM Runtime"
         case "docker":      return "Docker"
         case "jar":         return "Components"
         case "bdsImage":    return "BDS Image"
@@ -623,6 +625,7 @@ fileprivate struct HealthGridCardBack: View {
         switch card.id {
         case "directory":   return "folder.fill"
         case "java":        return "cup.and.saucer.fill"
+        case "vm":          return "memorychip"
         case "docker":      return "shippingbox.fill"
         case "jar":         return "puzzlepiece.extension.fill"
         case "ram":         return "memorychip"
@@ -642,6 +645,7 @@ fileprivate struct HealthGridCardBack: View {
         switch card.id {
         case "directory":   return "Server Directory"
         case "java":        return "Java Runtime"
+        case "vm":          return "VM Runtime"
         case "docker":      return "Docker Runtime"
         case "jar":         return "Components"
         case "ram":         return "RAM Allocation"
