@@ -431,6 +431,12 @@ struct ServerSettingsView: View {
                         }
                         .buttonStyle(MSCSecondaryButtonStyle())
                         .controlSize(.small)
+                        Button("Reset…") {
+                            viewModel.resetPlayitSetup()
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                        .help("Clears the local secret key, secret file, and tunnel addresses so setup starts fresh. Does not remove the agent/tunnels from your playit.gg account.")
                     }
                 } else {
                     Button("Set up Secret Key…") {

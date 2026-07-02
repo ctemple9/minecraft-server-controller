@@ -470,6 +470,12 @@ struct AppConfig: Codable {
     var playitJavaAddress: String?
     /// Public Bedrock tunnel address e.g. "something.ply.gg:35803". Set once in Server Settings.
     var playitBedrockAddress: String?
+    /// Public Simple Voice Chat tunnel address (IP:port) e.g. "147.185.221.18:25732".
+    /// Written into voicechat-server.properties as `voice_host`.
+    var playitVoiceAddress: String?
+    /// The playit.gg agent UUID from claim setup. Persisted so voice/extra tunnels can be
+    /// created later (via the stored secret key) without another sign-in.
+    var playitAgentId: String?
 
     /// Tracks whether the Server Handbook has been shown at least once.
     var hasShownHandbook: Bool
@@ -534,6 +540,8 @@ struct AppConfig: Codable {
         case duckdnsHostname = "duckdns_hostname"
         case playitJavaAddress    = "playit_java_address"
         case playitBedrockAddress = "playit_bedrock_address"
+        case playitVoiceAddress   = "playit_voice_address"
+        case playitAgentId        = "playit_agent_id"
         case hasShownHandbook = "has_shown_welcome_guide"
         case hasShownConceptGuide = "has_shown_concept_guide"
 
@@ -596,6 +604,8 @@ struct AppConfig: Codable {
             duckdnsHostname: nil,
             playitJavaAddress: nil,
             playitBedrockAddress: nil,
+            playitVoiceAddress: nil,
+            playitAgentId: nil,
             hasShownHandbook: false,
             hasShownConceptGuide: false,
             xboxBroadcastJarPath: nil,
@@ -696,6 +706,8 @@ extension AppConfig {
                 ?? defaults.duckdnsHostname
         self.playitJavaAddress    = try container.decodeIfPresent(String.self, forKey: .playitJavaAddress)
         self.playitBedrockAddress = try container.decodeIfPresent(String.self, forKey: .playitBedrockAddress)
+        self.playitVoiceAddress   = try container.decodeIfPresent(String.self, forKey: .playitVoiceAddress)
+        self.playitAgentId        = try container.decodeIfPresent(String.self, forKey: .playitAgentId)
 
         self.hasShownHandbook =
             try container.decodeIfPresent(Bool.self, forKey: .hasShownHandbook)
@@ -759,6 +771,8 @@ extension AppConfig {
         try container.encodeIfPresent(duckdnsHostname,      forKey: .duckdnsHostname)
         try container.encodeIfPresent(playitJavaAddress,    forKey: .playitJavaAddress)
         try container.encodeIfPresent(playitBedrockAddress, forKey: .playitBedrockAddress)
+        try container.encodeIfPresent(playitVoiceAddress,   forKey: .playitVoiceAddress)
+        try container.encodeIfPresent(playitAgentId,        forKey: .playitAgentId)
 
         try container.encode(hasShownHandbook,      forKey: .hasShownHandbook)
         try container.encode(hasShownConceptGuide,  forKey: .hasShownConceptGuide)

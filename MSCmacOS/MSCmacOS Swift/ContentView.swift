@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SpriteKit
+import WebKit
 #if os(macOS)
 import AppKit
 #endif
@@ -671,12 +672,12 @@ struct ContentView: View {
 
         // Xbox Broadcast auth sheet
         .sheet(item: $viewModel.pendingBroadcastAuthPrompt) { prompt in
-            BroadcastAuthSheet(prompt: prompt).environmentObject(viewModel)
+            BroadcastAuthWebSheet(prompt: prompt).environmentObject(viewModel)
         }
 
-        // playit.gg secret key setup — shown on first use when no key is stored
+        // playit.gg setup — shown on first use when no key is stored
         .sheet(isPresented: $viewModel.isShowingPlayitSecretSetup) {
-            PlayitSecretKeySheet()
+            PlayitSetupSheet()
                 .environmentObject(viewModel)
         }
         .sheet(isPresented: $viewModel.isShowingStartupProblems) {
@@ -706,87 +707,83 @@ struct ContentView: View {
 
 // MARK: - Banner / runner support moved to ContentViewRunnerSupport.swift
 
-struct BroadcastAuthSheet: View {
+struct BroadcastAuthWebSheet: View {
     @EnvironmentObject var viewModel: AppViewModel
     let prompt: BroadcastAuthPrompt
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-            Text("Sign in to your broadcast alt account")
-                .font(MSC.Typography.pageTitle)
-
-            Text("To finish setting up Xbox broadcast for this server, sign in with the Microsoft/Xbox account you use as your alt.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Divider()
-
-            // URL row
-            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                Text("Step 1 – Open this page:")
-                    .font(MSC.Typography.sectionHeader)
-
-                HStack {
-                    Text(prompt.linkURL.absoluteString)
-                        .font(MSC.Typography.mono)
-                        .textSelection(.enabled)
-
-                    Spacer()
-
-                    Button("Open in Browser") {
-                        #if os(macOS)
-                        NSWorkspace.shared.open(prompt.linkURL)
-                        #endif
-                    }
-                    .buttonStyle(MSCPrimaryButtonStyle())
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                    Text("Sign in to your broadcast alt account")
+                        .font(MSC.Typography.pageTitle)
+                    Text("Use the Microsoft account you keep as your Xbox alt. This is a private session — your personal accounts won't appear here.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-
-            // Code row
-            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                Text("Step 2 – Enter this code:")
-                    .font(MSC.Typography.sectionHeader)
-
-                HStack(spacing: MSC.Spacing.md) {
-                    Text(prompt.code)
-                        .font(.system(size: 20, design: .monospaced))
-                        .padding(.vertical, MSC.Spacing.sm)
-                        .padding(.horizontal, MSC.Spacing.md)
-                        .background(
-                            RoundedRectangle(cornerRadius: MSC.Radius.sm)
-                                .fill(Color.secondary.opacity(0.08))
-                        )
-
-                    Button("Copy Code") {
-                        #if os(macOS)
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(prompt.code, forType: .string)
-                        #endif
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                }
-            }
-
-            Text("On the Microsoft page, sign in with your alt account. Once you finish, this broadcast helper will use that account so your friends can see and join your world from the Friends tab on Xbox.")
-                .font(MSC.Typography.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-
-            HStack {
                 Spacer()
-                Button("Close") {
+                Button("Done") {
                     viewModel.pendingBroadcastAuthPrompt = nil
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
+            }
+            .padding(MSC.Spacing.xl)
+
+            Divider()
+
+            MicrosoftDeviceCodeWebView(prompt: prompt) {
+                viewModel.pendingBroadcastAuthPrompt = nil
             }
         }
-        .padding(MSC.Spacing.xxl)
-        .frame(minWidth: 480, minHeight: 320)
+        .frame(minWidth: 540, minHeight: 580)
+    }
+}
+
+struct MicrosoftDeviceCodeWebView: NSViewRepresentable {
+    let prompt: BroadcastAuthPrompt
+    let onComplete: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onComplete: onComplete) }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = context.coordinator
+
+        var components = URLComponents(url: prompt.linkURL, resolvingAgainstBaseURL: false) ?? URLComponents()
+        var items = components.queryItems ?? []
+        items.append(URLQueryItem(name: "otc", value: prompt.code))
+        components.queryItems = items
+        let url = components.url ?? prompt.linkURL
+        webView.load(URLRequest(url: url))
+
+        return webView
+    }
+
+    func updateNSView(_ nsView: WKWebView, context: Context) {}
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        private let onComplete: () -> Void
+        private var didComplete = false
+
+        init(onComplete: @escaping () -> Void) { self.onComplete = onComplete }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard !didComplete else { return }
+            webView.evaluateJavaScript("document.querySelector('h1')?.textContent ?? ''") { [weak self] result, _ in
+                guard let self, !self.didComplete else { return }
+                let heading = (result as? String ?? "").lowercased()
+                if heading.contains("all done") {
+                    self.didComplete = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        self.onComplete()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -827,13 +824,22 @@ private struct OrphanedProcessBanner: View {
     }
 }
 
-// MARK: - playit.gg Secret Key Setup Sheet
+// MARK: - playit.gg Setup Sheet (native — no browser, no webview)
 
-struct PlayitSecretKeySheet: View {
+struct PlayitSetupSheet: View {
     @EnvironmentObject var viewModel: AppViewModel
-    @State private var secretKey: String = ""
 
-    private static let setupURL = URL(string: "https://playit.gg/account/setup/wizard/new-account/docker/docker-name")!
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var isWorking: Bool = false
+    @State private var statusText: String = ""
+    @State private var errorMessage: String?
+
+    private var canSubmit: Bool {
+        !isWorking &&
+        !email.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !password.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
@@ -841,48 +847,118 @@ struct PlayitSecretKeySheet: View {
                 viewModel.isShowingPlayitSecretSetup = false
             }
 
-            Text("One-time setup — takes about 1 minute.")
-                .font(MSC.Typography.sectionHeader)
+            Text("Sign in with your playit.gg account and MSC sets up the tunnel for you — no browser, no copying keys.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Prerequisites callout — only relevant to people who plan to use playit.gg.
+            HStack(alignment: .top, spacing: MSC.Spacing.sm) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 13))
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Before you begin")
+                        .font(MSC.Typography.caption.weight(.semibold))
+                    Text("MSC creates one agent and two tunnels (Java + Bedrock) on your account. Free playit.gg accounts limit how many agents and tunnels you can have — if you've hit those limits, remove unused ones on playit.gg first.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(MSC.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm)
+                    .fill(Color.secondary.opacity(0.08))
+            )
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
-                Text("1.  Click the button below to open the playit.gg setup page in your browser.")
-                Text("2.  Create a free account (or log in) and follow the Setup Wizard to create a new agent.")
-                Text("3.  Copy the Secret Key shown at the end and paste it below.")
-                Text("4.  Click Save. The tunnel starts automatically with your server from now on.")
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-
-            Button("Open playit.gg Setup in Browser") {
-                NSWorkspace.shared.open(Self.setupURL)
-            }
-            .buttonStyle(MSCSecondaryButtonStyle())
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
-                Text("Secret Key")
+                Text("Email")
                     .font(MSC.Typography.sectionHeader)
-                SecureField("Paste your playit.gg secret key here", text: $secretKey)
+                TextField("you@example.com", text: $email)
                     .textFieldStyle(.roundedBorder)
-                Text("Stored locally — never sent anywhere by MSC.")
+                    .disabled(isWorking)
+
+                Text("Password")
+                    .font(MSC.Typography.sectionHeader)
+                SecureField("playit.gg password", text: $password)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isWorking)
+                    .onSubmit { start() }
+            }
+
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if isWorking {
+                HStack(spacing: MSC.Spacing.sm) {
+                    ProgressView().controlSize(.small)
+                    Text(statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: MSC.Spacing.xs) {
+                Text("Don't have an account?")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button("Create a free account") {
+                    #if os(macOS)
+                    NSWorkspace.shared.open(URL(string: "https://playit.gg/login")!)
+                    #endif
+                }
+                .buttonStyle(.link)
+                .font(.caption)
             }
+            Text("Just sign up on playit.gg, then come back here and sign in. (Two-factor accounts aren't supported yet.)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack {
                 Spacer()
-                Button("Save") {
-                    viewModel.savePlayitSecretKey(secretKey)
-                    viewModel.retryPlayitAfterKeySetup()
+                Button("Cancel") {
                     viewModel.isShowingPlayitSecretSetup = false
                 }
-                .buttonStyle(MSCPrimaryButtonStyle())
-                .disabled(secretKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .disabled(isWorking)
+
+                Button("Set Up Tunnel") { start() }
+                    .buttonStyle(MSCPrimaryButtonStyle())
+                    .disabled(!canSubmit)
             }
         }
         .padding(MSC.Spacing.xl)
-        .frame(width: 480)
+        .frame(width: 460)
+    }
+
+    private func start() {
+        guard canSubmit else { return }
+        isWorking = true
+        errorMessage = nil
+        statusText = "Signing in…"
+        let currentEmail = email.trimmingCharacters(in: .whitespaces)
+        let currentPassword = password
+        Task {
+            let err = await viewModel.setupPlayitViaSignin(
+                email: currentEmail,
+                password: currentPassword
+            ) { step in
+                statusText = step
+            }
+            isWorking = false
+            if let err {
+                errorMessage = err
+            } else {
+                viewModel.isShowingPlayitSecretSetup = false
+            }
+        }
     }
 }
 
