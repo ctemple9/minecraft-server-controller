@@ -233,24 +233,17 @@ struct OnboardingOverlayView: View {
 
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
             if let idx = step.displayIndex {
-                HStack(spacing: MSC.Spacing.sm) {
-                                   GeometryReader { geo in
-                                       ZStack(alignment: .leading) {
-                                           Capsule()
-                                               .fill(Color.white.opacity(0.15))
-                                           Capsule()
-                                               .fill(manager.accentColor)
-                                               .frame(width: geo.size.width * CGFloat(idx) / CGFloat(step.totalSteps))
-                                               .animation(.spring(response: 0.4, dampingFraction: 0.8), value: idx)
-                                       }
-                                   }
-                                   .frame(height: 4)
-
-                                   Text("Step \(idx) of \(step.totalSteps)")
-                                       .font(.system(size: 10, weight: .medium))
-                                       .foregroundStyle(.white.opacity(0.5))
-                                       .fixedSize()
-                               }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.15))
+                        Capsule()
+                            .fill(manager.accentColor)
+                            .frame(width: geo.size.width * CGFloat(idx) / CGFloat(step.totalSteps))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: idx)
+                    }
+                }
+                .frame(height: 4)
             }
 
             Text(step.title)
@@ -352,6 +345,7 @@ struct OnboardingOverlayView: View {
         case .serverFlavor:          return f[OnboardingAnchorID.serverFlavorArea.rawValue] ?? .zero
         case .serverVersion:         return f[OnboardingAnchorID.serverSourceArea.rawValue] ?? .zero
         case .serverCrossplay:       return f[OnboardingAnchorID.serverCrossplayArea.rawValue] ?? .zero
+        case .serverXboxBroadcast:   return f[OnboardingAnchorID.serverXboxBroadcastArea.rawValue] ?? .zero
         case .serverSettings:          return f[OnboardingAnchorID.wizardContinueButton.rawValue] ?? .zero
         case .serverConnectivity:      return f[OnboardingAnchorID.serverConnectivityArea.rawValue] ?? .zero
         case .serverConnectivityPorts: return f[OnboardingAnchorID.serverConnectivityPortsArea.rawValue] ?? .zero

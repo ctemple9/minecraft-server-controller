@@ -22,6 +22,7 @@ var settingsTab: some View {
                 initialBedrockModel: bedrockSettingsDraft?.model ?? viewModel.bedrockPropertiesModel(for: cfg),
                 initialBedrockPortText: javaSettingsDraft?.bedrockPortText,
                 initialBedrockPortV6Text: bedrockSettingsDraft?.bedrockPortV6Text,
+                initialPurpurConfig: javaSettingsDraft?.purpurConfig,
                 isInline: true,
                 onJavaDraftChange: { updatedDraft in
                     javaSettingsDraft = updatedDraft

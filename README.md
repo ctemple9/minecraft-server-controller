@@ -26,7 +26,7 @@ You need Windows or Linux, or you're running a large public server.
 ### Before you begin (the app walks through these steps if you need help)
 - **macOS 13+**
 - **Java** is required for **Paper / Java Edition** servers
-- **Docker Desktop** is required for **Bedrock** servers
+- **Bedrock** servers run in a built-in VM — no extra install needed
 - **Port forwarding is required** if players outside your home network will join
 - You must be able to log into your router and change its port forwarding settings
 
@@ -61,11 +61,14 @@ Run and manage Java and Bedrock servers from a native macOS app. No terminal req
 
 - **Standard Java servers** — Paper, Purpur, Vanilla
 - **Modded Java servers** — Fabric, NeoForge, Forge (with full installer support)
+- **Bedrock servers** — built-in Apple Virtualization.framework VM; no Docker or external runtime needed
 - Browse and install mods and plugins from Modrinth in-app; import modpacks (`.mrpack`)
 - Live console, performance monitoring, world slot management, auto backups
 - Archive system — auto-archives downloaded jars; archive-first reinstalls
 - Startup crash diagnostics with one-click repair
 - Watchdog — automatically restarts MSC if it crashes
+- Playit.gg tunneling — fully in-app setup (email + password, no browser); MSC creates and manages tunnels natively
+- Xbox Broadcast — console/mobile players see your server in the Friends tab; configurable from the Create Server wizard
 - Remote API for the iOS companion app
 
 → [View macOS README](MSCmacOS/README.md)
@@ -95,7 +98,7 @@ Control your server from your iPhone over LAN or Tailscale VPN.
 | MSC (macOS) | macOS 13 or later |
 | MSC Remote (iOS) | iOS 16 or later |
 | Java servers | [Adoptium Temurin](https://adoptium.net) |
-| Bedrock servers | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+| Bedrock servers | Built in — macOS 13+ required (uses Apple Virtualization.framework) |
 
 ---
 
@@ -112,7 +115,6 @@ MSC would not exist without these projects. Thanks to everyone who built and mai
 | [MinecraftForge](https://minecraftforge.net) | Original mod loader for Java servers |
 | [GeyserMC / Geyser](https://github.com/GeyserMC/Geyser) | Protocol bridge, lets Bedrock clients join Java servers |
 | [GeyserMC / Floodgate](https://github.com/GeyserMC/Floodgate) | Allows Bedrock players to join without a Java account |
-| [itzg / minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server) | Docker image for Bedrock Dedicated Server |
 | [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) | Xbox and console LAN discovery broadcasting |
 | [Modrinth](https://modrinth.com) | Mod and plugin catalog used for in-app browsing and installation |
 | [Playit.gg](https://playit.gg) | Tunnel service for hosting without port forwarding |

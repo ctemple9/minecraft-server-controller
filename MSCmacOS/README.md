@@ -2,7 +2,7 @@
 
 **One app. Any Minecraft server.**
 
-Minecraft Server Controller is a macOS utility for running and managing Minecraft servers — Standard Java (Paper, Purpur, Vanilla), Modded Java (Fabric, NeoForge, Forge), and Bedrock (via Docker) — from a single, purpose-built interface. No terminal required.
+Minecraft Server Controller is a macOS utility for running and managing Minecraft servers — Standard Java (Paper, Purpur, Vanilla), Modded Java (Fabric, NeoForge, Forge), and Bedrock (built-in VM) — from a single, purpose-built interface. No terminal required.
 
 > **Built by ctemple9 / TempleTech**
 
@@ -71,22 +71,28 @@ Minecraft Server Controller is a macOS utility for running and managing Minecraf
 - Java version compatibility preflight — warns before launch if the installed Java is too old for the chosen MC version
 
 ### Bedrock Servers
-- Docker-based Bedrock runtime via `itzg/minecraft-bedrock-server`
+- Built-in VM runtime — Bedrock Dedicated Server runs in a lightweight Apple Virtualization.framework VM; no Docker, no external install
+- Automatic provisioning — MSC downloads and installs the correct BDS version on first start and updates it when a new version is selected
 - BedrockConnect integration for cross-platform LAN play
-- Xbox Broadcast support for console/mobile discovery
+- Xbox Broadcast support for console/mobile discovery; enable during server creation in the wizard
 - Allowlist management
 - Bedrock-specific properties editor
+- Player profile cards — reads both compacted LevelDB tables and write-ahead log files so profiles appear immediately after a player's first session; auto-names players via liveness correlation when possible
 
 ### Both Server Types
 - Session log and player history
 - Resource pack management
 - DuckDNS hostname support
-- Playit.gg tunnel support — host without port forwarding
+- **Playit.gg tunneling** — fully in-app setup (email + password, no browser); MSC signs in natively, claims an agent, and creates Java + Bedrock tunnels automatically; Simple Voice Chat tunnel auto-created when the SVC plugin is detected
+- **Xbox Broadcast** — console and mobile players see your server in the Friends tab; enable during server creation or from the server detail view; supports in-app Microsoft sign-in (WKWebView device-code flow)
+- **"Initiate" first-start flow** — on first launch, MSC runs a two-pass sequence: generate all config files (pass 1), then bring up networking transports (pass 2), before showing a completion sheet with full connection info; LAN, playit.gg, and Xbox/console connection methods shown
+- **"How to Connect" sidebar section** — always-visible quick-access panel with all connection methods; show/hide toggle masks addresses for screen sharing
 - Remote API for the **MSC Remote** iOS companion app
-- Onboarding and setup wizard — context-aware tour adapts to your chosen server type
-- Server Handbook — 22 in-app help topics across 6 categories
+- Onboarding and setup wizard — 7-page multi-step flow (Welcome, Server Type, Server Root + Java, playit.gg, Xbox Broadcast, Tailscale, Done); context-aware tour adapts to chosen server type
+- Server Handbook — 31 in-app help topics across 6 categories
 - Server notes
 - Edit server — split-view editor with a grouped sidebar for all settings tabs
+- Expanded server.properties editor — World settings (game mode, difficulty, world type, hardcore, PvP, mob spawning), Server settings (whitelist, idle timeout, op permission level), Purpur-specific section
 - Watchdog — launchd-based process that restarts MSC automatically if it crashes
 - World thumbnails and player skin overrides
 
@@ -96,7 +102,7 @@ Minecraft Server Controller is a macOS utility for running and managing Minecraf
 
 - **macOS** 13 or later
 - **Java** (for Java servers) — [Adoptium Temurin](https://adoptium.net) recommended
-- **Docker Desktop** (for Bedrock servers) — [docker.com](https://www.docker.com/products/docker-desktop/)
+- **Bedrock servers** — no external install needed; runs in a built-in Apple Virtualization.framework VM (macOS 13+ required)
 
 ---
 
@@ -149,7 +155,9 @@ MSC includes a built-in Remote API server. The **MSC Remote** iOS app connects t
 MSC is a SwiftUI/MVVM macOS app:
 
 - `AppViewModel` — central state, split across `AppViewModel+X.swift` extension files
-- `ServerBackend` protocol — `JavaServerBackend` and `BedrockServerBackend` implement server-type-specific logic
+- `ServerBackend` protocol — `JavaServerBackend`, `BedrockServerBackend` (legacy Docker, kept for reference), and `VMBedrockServerBackend` (active — boots a bundled Kata kernel + custom initramfs via `VZVirtualMachine`) implement server-type-specific logic
+- `UDPRelay` — Network.framework relay that bridges host port 19132 to the guest VM so LAN and playit.gg clients can reach BDS
+- `BedrockProvisioner` — downloads and extracts the correct BDS Linux binary into `serverDir` on first start and on version change
 - `JavaServerFlavor` — enum covering all Java server types (Paper, Purpur, Vanilla, Fabric, NeoForge, Forge); drives provisioning kind, add-on folder, Modrinth facets, and UI labels
 - `ServerJarProviders` — download-and-go provisioners for Paper, Purpur, Vanilla, and Fabric; `MSCHTTP` sets the required User-Agent on all outbound requests
 - `NeoForgeInstaller` / `ForgeInstaller` — run the `--installServer` installer, stream output, locate the generated args file
@@ -176,10 +184,8 @@ MSC is a SwiftUI/MVVM macOS app:
 - [MinecraftForge](https://minecraftforge.net) — original Java mod loader
 - [GeyserMC/Geyser](https://github.com/GeyserMC/Geyser) — protocol translation layer allowing Bedrock clients to join Java servers
 - [GeyserMC/Floodgate](https://github.com/GeyserMC/Floodgate) — hybrid mode plugin for Geyser, allowing Bedrock players without a Java account
-- [itzg/minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server) — Bedrock Dedicated Server Docker image
 - [BedrockConnect](https://github.com/Pugmatt/BedrockConnect) — cross-platform server browser for Bedrock/console players
 - [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster) — Xbox/console LAN discovery broadcasting
 - [Modrinth](https://modrinth.com) — mod and plugin catalog used for in-app browsing and installation
 - [Playit.gg](https://playit.gg) — tunnel service for hosting without port forwarding
 - [Adoptium Temurin](https://adoptium.net) — recommended Java runtime
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — container runtime for Bedrock server management

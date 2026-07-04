@@ -19,7 +19,7 @@ import Foundation
 /// Typed representation of the fields MSC surfaces from a BDS server.properties file.
 /// Only the keys the app cares about are included; all others are preserved on round-trip
 /// via the raw dictionary in BedrockPropertiesManager.readProperties(serverDir:).
-struct BedrockPropertiesModel {
+struct BedrockPropertiesModel: Equatable {
     // General
     var levelName: String       = "Bedrock level"
     var maxPlayers: Int         = 10

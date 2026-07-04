@@ -43,14 +43,14 @@ struct MSCSettingsView: View {
     @State private var storageAppSupportBytes: Int64? = nil
     @State private var storageServersRootBytes: Int64? = nil
     @State private var storageIsLoading: Bool = false
-    @State private var isShowingPlayitGuideFromSettings: Bool = false
+    // @State private var isShowingPlayitGuideFromSettings: Bool = false  // hidden — app handles playit setup in-flow
 
     // MARK: - Tab state
 
     @State private var selectedTab: PrefsTab = .general
 
     enum PrefsTab {
-        case general, remote, data, help
+        case general, remote, data
     }
 
     // MARK: - Contextual help anchor IDs
@@ -58,8 +58,7 @@ struct MSCSettingsView: View {
     private let contextualHelpGuideIDs: Set<String> = [
         "preferences.general",
         "preferences.remote-access",
-        "preferences.data",
-        "preferences.help"
+        "preferences.data"
     ]
 
     private let appearanceCardAnchorID            = "preferences.appearance"
@@ -74,7 +73,6 @@ struct MSCSettingsView: View {
     private let storageCardAnchorID               = "preferences.storage"
     private let archiveCardAnchorID               = "preferences.archive"
     private let portsCardAnchorID                 = "preferences.ports"
-    private let learnHelpCardAnchorID             = "preferences.learnHelp"
     private let saveButtonAnchorID                = "preferences.saveButton"
 
     // MARK: - Per-tab contextual help guides
@@ -163,24 +161,11 @@ struct MSCSettingsView: View {
         ])
     }
 
-    private var helpTabHelpGuide: ContextualHelpGuide {
-        ContextualHelpGuide(id: "preferences.help", steps: [
-            helpStep(
-                id: "preferences.help.learnHelp",
-                title: "Learn & Help reopens the guided tours",
-                body: "Use this section to bring back the onboarding material at any time — the Server Handbook, the prerequisites checklist, the setup tour, and the port forwarding guide. Nothing here changes your configuration; it just relaunches the walkthroughs.",
-                anchorID: learnHelpCardAnchorID,
-                nextLabel: "Done"
-            )
-        ])
-    }
-
     private func presentCurrentTabHelp() {
         switch selectedTab {
         case .general: ContextualHelpManager.shared.start(generalTabHelpGuide)
         case .remote:  ContextualHelpManager.shared.start(remoteAccessHelpGuide)
         case .data:    ContextualHelpManager.shared.start(dataTabHelpGuide)
-        case .help:    ContextualHelpManager.shared.start(helpTabHelpGuide)
         }
     }
 
@@ -355,10 +340,9 @@ struct MSCSettingsView: View {
     private var prefsTabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 2) {
-                PrefsTabButton(icon: "gearshape.fill",           label: "General", isSelected: selectedTab == .general) { selectedTab = .general }
-                PrefsTabButton(icon: "iphone",                   label: "Remote",  isSelected: selectedTab == .remote)  { selectedTab = .remote }
-                PrefsTabButton(icon: "externaldrive.fill",       label: "Data",    isSelected: selectedTab == .data)    { selectedTab = .data }
-                PrefsTabButton(icon: "questionmark.circle.fill", label: "Help",    isSelected: selectedTab == .help)    { selectedTab = .help }
+                PrefsTabButton(icon: "gearshape.fill",     label: "General", isSelected: selectedTab == .general) { selectedTab = .general }
+                PrefsTabButton(icon: "iphone",             label: "Remote",  isSelected: selectedTab == .remote)  { selectedTab = .remote }
+                PrefsTabButton(icon: "externaldrive.fill", label: "Data",    isSelected: selectedTab == .data)    { selectedTab = .data }
             }
             .padding(.horizontal, MSC.Spacing.xl)
             .padding(.vertical, MSC.Spacing.sm)
@@ -387,8 +371,6 @@ struct MSCSettingsView: View {
             storageCard
             archiveCard
             portsCard
-        case .help:
-            learnHelpCard
         }
     }
 
@@ -499,50 +481,6 @@ struct MSCSettingsView: View {
     private var portsCard: some View {
         PreferencesPortsSection(anchorID: portsCardAnchorID)
             .environmentObject(viewModel)
-    }
-
-    private var learnHelpCard: some View {
-        PreferencesLearnHelpSection(
-            onShowConceptGuide: {
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    viewModel.showConceptGuideFromPreferences()
-                }
-            },
-            onShowServerHandbook: {
-                viewModel.showServerHandbookFromPreferences()
-                dismiss()
-            },
-            onShowPrerequisites: {
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    viewModel.isShowingPrerequisites = true
-                }
-            },
-            onRestartSetupTour: {
-                dismiss()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    OnboardingManager.shared.reset()
-                }
-            },
-            onOpenPortForwardGuide: {
-                viewModel.isShowingRouterPortForwardGuide = true
-                dismiss()
-            },
-            onOpenPlayitGuide: {
-                isShowingPlayitGuideFromSettings = true
-            },
-            onOpenGitHub: {
-                if let url = URL(string: "https://github.com/ctemple9/minecraft-server-controller") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        )
-        .id(learnHelpCardAnchorID)
-        .contextualHelpAnchor(learnHelpCardAnchorID)
-        .sheet(isPresented: $isShowingPlayitGuideFromSettings) {
-            PlayitSetupGuideSheet(localPort: 25565, bedrockPort: 19132)
-        }
     }
 
     private var storageCard: some View {

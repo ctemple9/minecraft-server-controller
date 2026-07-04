@@ -667,17 +667,17 @@ private struct CGPage7_Ready: View {
     }
 
     private func summaryNode(icon: String, label: String, color: Color) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(color.opacity(0.2))
-                    .frame(width: 44, height: 44)
+                    .fill(color.opacity(0.25))
+                    .frame(width: 68, height: 68)
                 Image(systemName: icon)
-                    .font(.system(size: 18))
+                    .font(.system(size: 28))
                     .foregroundStyle(color)
             }
             Text(label)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.55))
         }
     }

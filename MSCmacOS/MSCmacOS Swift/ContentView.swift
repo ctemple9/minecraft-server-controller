@@ -135,6 +135,7 @@ struct ContentView: View {
     @State private var isShowingPluginTemplates = false
     @State private var isShowingPaperTemplates = false
     @State private var isShowingManageServers = false
+    @State private var isShowingHelpPopover = false
 
     // Draggable console split
     @State private var consoleSplitFraction: CGFloat = 0.7
@@ -423,14 +424,17 @@ struct ContentView: View {
                         .help(isConsoleHidden ? "Show console (⌥⌘J)" : "Hide console (⌥⌘J)")
 
                         Button {
-                            viewModel.triggerExplainWorkspace = true
+                            isShowingHelpPopover.toggle()
                         } label: {
                             Image(systemName: "questionmark.circle")
                                 .font(.system(size: 14, weight: .medium))
                         }
                         .buttonStyle(MSCGhostIconButtonStyle(size: 30))
-                        .help("Explain this workspace")
-                        .disabled(viewModel.selectedServer == nil)
+                        .help("Help & guides")
+                        .popover(isPresented: $isShowingHelpPopover, arrowEdge: .bottom) {
+                            ToolbarHelpPopover(isPresented: $isShowingHelpPopover)
+                                .environmentObject(viewModel)
+                        }
 
                         Button {
                             viewModel.isShowingPreferences = true
@@ -694,6 +698,11 @@ struct ContentView: View {
             )
         }
 
+        // Offer to save the alt account after a successful Xbox broadcast sign-in.
+        .sheet(item: $viewModel.pendingBroadcastGamertagSave) { prompt in
+            BroadcastAltAccountSaveSheet(prompt: prompt).environmentObject(viewModel)
+        }
+
         // Error alerts
         .alert(item: $viewModel.errorAlert) { error in
             Alert(
@@ -701,6 +710,75 @@ struct ContentView: View {
                 message: Text(error.message),
                 dismissButton: .default(Text("OK"))
             )
+        }
+
+        // Flow 1: SVC installed + playit on + voice tunnel off (three-button form)
+        .alert("Simple Voice Chat needs a tunnel",
+               isPresented: Binding(
+                get: { viewModel.pendingSVCTunnelMismatch != nil },
+                set: { if !$0 { viewModel.pendingSVCTunnelMismatch = nil } }
+               )) {
+            Button("Enable Tunnel") {
+                if let id = viewModel.pendingSVCTunnelMismatch?.serverId {
+                    viewModel.setPlayitEnabled(true, voiceChat: true, for: id)
+                }
+            }
+            Button("Disable Voice Chat", role: .destructive) {
+                if let id = viewModel.pendingSVCTunnelMismatch?.serverId {
+                    viewModel.disableSVCPlugin(for: id)
+                }
+            }
+            Button("Don\u{2019}t Ask Again", role: .cancel) {
+                if let id = viewModel.pendingSVCTunnelMismatch?.serverId {
+                    viewModel.dismissSVCTunnelMismatch(for: id)
+                }
+                viewModel.pendingSVCTunnelMismatch = nil
+            }
+        } message: {
+            Text("Simple Voice Chat is enabled but its playit.gg tunnel is off. Players connecting via playit.gg won\u{2019}t be able to use voice chat.")
+        }
+
+        // Flow 2: port forwarding + SVC installed — remind user to forward UDP 24454
+        .alert("Simple Voice Chat — Port Check",
+               isPresented: Binding(
+                get: { viewModel.pendingSVCPortForwardingPrompt != nil },
+                set: { if !$0 { viewModel.pendingSVCPortForwardingPrompt = nil } }
+               )) {
+            Button("Yes, it\u{2019}s set up") {
+                if let id = viewModel.pendingSVCPortForwardingPrompt?.serverId {
+                    viewModel.confirmSVCPortForwarding(for: id)
+                }
+                viewModel.pendingSVCPortForwardingPrompt = nil
+            }
+            Button("Not yet", role: .cancel) {
+                // "No" is not persisted — re-shown on next start
+                viewModel.pendingSVCPortForwardingPrompt = nil
+            }
+        } message: {
+            Text("Have you forwarded UDP port 24454 on your router for Simple Voice Chat? Players on different networks won\u{2019}t be able to connect to voice chat without it.")
+        }
+
+        // Bedrock tunnel missing — playit on + bedrock port set but no Bedrock tunnel created yet
+        .alert("Bedrock Tunnel Not Set Up",
+               isPresented: Binding(
+                get: { viewModel.pendingBedrockTunnelMissing != nil },
+                set: { if !$0 { viewModel.pendingBedrockTunnelMissing = nil } }
+               )) {
+            Button("Add Bedrock Tunnel") {
+                viewModel.pendingBedrockTunnelMissing = nil
+                viewModel.isShowingPlayitSecretSetup = true
+            }
+            Button("Not Now", role: .cancel) {
+                viewModel.pendingBedrockTunnelMissing = nil
+            }
+        } message: {
+            Text("A Bedrock port is configured but no Bedrock tunnel exists on your playit.gg account yet. Sign in to add it — your existing agent and Java tunnel will be reused.")
+        }
+
+        // Keep viewModel aware of ContentView-local sheets so broadcast auth
+        // knows not to interrupt them.
+        .onChange(of: isShowingManageServers || isShowingPaperTemplates || isShowingPluginTemplates) { _, anyLocal in
+            viewModel.contentViewSheetIsPresented = anyLocal
         }
     }
 }
@@ -737,6 +815,174 @@ struct BroadcastAuthWebSheet: View {
             }
         }
         .frame(minWidth: 540, minHeight: 580)
+    }
+}
+
+// MARK: - Save Alt Account Sheet (after Xbox broadcast sign-in)
+
+/// Pops up after a successful broadcast sign-in so the user can save a record of
+/// the alt/dummy account they used. The gamertag is prefilled from the auth log;
+/// the email, password, and photo are entered here by the user (the app never
+/// reads them from Microsoft's page). The password is stored in the Keychain.
+struct BroadcastAltAccountSaveSheet: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    let prompt: BroadcastGamertagSavePrompt
+
+    @State private var email: String = ""
+    @State private var gamertag: String = ""
+    @State private var password: String = ""
+    @State private var showPassword = false
+    @State private var avatarPath: String = ""
+    @State private var avatarImage: NSImage?
+    @State private var didLoad = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: MSC.Spacing.md) {
+                Image(systemName: "person.crop.circle.badge.checkmark")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Save Alt Account")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("Signed in as \(prompt.gamertag)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(MSC.Spacing.xl)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+                    Text("Keep a record of the alt/dummy account you use for Xbox broadcast so you don't lose it. Stored locally in this server's config; the password is kept in your Mac's Keychain. Enter the email and password yourself — the app never reads them from the Microsoft sign-in page.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: MSC.Spacing.md) {
+                        ZStack {
+                            if let img = avatarImage {
+                                Image(nsImage: img)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 52, height: 52)
+                                    .clipShape(Circle())
+                            } else {
+                                Circle().fill(Color.accentColor.opacity(0.15)).frame(width: 52, height: 52)
+                                Text(String(prompt.gamertag.prefix(1)).uppercased())
+                                    .font(.title2.bold())
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        Button("Choose Photo…") { choosePhoto() }
+                            .buttonStyle(MSCSecondaryButtonStyle())
+                            .controlSize(.small)
+                        Spacer()
+                    }
+
+                    labeledField("Email") {
+                        TextField("email@example.com", text: $email)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    labeledField("Gamertag") {
+                        TextField("Gamertag", text: $gamertag)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    labeledField("Password") {
+                        HStack(spacing: MSC.Spacing.xs) {
+                            if showPassword {
+                                TextField("Password", text: $password)
+                                    .textFieldStyle(.roundedBorder)
+                            } else {
+                                SecureField("Password", text: $password)
+                                    .textFieldStyle(.roundedBorder)
+                            }
+                            Button {
+                                showPassword.toggle()
+                            } label: {
+                                Image(systemName: showPassword ? "eye.slash" : "eye")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+                .padding(MSC.Spacing.xl)
+            }
+
+            Divider()
+
+            HStack {
+                Button("Not Now") {
+                    viewModel.broadcastGamertagSaveDeclinedServerIds.insert(prompt.serverId)
+                    viewModel.pendingBroadcastGamertagSave = nil
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+
+                Spacer()
+
+                Button("Save") { save() }
+                    .buttonStyle(MSCPrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, MSC.Spacing.xl)
+            .padding(.vertical, MSC.Spacing.md)
+        }
+        .frame(width: 460, height: 540)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear(perform: loadInitial)
+    }
+
+    @ViewBuilder
+    private func labeledField<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.system(size: 12, weight: .semibold))
+            content()
+        }
+    }
+
+    private func loadInitial() {
+        guard !didLoad else { return }
+        didLoad = true
+        gamertag = prompt.gamertag
+        if let cfg = viewModel.configServer(id: prompt.serverId) {
+            email = cfg.xboxBroadcastAltEmail ?? ""
+            if let p = cfg.xboxBroadcastAltAvatarPath, !p.isEmpty {
+                avatarPath = p
+                avatarImage = NSImage(contentsOfFile: p)
+            }
+        }
+        if let pw = KeychainManager.shared.readXboxBroadcastAltPassword(forServerId: prompt.serverId) {
+            password = pw
+        }
+    }
+
+    private func choosePhoto() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedFileTypes = ["png", "jpg", "jpeg", "heic", "gif"]
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK, let url = panel.url {
+            avatarPath = url.path
+            avatarImage = NSImage(contentsOf: url)
+        }
+    }
+
+    private func save() {
+        let cfg = viewModel.configServer(id: prompt.serverId)
+        viewModel.updateBroadcastProfile(
+            for: prompt.serverId,
+            enabled: cfg?.xboxBroadcastEnabled ?? true,
+            ipMode: cfg?.xboxBroadcastIPMode ?? .auto,
+            altEmail: email,
+            altGamertag: gamertag,
+            altPassword: password,
+            altAvatarPath: avatarPath
+        )
+        viewModel.pendingBroadcastGamertagSave = nil
     }
 }
 
@@ -821,6 +1067,81 @@ private struct OrphanedProcessBanner: View {
         .padding(.horizontal, MSC.Spacing.xxl)
         .padding(.vertical, MSC.Spacing.sm)
         .background(Color.orange.opacity(0.10))
+    }
+}
+
+// MARK: - Toolbar Help Popover
+
+private struct ToolbarHelpPopover: View {
+    @EnvironmentObject var viewModel: AppViewModel
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            helpRow(
+                icon: "questionmark.circle",
+                label: "Explain this workspace",
+                isDisabled: viewModel.selectedServer == nil
+            ) {
+                isPresented = false
+                viewModel.triggerExplainWorkspace = true
+            }
+
+            Divider()
+                .padding(.vertical, 4)
+
+            helpRow(icon: "info.circle",   label: "How MSC Works…") {
+                isPresented = false
+                viewModel.showConceptGuideFromPreferences()
+            }
+            helpRow(icon: "book",          label: "Server Handbook…") {
+                isPresented = false
+                viewModel.showServerHandbookFromPreferences()
+            }
+            helpRow(icon: "checklist",     label: "Prerequisites & Dependencies…") {
+                isPresented = false
+                viewModel.isShowingPrerequisites = true
+            }
+            helpRow(icon: "arrow.clockwise", label: "Restart Setup Tour…") {
+                isPresented = false
+                OnboardingManager.shared.reset()
+            }
+            helpRow(icon: "network",       label: "Port Forwarding Guide…") {
+                isPresented = false
+                viewModel.isShowingRouterPortForwardGuide = true
+            }
+
+            Divider()
+                .padding(.vertical, 4)
+
+            helpRow(icon: "arrow.up.right.square", label: "GitHub Repository") {
+                if let url = URL(string: "https://github.com/ctemple9/minecraft-server-controller") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
+        .padding(8)
+        .frame(width: 248)
+    }
+
+    @ViewBuilder
+    private func helpRow(icon: String, label: String, isDisabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .frame(width: 16, alignment: .center)
+                Text(label)
+                    .font(.system(size: 12))
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isDisabled ? AnyShapeStyle(Color.secondary.opacity(0.45)) : AnyShapeStyle(Color.primary))
+        .disabled(isDisabled)
     }
 }
 

@@ -104,7 +104,7 @@ struct PerformanceHelpSheetView: View {
                         color: .purple,
                         title: "RAM",
                         description: isBedrock
-                            ? "How much memory the Bedrock VM is currently using. If it stays close to the VM memory limit, reduce load or raise the VM memory cap in Edit Server → General."
+                            ? "How much memory the Bedrock VM is currently using, versus the RAM allocated to it. If it stays close to the allocated total, reduce load or raise the VM memory in Edit Server → General."
                             : "How much of the Java heap is currently in use. If it consistently sits near the maximum you configured, consider raising the max or reducing plugin and chunk-load overhead.",
                         note: isBedrock
                             ? nil

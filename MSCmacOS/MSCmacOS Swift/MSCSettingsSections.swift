@@ -750,58 +750,59 @@ private struct StorageBarRow: View {
     }
 }
 
-struct PreferencesLearnHelpSection: View {
-    let onShowConceptGuide: () -> Void
-    let onShowServerHandbook: () -> Void
-    let onShowPrerequisites: () -> Void
-    let onRestartSetupTour: () -> Void
-    let onOpenPortForwardGuide: () -> Void
-    let onOpenPlayitGuide: () -> Void
-    let onOpenGitHub: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            Label("Learn & Help", systemImage: "questionmark.circle")
-                .font(MSC.Typography.cardTitle)
-                .foregroundStyle(.secondary)
-
-            Divider()
-
-            Button("How MSC Works\u{2026}", action: onShowConceptGuide)
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .help("Visual walkthrough of the server \u{2192} world mental model.")
-
-            Button("Server Handbook\u{2026}", action: onShowServerHandbook)
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .help("Long-form reference covering every feature and concept.")
-
-            Button("Prerequisites & Dependencies\u{2026}", action: onShowPrerequisites)
-                .buttonStyle(MSCSecondaryButtonStyle())
-
-            Button("Restart Setup Tour\u{2026}", action: onRestartSetupTour)
-                .buttonStyle(MSCSecondaryButtonStyle())
-
-            Button("Port Forwarding Guide\u{2026}", action: onOpenPortForwardGuide)
-                .buttonStyle(MSCSecondaryButtonStyle())
-
-            Button("playit.gg Tunnel Setup Guide\u{2026}", action: onOpenPlayitGuide)
-                .buttonStyle(MSCSecondaryButtonStyle())
-
-            Divider()
-
-            Button(action: onOpenGitHub) {
-                HStack(spacing: 5) {
-                    Text("GitHub Repository")
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 11))
-                }
-            }
-            .buttonStyle(MSCSecondaryButtonStyle())
-            .help("Open the MSC source code repository on GitHub.")
-        }
-        .pscCard()
-    }
-}
+// PreferencesLearnHelpSection — moved to ToolbarHelpPopover in ContentView
+// struct PreferencesLearnHelpSection: View {
+//     let onShowConceptGuide: () -> Void
+//     let onShowServerHandbook: () -> Void
+//     let onShowPrerequisites: () -> Void
+//     let onRestartSetupTour: () -> Void
+//     let onOpenPortForwardGuide: () -> Void
+//     // let onOpenPlayitGuide: () -> Void  // hidden — app handles playit setup in-flow
+//     let onOpenGitHub: () -> Void
+//
+//     var body: some View {
+//         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+//             Label("Learn & Help", systemImage: "questionmark.circle")
+//                 .font(MSC.Typography.cardTitle)
+//                 .foregroundStyle(.secondary)
+//
+//             Divider()
+//
+//             Button("How MSC Works\u{2026}", action: onShowConceptGuide)
+//                 .buttonStyle(MSCSecondaryButtonStyle())
+//                 .help("Visual walkthrough of the server → world mental model.")
+//
+//             Button("Server Handbook\u{2026}", action: onShowServerHandbook)
+//                 .buttonStyle(MSCSecondaryButtonStyle())
+//                 .help("Long-form reference covering every feature and concept.")
+//
+//             Button("Prerequisites & Dependencies\u{2026}", action: onShowPrerequisites)
+//                 .buttonStyle(MSCSecondaryButtonStyle())
+//
+//             Button("Restart Setup Tour\u{2026}", action: onRestartSetupTour)
+//                 .buttonStyle(MSCSecondaryButtonStyle())
+//
+//             Button("Port Forwarding Guide\u{2026}", action: onOpenPortForwardGuide)
+//                 .buttonStyle(MSCSecondaryButtonStyle())
+//
+//             // Button("playit.gg Tunnel Setup Guide\u{2026}", action: onOpenPlayitGuide)
+//             //     .buttonStyle(MSCSecondaryButtonStyle())
+//
+//             Divider()
+//
+//             Button(action: onOpenGitHub) {
+//                 HStack(spacing: 5) {
+//                     Text("GitHub Repository")
+//                     Image(systemName: "arrow.up.right.square")
+//                         .font(.system(size: 11))
+//                 }
+//             }
+//             .buttonStyle(MSCSecondaryButtonStyle())
+//             .help("Open the MSC source code repository on GitHub.")
+//         }
+//         .pscCard()
+//     }
+// }
 
 private struct PreferencesModeBadge: View {
     let enabled: Bool

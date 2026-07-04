@@ -29,6 +29,36 @@ struct AppError: Identifiable {
     let message: String
 }
 
+/// Shown when Simple Voice Chat is enabled but the playit.gg voice tunnel is off.
+struct SVCTunnelMismatchAlert: Identifiable {
+    let id = UUID()
+    let serverId: String
+}
+
+/// Shown on first server start when SVC is installed and port forwarding (not playit.gg) is used.
+struct SVCPortForwardingAlert: Identifiable {
+    let id = UUID()
+    let serverId: String
+}
+
+/// Shown when playit.gg is enabled and a Bedrock port is configured but no Bedrock tunnel
+/// exists on the playit.gg account yet (e.g. server was set up Java-only, then a console
+/// player wants to join, or a BDS server is added after a Java-only playit setup).
+struct BedrockTunnelMissingAlert: Identifiable {
+    let id = UUID()
+    let serverId: String
+}
+
+/// Shown after a successful Xbox broadcast sign-in, offering to save the detected
+/// gamertag to the server's broadcast profile — handy when the broadcast account is
+/// an alt/dummy the user might forget. Only the gamertag is captured; email and
+/// password are typed on Microsoft's page and never seen by the app.
+struct BroadcastGamertagSavePrompt: Identifiable {
+    let id = UUID()
+    let serverId: String
+    let gamertag: String
+}
+
 // MARK: - Plugin management
 
 /// Which tier of management a discovered plugin has.

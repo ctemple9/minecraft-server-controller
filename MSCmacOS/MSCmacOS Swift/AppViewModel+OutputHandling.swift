@@ -11,6 +11,13 @@ extension AppViewModel {
 
     func handleServerOutputLine(_ line: String) {
         let clean = AppUtilities.sanitized(line)
+
+        // Silently consume time-query responses — zero console trace, pure state update.
+        if isWorldTimeResponseLine(clean) {
+            parseWorldTime(from: line)
+            return
+        }
+
         let isBedrockServer = selectedServer.flatMap { configServer(for: $0) }?.isBedrock ?? false
         let didReachReadyState =
             clean.contains("Done (") ||
@@ -32,8 +39,14 @@ extension AppViewModel {
         console.appendRaw(line, source: .server)
         remoteAPIServer?.publishConsoleLine(source: "server", text: line)
 
-        // Initiate (first run) auto-stop
-        if let initiatingId = lifecycle.initiatingFirstRunServerId,
+        // Mirror Bedrock console output to logs/latest.log (BDS writes no log of its own).
+        if isBedrockServer { appendBedrockLogLine(line) }
+
+        // Initiate (first run) pass 1 — auto-stop once config files are generated.
+        // The termination router (routeInitiationAfterTermination) then decides
+        // whether to run pass 2 (bring up playit / Xbox broadcast) or show the
+        // completion sheet directly.
+        if lifecycle.initiatingFirstRunServerId != nil,
            !lifecycle.hasIssuedAutoStopForInitiate,
            didReachReadyState {
             lifecycle.hasIssuedAutoStopForInitiate = true
@@ -47,25 +60,82 @@ extension AppViewModel {
                 readySignalDescription = "startup ready signal"
             }
 
-            logAppMessage("[App] Initiation complete (detected \(readySignalDescription)). Auto-stopping so you can edit settings.")
+            logAppMessage("[App] Initiation pass 1 complete (detected \(readySignalDescription)). Auto-stopping.")
             stopServer()
-            if let idx = configManager.config.servers.firstIndex(where: { $0.id == initiatingId }) {
-                if !configManager.config.servers[idx].hasShownFirstStartPopup {
-                    configManager.config.servers[idx].hasShownFirstStartPopup = true
-                    configManager.save()
-                    showFirstStartAlert = true
-                }
-            }
         }
 
         parseTps(from: line)
-        parseWorldTime(from: line)
         parseFeaturedHealth(from: line)
         parsePlayerList(from: line)
         parseBedrockVersion(from: line)
         parseBedrockPlayerEvent(from: line)
         parseJavaPlayerEvent(from: line)
     }
+
+    // MARK: - Bedrock console log file (rolling logs/latest.log)
+
+    /// Opens a fresh `logs/latest.log` for the Bedrock console at server start, rolling
+    /// any previous session's log to a timestamped `console-<date>.log` (pruned to the
+    /// 10 most recent). Called on start; mirrored to by `appendBedrockLogLine`.
+    func startBedrockLogFile(serverDir: String) {
+        closeBedrockLogFile()
+        let fm = FileManager.default
+        let logsDir = URL(fileURLWithPath: serverDir, isDirectory: true)
+            .appendingPathComponent("logs", isDirectory: true)
+        let latest = logsDir.appendingPathComponent("latest.log")
+        do {
+            try fm.createDirectory(at: logsDir, withIntermediateDirectories: true)
+            if fm.fileExists(atPath: latest.path) {
+                let stamp = Self.bedrockLogTimestampFormatter.string(from: Date())
+                let rolled = logsDir.appendingPathComponent("console-\(stamp).log")
+                try? fm.moveItem(at: latest, to: rolled)
+                pruneRolledBedrockLogs(in: logsDir, keeping: 10)
+            }
+            fm.createFile(atPath: latest.path, contents: nil)
+            let handle = try FileHandle(forWritingTo: latest)
+            bedrockLogHandle = handle
+            let header = "=== MSC Bedrock console log — started \(Date()) ===\n"
+            if let data = header.data(using: .utf8) { try? handle.write(contentsOf: data) }
+        } catch {
+            logAppMessage("[App] Could not open Bedrock log file: \(error.localizedDescription)")
+        }
+    }
+
+    /// Appends one console line to the open `logs/latest.log` (no-op if not open).
+    func appendBedrockLogLine(_ line: String) {
+        guard let handle = bedrockLogHandle else { return }
+        let text = line.hasSuffix("\n") ? line : line + "\n"
+        if let data = text.data(using: .utf8) { try? handle.write(contentsOf: data) }
+    }
+
+    /// Flushes and closes the Bedrock console log file (called on server stop).
+    func closeBedrockLogFile() {
+        guard let handle = bedrockLogHandle else { return }
+        try? handle.synchronize()
+        try? handle.close()
+        bedrockLogHandle = nil
+    }
+
+    private func pruneRolledBedrockLogs(in logsDir: URL, keeping keep: Int) {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(
+            at: logsDir, includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        let rolled = files
+            .filter { $0.lastPathComponent.hasPrefix("console-") && $0.pathExtension == "log" }
+            .sorted {
+                let a = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+                let b = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+                return a > b
+            }
+        for old in rolled.dropFirst(keep) { try? fm.removeItem(at: old) }
+    }
+
+    private static let bedrockLogTimestampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd-HHmmss"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
 
     // MARK: - Unexpected-stop diagnostics
 
@@ -211,9 +281,32 @@ extension AppViewModel {
 
     func handleBroadcastOutputLine(_ line: String) {
         logAppMessage("[Broadcast] \(line)")
+        let clean = AppUtilities.sanitized(line)
         if let prompt = Self.parseBroadcastAuthPrompt(from: line) {
-            pendingBroadcastAuthPrompt = prompt
+            enqueueBroadcastAuthPrompt(prompt)
         }
+        // Capture the authenticated gamertag for the initiation completion sheet.
+        // (Transient only — persisting it to the server config is deferred.)
+        // Authentication also marks the start of the "technical" wait for the
+        // Xbox LIVE session, so arm that timeout now (never during sign-in).
+        if let gamertag = Self.parseBroadcastGamertag(from: clean) {
+            initiationBroadcastGamertag = gamertag
+            armInitiationBroadcastTechTimeout()
+            maybeOfferSaveBroadcastGamertag(gamertag)
+        }
+        // "Creation of Xbox LIVE session was successful!" → broadcast is fully up.
+        if clean.localizedCaseInsensitiveContains("Creation of Xbox LIVE session was successful") {
+            markInitiationBroadcastReadyIfNeeded()
+        }
+    }
+
+    /// Parses `Successfully authenticated as {gamertag} ({xuid})` → the gamertag.
+    static func parseBroadcastGamertag(from clean: String) -> String? {
+        guard let r = clean.range(of: "Successfully authenticated as ") else { return nil }
+        let after = clean[r.upperBound...]
+        guard let paren = after.range(of: " (") else { return nil }
+        let tag = after[..<paren.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        return tag.isEmpty ? nil : tag
     }
 
     private static func parseBroadcastAuthPrompt(from line: String) -> BroadcastAuthPrompt? {
@@ -260,39 +353,68 @@ extension AppViewModel {
 
     // MARK: - World time parsing
 
+    /// Returns true if the sanitized line is a server response to one of the auto
+    /// `time query` commands so `handleServerOutputLine` can consume it silently
+    /// without adding it to the console.
+    private func isWorldTimeResponseLine(_ clean: String) -> Bool {
+        if clean.contains("The game time is ") { return true }           // Paper 26+
+        if clean.contains("Timeline minecraft:day is at ") { return true }
+        if clean.contains("Timeline minecraft:gametime is at ") { return true }
+        if !pendingTimeQueryKinds.isEmpty, clean.contains("The time is ") { return true }
+        return false
+    }
+
     /// Parses responses to `time query gametime` and `time query day`.
-    /// Handles both response formats:
-    ///   - Legacy (pre-1.21.4):  "The time is X"
-    ///   - New (1.21.4+ Paper):  "Timeline minecraft:X is at Y tick(s)"
+    /// Content-aware: modern formats are identified by prefix so response order
+    /// doesn't matter. Legacy "The time is X" still uses the positional queue.
     private func parseWorldTime(from line: String) {
-        guard !pendingTimeQueryKinds.isEmpty else { return }
         let clean = AppUtilities.sanitized(line)
 
-        let value: Int
-        if let atRange = clean.range(of: " is at "),
-           let tickRange = clean.range(of: " tick", range: atRange.upperBound..<clean.endIndex) {
-            // New Paper format: "Timeline minecraft:day is at 35 tick(s)"
-            let digits = String(clean[atRange.upperBound..<tickRange.lowerBound])
-                .trimmingCharacters(in: .whitespaces)
-            guard let v = Int(digits) else { return }
-            value = v
-        } else if let range = clean.range(of: "The time is ") {
-            // Legacy format: "The time is 1234"
+        // Paper 26+: "The game time is X tick(s)"  (time query gametime)
+        if let range = clean.range(of: "The game time is ") {
             let tail = clean[range.upperBound...]
-            let digits = tail.prefix { $0.isNumber || $0 == "-" }
-            guard let v = Int(digits) else { return }
-            value = v
-        } else {
+            let digits = tail.prefix { $0.isNumber }
+            if let v = Int(digits) { worldDayNumber = v / 24000 }
             return
         }
 
-        let kind = pendingTimeQueryKinds.removeFirst()
-        switch kind {
-        case .gametime:
-            worldDayNumber = value / 24000
-        case .daytime:
-            worldTimeOfDayTicks = ((value % 24000) + 24000) % 24000
-            worldTimeIsLive = true
+        // Paper 1.21.4+: "Timeline minecraft:day is at X tick(s)"  (time query day)
+        if clean.contains("Timeline minecraft:day"),
+           let atRange = clean.range(of: " is at "),
+           let tickRange = clean.range(of: " tick", range: atRange.upperBound..<clean.endIndex) {
+            let digits = String(clean[atRange.upperBound..<tickRange.lowerBound])
+                .trimmingCharacters(in: .whitespaces)
+            if let v = Int(digits) {
+                worldTimeOfDayTicks = ((v % 24000) + 24000) % 24000
+                worldTimeIsLive = true
+            }
+            return
+        }
+
+        // Paper 1.21.4 older builds: "Timeline minecraft:gametime is at X tick(s)"
+        if clean.contains("Timeline minecraft:gametime"),
+           let atRange = clean.range(of: " is at "),
+           let tickRange = clean.range(of: " tick", range: atRange.upperBound..<clean.endIndex) {
+            let digits = String(clean[atRange.upperBound..<tickRange.lowerBound])
+                .trimmingCharacters(in: .whitespaces)
+            if let v = Int(digits) { worldDayNumber = v / 24000 }
+            return
+        }
+
+        // Legacy (pre-1.21.4): "The time is X" — positional: gametime first, daytime second
+        guard !pendingTimeQueryKinds.isEmpty else { return }
+        if let range = clean.range(of: "The time is ") {
+            let tail = clean[range.upperBound...]
+            let digits = tail.prefix { $0.isNumber || $0 == "-" }
+            guard let v = Int(digits) else { return }
+            let kind = pendingTimeQueryKinds.removeFirst()
+            switch kind {
+            case .gametime:
+                worldDayNumber = v / 24000
+            case .daytime:
+                worldTimeOfDayTicks = ((v % 24000) + 24000) % 24000
+                worldTimeIsLive = true
+            }
         }
     }
 
@@ -395,6 +517,9 @@ extension AppViewModel {
                 fireNotificationIfEnabled(event: .playerJoined(playerName: identity.name),
                                           serverName: cfg.displayName, serverId: cfg.id)
             }
+            // Console-first naming: bind this live gamertag to its (anonymous) on-disk
+            // profile now that the player is online.
+            refreshBedrockProfilesAfterPlayerEvent(nameHint: identity.name)
         } else if clean.contains("Player disconnected:"),
                   let identity = extractIdentity(prefix: "Player disconnected: ") {
             onlinePlayers.removeAll { $0.name.caseInsensitiveCompare(identity.name) == .orderedSame }
@@ -404,6 +529,9 @@ extension AppViewModel {
                 fireNotificationIfEnabled(event: .playerLeft(playerName: identity.name),
                                           serverName: cfg.displayName, serverId: cfg.id)
             }
+            // Bind on leave too: BDS has now saved the player's record, so a first-ever
+            // join that had no on-disk record at connect time resolves here.
+            refreshBedrockProfilesAfterPlayerEvent(nameHint: identity.name)
         }
     }
 

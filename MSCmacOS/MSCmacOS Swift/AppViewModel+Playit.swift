@@ -78,7 +78,7 @@ extension AppViewModel {
     }
 
     /// Bedrock / Geyser UDP port for the given server.
-    private func bedrockPortForPlayit(for server: ConfigServer) -> Int? {
+    func bedrockPortForPlayit(for server: ConfigServer) -> Int? {
         if server.isBedrock {
             return server.bedrockPort ?? 19132
         }
@@ -220,6 +220,7 @@ extension AppViewModel {
                     self?.playitTunnelAddress = addr
                     self?.logAppMessage("[Playit] Java tunnel ready at \(addr)")
                 }
+                self?.markInitiationPlayitReadyIfNeeded()
             }
         } else if playitExpectingAddressLine {
             playitExpectingAddressLine = false
@@ -316,7 +317,11 @@ extension AppViewModel {
                     if changed {
                         self.configManager.save()
                         self.logAppMessage("[Playit] Tunnel addresses updated — Java: \(java ?? "—"), Bedrock: \(bedrock ?? "—"), Voice: \(voice ?? "—")")
+                        // Resync the broadcaster to the new tunnel address — but NOT
+                        // during first-time initiation, where stopping/restarting it
+                        // would throw away an in-progress Xbox sign-in (device code).
                         if self.isXboxBroadcastRunning,
+                           !self.lifecycle.isInitiationPass2,
                            let server = self.selectedServer,
                            let cfg = self.configServer(for: server) {
                             self.stopBroadcastIfRunning()
@@ -329,6 +334,16 @@ extension AppViewModel {
                        let cfg = self.configServer(for: server),
                        cfg.playitVoiceChatEnabled {
                         self.applyVoiceChatHost(v, for: cfg)
+                    }
+                    // After the API returns we have the most accurate picture of which tunnels
+                    // exist. Check now so we don't false-positive before the fetch completes.
+                    if let server = self.selectedServer, let cfg = self.configServer(for: server) {
+                        self.checkBedrockTunnelMissing(for: cfg)
+                    }
+                    // During first-time initiation pass 2, a non-nil tunnel address
+                    // confirms playit is up.
+                    if java != nil || bedrock != nil {
+                        self.markInitiationPlayitReadyIfNeeded()
                     }
                 }
             } catch {
@@ -436,6 +451,26 @@ extension AppViewModel {
         logAppMessage("[Playit] \(label) tunnel create timed out — agent didn't come online in time.")
     }
 
+    // MARK: - Bedrock tunnel missing detection
+
+    /// Fires `pendingBedrockTunnelMissing` when playit is on, a Bedrock port is configured,
+    /// but no Bedrock tunnel has been created on the account yet. Called after the tunnel-
+    /// address fetch so we have an accurate picture before alerting.
+    func checkBedrockTunnelMissing(for server: ConfigServer) {
+        // Never prompt during first-time initiation: the native claim creates the
+        // Java AND Bedrock tunnels together, but they briefly report as "pending"
+        // before their addresses resolve. Prompting here would ask the user to sign
+        // in a second time to "add" a tunnel that's already being created.
+        guard !lifecycle.isInitiationPass2 else { return }
+        guard server.playitEnabled,
+              playitSecretKey != nil,
+              bedrockPortForPlayit(for: server) != nil,
+              configManager.config.playitBedrockAddress == nil else { return }
+        // Don't re-show if one is already pending.
+        guard pendingBedrockTunnelMissing == nil else { return }
+        pendingBedrockTunnelMissing = BedrockTunnelMissingAlert(serverId: server.id)
+    }
+
     // MARK: - Simple Voice Chat tunnel
 
     /// Writes `voice_host` into Simple Voice Chat's config so clients route voice through the tunnel.
@@ -495,8 +530,17 @@ extension AppViewModel {
         if let vc = voiceChat {
             configManager.config.servers[idx].playitVoiceChatEnabled = vc
         }
+        // When voice chat tunnel turns off (explicitly or because playit itself is disabled),
+        // reset the mismatch prompt so it fires again if the user re-enables SVC without the tunnel.
+        let voiceJustTurnedOff = (voiceChat == false) || (!enabled && wasVoiceEnabled)
+        if voiceJustTurnedOff {
+            configManager.config.servers[idx].svcTunnelPromptDismissed = false
+        }
+
         configManager.save()
         logAppMessage("[Playit] Tunnel \(enabled ? "enabled" : "disabled") for server.")
+
+        checkSVCTunnelMismatch()
 
         // Voice chat just turned on: create the tunnel now if the agent is already online,
         // otherwise it's created on next server start. Either way, SVC only reads voice_host at

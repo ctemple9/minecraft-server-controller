@@ -197,6 +197,7 @@
 		9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02050000000000000001 /* PlayerSkinStore.swift */; };
 		9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02060000000000000001 /* PlayerSkinRenderer.swift */; };
 		9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021A0000000000000001 /* BedrockProvisioner.swift */; };
+		9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021B0000000000000001 /* PurpurConfigManager.swift */; };
 		9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02160000000000000001 /* VMBedrockServerBackend.swift */; };
 		9AFE02170000000000000002 /* UDPRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02170000000000000001 /* UDPRelay.swift */; };
 		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
@@ -431,6 +432,7 @@
 		9AFE02050000000000000001 /* PlayerSkinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinStore.swift; sourceTree = "<group>"; };
 		9AFE02060000000000000001 /* PlayerSkinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinRenderer.swift; sourceTree = "<group>"; };
 		9AFE021A0000000000000001 /* BedrockProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvisioner.swift; sourceTree = "<group>"; };
+		9AFE021B0000000000000001 /* PurpurConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurpurConfigManager.swift; sourceTree = "<group>"; };
 		9AFE02160000000000000001 /* VMBedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMBedrockServerBackend.swift; sourceTree = "<group>"; };
 		9AFE02170000000000000001 /* UDPRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPRelay.swift; sourceTree = "<group>"; };
 		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
@@ -609,6 +611,7 @@
 				9AFE02050000000000000001 /* PlayerSkinStore.swift */,
 				9AFE02060000000000000001 /* PlayerSkinRenderer.swift */,
 				9AFE021A0000000000000001 /* BedrockProvisioner.swift */,
+				9AFE021B0000000000000001 /* PurpurConfigManager.swift */,
 				9AFE02160000000000000001 /* VMBedrockServerBackend.swift */,
 				9AFE02170000000000000001 /* UDPRelay.swift */,
 				9AFE02080000000000000001 /* JavaServerFlavor.swift */,
@@ -885,6 +888,7 @@
 				9A56329F2F65AD6D00FB8246 /* BedrockPropertiesManager.swift in Sources */,
 				9A5632A02F65AD6D00FB8246 /* ServerEditorSettingsTab.swift in Sources */,
 				9A5632A22F65AD6D00FB8246 /* GeyserConfigManager.swift in Sources */,
+				9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */,
 				9A5632A32F65AD6D00FB8246 /* BannerView.swift in Sources */,
 				9A5632A42F65AD6D00FB8246 /* AppViewModelModels.swift in Sources */,
 				9A5632A52F65AD6D00FB8246 /* FirstStartSheetView.swift in Sources */,

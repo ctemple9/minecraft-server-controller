@@ -23,28 +23,29 @@ enum OnboardingStep: Int, CaseIterable {
     case serverFlavor          = 7   // configure: specific flavor (Java, Next-driven)
     case serverVersion         = 8   // configure: Source / version picker (Java, Next-driven)
     case serverCrossplay       = 9   // configure: Geyser+Floodgate (Java + crossplay-capable)
-    case serverSettings          = 10  // configure: review + Continue
-    case serverConnectivity        = 11  // network step: connectivity type cards
-    case serverConnectivityPorts   = 12  // network step: port fields (Next button)
-    case serverNetworkContinue     = 13  // network step: spotlight Continue button
-    case firstWorld                = 14  // world page: card hides to let user fill, resumes on Continue
-    case serverAddOns              = 15  // plugins/mods page (Java w/ add-on support)
-    case createButton              = 16
-    case dismissManage             = 17
-    case acceptEula                = 18
-    case startButton               = 19
-    case console                   = 20
-    case continueDetails           = 21
-    case expandDetails             = 22
-    case detailsOverviewTab        = 23
-    case detailsPlayersTab         = 24
-    case detailsWorldsTab          = 25
-    case detailsPacksTab           = 26
-    case detailsPerformanceTab     = 27
-    case detailsComponentsTab      = 28
-    case detailsSettingsTab        = 29
-    case detailsFilesTab           = 30
-    case done                      = 31
+    case serverXboxBroadcast   = 10  // configure: Xbox Broadcast (Java+crossplay or Bedrock)
+    case serverSettings          = 11  // configure: review + Continue
+    case serverConnectivity        = 12  // network step: connectivity type cards
+    case serverConnectivityPorts   = 13  // network step: port fields (Next button)
+    case serverNetworkContinue     = 14  // network step: spotlight Continue button
+    case firstWorld                = 15  // world page: card hides to let user fill, resumes on Continue
+    case serverAddOns              = 16  // plugins/mods page (Java w/ add-on support)
+    case createButton              = 17
+    case dismissManage             = 18
+    case acceptEula                = 19
+    case startButton               = 20
+    case console                   = 21
+    case continueDetails           = 22
+    case expandDetails             = 23
+    case detailsOverviewTab        = 24
+    case detailsPlayersTab         = 25
+    case detailsWorldsTab          = 26
+    case detailsPacksTab           = 27
+    case detailsPerformanceTab     = 28
+    case detailsComponentsTab      = 29
+    case detailsSettingsTab        = 30
+    case detailsFilesTab           = 31
+    case done                      = 32
 
     var totalSteps: Int { OnboardingStep.allCases.count - 2 }
 
@@ -69,6 +70,7 @@ enum OnboardingStep: Int, CaseIterable {
         case .serverFlavor:          return "Choose Your Software"
         case .serverVersion:         return "Pick a Version"
         case .serverCrossplay:       return "Bedrock Cross-play"
+        case .serverXboxBroadcast:   return "Xbox Broadcast"
         case .serverSettings:          return "Review Your Settings"
         case .serverConnectivity:      return "How Will Friends Connect?"
         case .serverConnectivityPorts: return "Set Your Ports"
@@ -120,6 +122,8 @@ enum OnboardingStep: Int, CaseIterable {
             return "We've set the latest version for you, which is best for most servers. You can pin a specific version here if you need one. Tap Next to continue."
         case .serverCrossplay:
             return "Turn this on to let Bedrock players — console, mobile, and Windows — join your Java server. MSC adds the Geyser and Floodgate plugins for you. Tap Next when you're set."
+        case .serverXboxBroadcast:
+            return "Turn this on to let players see your server in the Xbox/console Friends tab — works for PC players too. MSC downloads the broadcast tool automatically. Tap Next when you're set."
         case .serverSettings:
             if OnboardingManager.shared.tourServerType == .java {
                 return "Everything's set. Tap Continue at the bottom to move on and set up how players connect."
@@ -252,6 +256,7 @@ enum OnboardingAnchorID: String {
     case serverFlavorArea        = "ob_server_flavor"
     case serverSourceArea        = "ob_server_source"
     case serverCrossplayArea     = "ob_server_crossplay"
+    case serverXboxBroadcastArea = "ob_server_xbox_broadcast"
     case serverSettingsArea          = "ob_server_settings"
     case serverConnectivityArea      = "ob_server_connectivity"
     case serverConnectivityPortsArea = "ob_server_connectivity_ports"
@@ -301,6 +306,9 @@ final class OnboardingManager: ObservableObject {
     /// The flavor the user has selected during the tour. Drives whether the
     /// cross-play step applies (only standard plugin servers can host Geyser).
     var tourFlavor: JavaServerFlavor = .paper
+    /// Whether the user enabled crossplay during the tour. Drives whether the
+    /// Xbox Broadcast step applies on Java standard servers.
+    var tourCrossplayEnabled: Bool = false
 
     /// "Plugins" or "Mods" for the current tour flavor (used in the add-ons step copy).
     var tourAddOnNoun: String { tourFlavor.addOnKind?.displayName ?? "Add-ons" }
@@ -316,6 +324,12 @@ final class OnboardingManager: ObservableObject {
             return tourServerType == .java
                 && tourFlavor.category == .standard
                 && tourFlavor != .vanilla
+        case .serverXboxBroadcast:
+            return (tourServerType == .java
+                && tourFlavor.category == .standard
+                && tourFlavor != .vanilla
+                && tourCrossplayEnabled)
+                || tourServerType == .bedrock
         case .serverAddOns:
             // Mirrors AddServerWizardView.hasAddOnsStep: Java flavors that accept
             // plugins/mods (everything except Vanilla).
@@ -398,6 +412,7 @@ final class OnboardingManager: ObservableObject {
         currentStep = .welcome
         tourServerType = .java
         tourFlavor = .paper
+        tourCrossplayEnabled = false
         cardHidden = false
 
         SwiftUI.withAnimation(.easeIn(duration: 0.25)) {

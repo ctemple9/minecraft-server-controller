@@ -504,10 +504,13 @@ Minecraft Server Controller integrates with **MCXboxBroadcastStandalone** \u{201
             GuideCallout(style: .note, text: "Broadcast does not tunnel traffic or bypass your router. It only advertises the session. Friends still connect through your normal Bedrock port \u{2014} port forwarding is still required.")
 
             InAppBox(items: [
-                "Manage Servers \u{2192} Edit \u{2192} Broadcast tab: configure the alt account and enable broadcast.",
+                "Manage Servers \u{2192} Edit \u{2192} Broadcast tab: enable broadcast, then click Authenticate.",
+                "An inline Microsoft sign-in window opens inside the app \u{2014} sign in with your alt account. The code is pre-filled; no copying or browser switching needed.",
+                "Sign-in uses a private, isolated session \u{2014} your personal Microsoft accounts are never touched.",
+                "The window closes automatically once sign-in is complete.",
                 "When the server starts with broadcast enabled, MCXboxBroadcastStandalone starts automatically.",
                 "Broadcast log lines appear in the console tagged as [Broadcast] so you can see its status.",
-                "The broadcast helper JAR is managed through the app's JAR library \u{2014} downloaded once, used by any server."
+                "The broadcast helper JAR is managed through the app\u{2019}s JAR library \u{2014} downloaded once, used by any server."
             ])
 
             AdvancedSection(content: """
@@ -515,6 +518,8 @@ MCXboxBroadcastStandalone is an independent open-source project. Source code and
 github.com/MCXboxBroadcast/Broadcaster
 
 The app generates a per-server config.yml for the broadcast helper, which includes your server's Bedrock IP and port. This config is stored in the server's folder and updated if you change Bedrock port settings.
+
+The inline sign-in sheet uses a non-persistent WKWebView data store \u{2014} cookies and session data are discarded after sign-in, so your personal Microsoft account is never at risk of cross-contamination.
 
 Xbox broadcast has occasional authentication token expiry \u{2014} if it stops working, the broadcast helper usually recovers automatically. If it doesn't, stopping and restarting the server resets the auth flow.
 """)
@@ -940,17 +945,21 @@ Playit.gg and all other tunneling solutions work under CGNAT because they rely o
             InAppBox(items: [
                 "Create Server wizard: choose Tunnel (playit.gg) in the Network step instead of a direct port.",
                 "Existing server: Edit Server \u{2192} Settings \u{2192} Network \u{2192} toggle Playit.gg tunnel on.",
-                "First start: a prompt asks for your Playit.gg agent secret key. The in-app setup guide walks through getting this from the Playit.gg website.",
+                "First start: an in-app sign-in sheet appears. Enter your Playit.gg email and password \u{2014} no browser needed. The app handles the full setup natively.",
+                "The app signs in, claims an agent, and automatically creates Java and Bedrock tunnels. If you already have an agent or tunnels, it reuses them rather than creating duplicates.",
                 "Your Playit.gg addresses appear in the Overview connection card automatically once the agent is running.",
+                "To start over (e.g. for re-testing), use the Reset button in the Playit.gg setup sheet to clear the local agent configuration.",
                 "Voice Chat (Simple Voice Chat plugin): after enabling the tunnel, also enable Voice Chat Tunnel in Edit Server \u{2192} Settings \u{2192} Network, then create a matching Custom UDP tunnel in the Playit.gg dashboard."
             ])
 
             GuideCallout(style: .tip, text: "You can use Playit.gg and port forwarding simultaneously on the same server. Players connecting via the Playit.gg address are relayed; players connecting to your direct IP go straight through. Useful as a fallback for players who have trouble with one approach.")
 
             AdvancedSection(content: """
-The app runs the Playit.gg agent as a native background process alongside your Minecraft server. One agent (one secret key) can tunnel multiple ports \u{2014} your Java port and Bedrock/Geyser port can both go through the same agent.
+The app runs the Playit.gg agent as a native background process alongside your Minecraft server. One agent can tunnel multiple ports \u{2014} your Java port and Bedrock/Geyser port can both go through the same agent.
 
-Individual tunnels are configured on the Playit.gg website and assigned to your agent. The agent picks them up automatically \u{2014} no server restart needed when adding or changing tunnels.
+Setup is fully native: the app communicates directly with api.playit.gg using URLSession (not a browser or WebView), so there are no CORS restrictions. The sign-in \u{2192} claim \u{2192} exchange flow retrieves your secret key and stores it locally. The agent_id is also persisted and can be backfilled from the daemon\u{2019}s connect log if you migrated from an earlier version.
+
+Tunnels are created automatically for the server type (Java TCP, Bedrock UDP). The process is idempotent \u{2014} if the agent or a tunnel already exists in your Playit.gg account, the app reuses it and skips creation.
 
 Supported tunnel types used by MSC:
   \u{2022} Minecraft Java (TCP) \u{2014} for Paper servers

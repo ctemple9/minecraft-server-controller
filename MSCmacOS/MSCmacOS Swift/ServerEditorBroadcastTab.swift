@@ -86,11 +86,31 @@ var broadcastTab: some View {
                             .controlSize(.small)
                     }
 
-                    Button("Open Broadcast Config Folder…") {
-                        viewModel.openBroadcastConfigFolder(for: cfg)
+                    HStack(spacing: MSC.Spacing.sm) {
+                        Button("Open Broadcast Config Folder…") {
+                            viewModel.openBroadcastConfigFolder(for: cfg)
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+
+                        Button("Reset Xbox Sign-In…") {
+                            isShowingBroadcastAuthResetConfirm = true
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                        .controlSize(.small)
+                        .confirmationDialog(
+                            "Reset Xbox sign-in?",
+                            isPresented: $isShowingBroadcastAuthResetConfirm,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Reset Sign-In", role: .destructive) {
+                                viewModel.resetXboxBroadcastAuth(for: cfg)
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text("Signs out of the current Xbox broadcast account and stops the broadcaster. The next time this server starts, you'll sign in again — use this to switch to a different alt account. Your saved profile notes are kept.")
+                        }
                     }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                    .controlSize(.small)
                 }
             }
 
@@ -239,13 +259,33 @@ extension ServerEditorView {
                                 .controlSize(.small)
                         }
 
-                        Button("Open Data Folder…") {
-                            let url = BedrockBroadcastManager.dataDirectoryURL(for: cfg)
-                            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-                            NSWorkspace.shared.open(url)
+                        HStack(spacing: MSC.Spacing.sm) {
+                            Button("Open Data Folder…") {
+                                let url = BedrockBroadcastManager.dataDirectoryURL(for: cfg)
+                                try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                                NSWorkspace.shared.open(url)
+                            }
+                            .buttonStyle(MSCSecondaryButtonStyle())
+                            .controlSize(.small)
+
+                            Button("Reset Xbox Sign-In…") {
+                                isShowingBroadcastAuthResetConfirm = true
+                            }
+                            .buttonStyle(MSCSecondaryButtonStyle())
+                            .controlSize(.small)
+                            .confirmationDialog(
+                                "Reset Xbox sign-in?",
+                                isPresented: $isShowingBroadcastAuthResetConfirm,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Reset Sign-In", role: .destructive) {
+                                    viewModel.resetXboxBroadcastAuth(for: cfg)
+                                }
+                                Button("Cancel", role: .cancel) {}
+                            } message: {
+                                Text("Signs out of the current Xbox broadcast account and stops the broadcaster. The next time this server starts, you'll sign in again — use this to switch to a different alt account. Your saved profile notes are kept.")
+                            }
                         }
-                        .buttonStyle(MSCSecondaryButtonStyle())
-                        .controlSize(.small)
                     }
                 }
 

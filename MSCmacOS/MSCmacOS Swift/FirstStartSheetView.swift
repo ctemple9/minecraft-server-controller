@@ -57,6 +57,31 @@ struct FirstStartSheetView: View {
                         }
                     }
 
+                    // "So how do people connect?" — dynamic per-transport guidance.
+                    if let cfg = selectedCfg {
+                        let rows = connectionRows(cfg: cfg)
+                        if !rows.isEmpty {
+                            FSCard(
+                                icon: "point.3.filled.connected.trianglepath.dotted",
+                                color: .blue,
+                                title: "So how do people connect?"
+                            ) {
+                                VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+                                    ForEach(rows) { row in
+                                        connectRowView(row)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // One-time setup reassurance.
+                    FSCallout(
+                        icon: "checkmark.seal.fill",
+                        color: .green,
+                        text: "This one-time setup is complete. Your server won't start and stop on its own again — press Start whenever you want to play."
+                    )
+
                     // Footer callout (Xbox Broadcast note, etc.)
                     if let footer = parsed.footer, !footer.isEmpty,
                        footer != parsed.body {
@@ -142,6 +167,149 @@ struct FirstStartSheetView: View {
         .padding(.horizontal, MSC.Spacing.xl)
         .padding(.vertical, MSC.Spacing.lg)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    // MARK: - Connection guidance
+
+    /// A single "how to connect" row in the completion sheet.
+    private struct ConnectRow: Identifiable {
+        let id = UUID()
+        let icon: String
+        let color: Color
+        let title: String
+        let detail: String
+        let value: String?   // monospaced, copyable address (nil for text-only rows)
+    }
+
+    private var selectedCfg: ConfigServer? {
+        guard let sel = viewModel.selectedServer else { return nil }
+        return viewModel.configServer(for: sel)
+    }
+
+    /// Builds per-transport connection guidance from the current config + live
+    /// playit addresses + captured Xbox gamertag.
+    private func connectionRows(cfg: ConfigServer) -> [ConnectRow] {
+        var rows: [ConnectRow] = []
+        let localIP = AppUtilities.localIPAddress() ?? "your-mac-ip"
+        let publicIP = viewModel.cachedPublicIPAddress
+
+        let showJava = !cfg.isBedrock
+        let showBedrock = cfg.isBedrock
+            || viewModel.playitBedrockAddress != nil
+            || cfg.bedrockPort != nil
+            || cfg.xboxBroadcastEnabled
+
+        if showJava {
+            let port = viewModel.loadServerPropertiesModel(for: cfg).serverPort
+            rows.append(ConnectRow(
+                icon: "cup.and.saucer.fill", color: .orange,
+                title: "Java — same Wi-Fi",
+                detail: "Friends on your network join with your Mac's local address.",
+                value: "\(localIP):\(port)"))
+            if let playit = viewModel.playitJavaAddress {
+                rows.append(ConnectRow(
+                    icon: "globe", color: .blue,
+                    title: "Java — anywhere (playit.gg)",
+                    detail: "Preferred for players outside your home. No port forwarding needed.",
+                    value: playit))
+            } else if let publicIP {
+                rows.append(ConnectRow(
+                    icon: "network", color: .blue,
+                    title: "Java — outside your network",
+                    detail: "Works only if you forward TCP \(port) on your router.",
+                    value: "\(publicIP):\(port)"))
+            }
+        }
+
+        if showBedrock {
+            let bport = cfg.bedrockPort ?? 19132
+            rows.append(ConnectRow(
+                icon: "cube.fill", color: .green,
+                title: "Bedrock — same Wi-Fi",
+                detail: "Mobile, console & Windows friends on your network.",
+                value: "\(localIP):\(bport)"))
+            if let playitB = viewModel.playitBedrockAddress {
+                rows.append(ConnectRow(
+                    icon: "globe", color: .blue,
+                    title: "Bedrock — anywhere (playit.gg)",
+                    detail: "Preferred for players outside your home.",
+                    value: playitB))
+            } else if let publicIP {
+                rows.append(ConnectRow(
+                    icon: "network", color: .blue,
+                    title: "Bedrock — outside your network",
+                    detail: "Works only if you forward UDP \(bport) on your router.",
+                    value: "\(publicIP):\(bport)"))
+            }
+        }
+
+        if cfg.xboxBroadcastEnabled {
+            let tag = viewModel.initiationBroadcastGamertag ?? cfg.xboxBroadcastAltGamertag
+            if let tag, !tag.isEmpty {
+                rows.append(ConnectRow(
+                    icon: "gamecontroller.fill", color: .green,
+                    title: "Xbox / console players",
+                    detail: "Add \(tag) as a friend on Xbox Live, then open Friends → Worlds to join.",
+                    value: nil))
+            } else {
+                rows.append(ConnectRow(
+                    icon: "gamecontroller.fill", color: .green,
+                    title: "Xbox / console players",
+                    detail: "Once broadcast signs in, add its gamertag as a friend, then open Friends → Worlds to join.",
+                    value: nil))
+            }
+        }
+
+        return rows
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    @ViewBuilder
+    private func connectRowView(_ row: ConnectRow) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: row.icon)
+                .font(.system(size: 13))
+                .foregroundStyle(row.color)
+                .frame(width: 18)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Text(row.detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let value = row.value {
+                    HStack(spacing: 6) {
+                        Text(value)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.primary)
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(row.color.opacity(0.10))
+                            )
+                        Button {
+                            copyToPasteboard(value)
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Copy \(value)")
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     // MARK: - Parser
@@ -281,6 +449,91 @@ private struct FSCallout: View {
             RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
                 .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Initiation Progress Overlay (pass 2)
+
+/// Non-modal panel shown while playit / Xbox broadcast come up during first-time
+/// initiation. Non-modal so the in-app Xbox sign-in sheet can present over it.
+struct InitiationProgressOverlay: View {
+    @EnvironmentObject var viewModel: AppViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            HStack(spacing: MSC.Spacing.sm) {
+                ProgressView().controlSize(.small)
+                Text("Setting up connections\u{2026}")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            Text("Finishing your one-time setup. This ends automatically.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            if viewModel.initiationPlayitStatus != .notApplicable {
+                transportRow(title: "playit.gg tunnel",
+                             status: viewModel.initiationPlayitStatus,
+                             skip: { viewModel.skipInitiationPlayit() })
+            }
+            if viewModel.initiationBroadcastStatus != .notApplicable {
+                transportRow(title: "Xbox broadcast",
+                             status: viewModel.initiationBroadcastStatus,
+                             skip: { viewModel.skipInitiationBroadcast() })
+            }
+        }
+        .padding(MSC.Spacing.md)
+        .frame(width: 300, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: MSC.Radius.lg, style: .continuous)
+                .fill(MSC.Colors.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: MSC.Radius.lg, style: .continuous)
+                .stroke(MSC.Colors.cardBorder, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+        .padding(MSC.Spacing.lg)
+    }
+
+    @ViewBuilder
+    private func transportRow(title: String,
+                              status: InitiationTransportStatus,
+                              skip: @escaping () -> Void) -> some View {
+        HStack(spacing: MSC.Spacing.sm) {
+            statusIcon(status)
+            Text(title).font(.system(size: 12, weight: .medium))
+            Spacer()
+            switch status {
+            case .waiting:
+                Button("Skip", action: skip)
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+            case .ready:
+                Text("Ready").font(.system(size: 11, weight: .semibold)).foregroundStyle(.green)
+            case .skipped:
+                Text("Skipped").font(.system(size: 11)).foregroundStyle(.secondary)
+            case .failed:
+                Text("Not set up").font(.system(size: 11)).foregroundStyle(.orange)
+            case .notApplicable:
+                EmptyView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func statusIcon(_ status: InitiationTransportStatus) -> some View {
+        switch status {
+        case .waiting:
+            ProgressView().controlSize(.small)
+        case .ready:
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        case .skipped:
+            Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+        case .failed:
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+        case .notApplicable:
+            EmptyView()
+        }
     }
 }
 

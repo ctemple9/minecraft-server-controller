@@ -2,6 +2,25 @@ import Foundation
 
 // MARK: - Models
 
+/// Status of a single transport (playit / Xbox broadcast) during first-time
+/// server initiation (pass 2). A transport is "resolved" once it is confirmed
+/// ready, has failed/timed out, was skipped by the user, or isn't applicable.
+enum InitiationTransportStatus: Equatable {
+    case notApplicable   // transport not enabled — not awaited
+    case waiting         // coming up
+    case ready           // confirmed up
+    case failed          // timed out or errored
+    case skipped         // user skipped
+
+    /// Whether the orchestrator no longer needs to wait on this transport.
+    var isResolved: Bool {
+        switch self {
+        case .notApplicable, .ready, .failed, .skipped: return true
+        case .waiting: return false
+        }
+    }
+}
+
 /// Difficulty options supported by Minecraft's `server.properties` and surfaced in the UI.
 enum ServerDifficulty: String, CaseIterable, Identifiable {
     case peaceful
@@ -30,15 +49,44 @@ enum ServerGamemode: String, CaseIterable, Identifiable {
     }
 }
 
+/// World type for `level-type` in server.properties.
+/// Raw values match the modern namespaced format (e.g. `minecraft\:normal` in the file).
+enum LevelType: String, CaseIterable, Identifiable {
+    case normal      = "minecraft\\:normal"
+    case flat        = "minecraft\\:flat"
+    case largeBiomes = "minecraft\\:large_biomes"
+    case amplified   = "minecraft\\:amplified"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .normal:      return "Normal"
+        case .flat:        return "Flat"
+        case .largeBiomes: return "Large Biomes"
+        case .amplified:   return "Amplified"
+        }
+    }
+
+    /// Parses both the modern namespaced format and the legacy ALL-CAPS format.
+    static func from(_ raw: String) -> LevelType {
+        let lower = raw.lowercased().replacingOccurrences(of: "\\:", with: ":")
+        switch lower {
+        case "minecraft:flat",         "flat":                      return .flat
+        case "minecraft:large_biomes", "largebiomes", "large_biomes": return .largeBiomes
+        case "minecraft:amplified",    "amplified":                  return .amplified
+        default:                                                     return .normal
+        }
+    }
+}
+
 /// Editable representation of `server.properties` with round-trip preservation of unknown keys.
 ///
 /// Note: `bedrockPort` is sourced from Geyser's config, not `server.properties`.
-struct ServerPropertiesModel {
+struct ServerPropertiesModel: Equatable {
+    // Server identity
     var motd: String
     var maxPlayers: Int
-    var difficulty: ServerDifficulty
-    var gamemode: ServerGamemode
-    var viewDistance: Int
     var onlineMode: Bool
     var serverPort: Int
 
@@ -46,29 +94,83 @@ struct ServerPropertiesModel {
     /// nil = not set / not found (do NOT default)
     var bedrockPort: Int? = nil
 
+    // World
+    var difficulty: ServerDifficulty
+    var gamemode: ServerGamemode
+    var hardcore: Bool
+    var pvp: Bool
+    var allowNether: Bool
+    var allowFlight: Bool
+    var forceGamemode: Bool
+    var spawnMonsters: Bool
+    var spawnAnimals: Bool
+    var spawnNpcs: Bool
+    var spawnProtection: Int
+    var levelType: LevelType
+
+    // Performance / visibility
+    var viewDistance: Int
+    var simulationDistance: Int
+
+    // Player management
+    var whitelist: Bool
+    var enforceWhitelist: Bool
+    var playerIdleTimeout: Int
+    var opPermissionLevel: Int
+
     /// Raw properties dictionary so we can preserve unknown keys.
     var rawProperties: [String: String]
 
     init(
         motd: String,
         maxPlayers: Int,
-        difficulty: ServerDifficulty,
-        gamemode: ServerGamemode,
-        viewDistance: Int,
         onlineMode: Bool,
         serverPort: Int,
         bedrockPort: Int? = nil,
+        difficulty: ServerDifficulty,
+        gamemode: ServerGamemode,
+        hardcore: Bool,
+        pvp: Bool,
+        allowNether: Bool,
+        allowFlight: Bool,
+        forceGamemode: Bool,
+        spawnMonsters: Bool,
+        spawnAnimals: Bool,
+        spawnNpcs: Bool,
+        spawnProtection: Int,
+        levelType: LevelType,
+        viewDistance: Int,
+        simulationDistance: Int,
+        whitelist: Bool,
+        enforceWhitelist: Bool,
+        playerIdleTimeout: Int,
+        opPermissionLevel: Int,
         rawProperties: [String: String] = [:]
     ) {
-        self.motd = motd
-        self.maxPlayers = maxPlayers
-        self.difficulty = difficulty
-        self.gamemode = gamemode
-        self.viewDistance = viewDistance
-        self.onlineMode = onlineMode
-        self.serverPort = serverPort
-        self.bedrockPort = bedrockPort
-        self.rawProperties = rawProperties
+        self.motd               = motd
+        self.maxPlayers         = maxPlayers
+        self.onlineMode         = onlineMode
+        self.serverPort         = serverPort
+        self.bedrockPort        = bedrockPort
+        self.difficulty         = difficulty
+        self.gamemode           = gamemode
+        self.hardcore           = hardcore
+        self.pvp                = pvp
+        self.allowNether        = allowNether
+        self.allowFlight        = allowFlight
+        self.forceGamemode      = forceGamemode
+        self.spawnMonsters      = spawnMonsters
+        self.spawnAnimals       = spawnAnimals
+        self.spawnNpcs          = spawnNpcs
+        self.spawnProtection    = spawnProtection
+        self.levelType          = levelType
+        self.viewDistance       = viewDistance
+        self.simulationDistance = simulationDistance
+        self.whitelist          = whitelist
+        self.enforceWhitelist   = enforceWhitelist
+        self.playerIdleTimeout  = playerIdleTimeout
+        self.opPermissionLevel  = opPermissionLevel
+        self.rawProperties      = rawProperties
     }
 
     /// Build from a raw `[String: String]` dictionary with sane defaults.
@@ -77,64 +179,46 @@ struct ServerPropertiesModel {
     init(from dict: [String: String], fallbackMotd: String? = nil) {
         self.rawProperties = dict
 
-        // Defaults
-        let defaultMotd = fallbackMotd ?? "A Minecraft Server"
-        let defaultMaxPlayers = 20
-        let defaultViewDistance = 10
-        let defaultOnlineMode = true
-        let defaultPort = 25565
-        
-
-        func intValue(forKey key: String, default def: Int) -> Int {
-            if let value = dict[key],
-               let intVal = Int(value.trimmingCharacters(in: .whitespaces)) {
-                return intVal
+        func intVal(_ key: String, default d: Int) -> Int {
+            guard let s = dict[key], let v = Int(s.trimmingCharacters(in: .whitespaces)) else { return d }
+            return v
+        }
+        func boolVal(_ key: String, default d: Bool) -> Bool {
+            switch dict[key]?.trimmingCharacters(in: .whitespaces).lowercased() {
+            case "true":  return true
+            case "false": return false
+            default:      return d
             }
-            return def
         }
 
-        func boolValue(forKey key: String, default def: Bool) -> Bool {
-            if let value = dict[key]?.trimmingCharacters(in: .whitespaces).lowercased() {
-                if value == "true" { return true }
-                if value == "false" { return false }
-            }
-            return def
-        }
+        motd               = dict["motd"] ?? fallbackMotd ?? "A Minecraft Server"
+        maxPlayers         = intVal("max-players",         default: 20)
+        onlineMode         = boolVal("online-mode",        default: true)
+        serverPort         = intVal("server-port",         default: 25565)
+        bedrockPort        = nil
 
-        // motd
-        self.motd = dict["motd"] ?? defaultMotd
+        if let raw = dict["difficulty"]?.trimmingCharacters(in: .whitespaces).lowercased(),
+           let d = ServerDifficulty(rawValue: raw) { difficulty = d } else { difficulty = .normal }
 
-        // max-players
-        self.maxPlayers = intValue(forKey: "max-players", default: defaultMaxPlayers)
+        if let raw = dict["gamemode"]?.trimmingCharacters(in: .whitespaces).lowercased(),
+           let g = ServerGamemode(rawValue: raw) { gamemode = g } else { gamemode = .survival }
 
-        // difficulty
-        if let rawDiff = dict["difficulty"]?.trimmingCharacters(in: .whitespaces).lowercased(),
-           let parsed = ServerDifficulty(rawValue: rawDiff) {
-            self.difficulty = parsed
-        } else {
-            self.difficulty = .normal
-        }
-
-        // gamemode
-        if let rawGM = dict["gamemode"]?.trimmingCharacters(in: .whitespaces).lowercased(),
-           let parsed = ServerGamemode(rawValue: rawGM) {
-            self.gamemode = parsed
-        } else {
-            self.gamemode = .survival
-        }
-
-        // view-distance
-        self.viewDistance = intValue(forKey: "view-distance", default: defaultViewDistance)
-
-        // online-mode
-        self.onlineMode = boolValue(forKey: "online-mode", default: defaultOnlineMode)
-
-        // server-port
-        self.serverPort = intValue(forKey: "server-port", default: defaultPort)
-
-        // NOTE: Bedrock port lives in Geyser's config.yml, not server.properties.
-        self.bedrockPort = nil
-
+        hardcore           = boolVal("hardcore",           default: false)
+        pvp                = boolVal("pvp",                default: true)
+        allowNether        = boolVal("allow-nether",       default: true)
+        allowFlight        = boolVal("allow-flight",       default: false)
+        forceGamemode      = boolVal("force-gamemode",     default: false)
+        spawnMonsters      = boolVal("spawn-monsters",     default: true)
+        spawnAnimals       = boolVal("spawn-animals",      default: true)
+        spawnNpcs          = boolVal("spawn-npcs",         default: true)
+        spawnProtection    = intVal("spawn-protection",    default: 16)
+        levelType          = LevelType.from(dict["level-type"] ?? "")
+        viewDistance       = intVal("view-distance",       default: 10)
+        simulationDistance = intVal("simulation-distance", default: 10)
+        whitelist          = boolVal("white-list",         default: false)
+        enforceWhitelist   = boolVal("enforce-whitelist",  default: false)
+        playerIdleTimeout  = intVal("player-idle-timeout", default: 0)
+        opPermissionLevel  = intVal("op-permission-level", default: 4)
     }
 
     /// Returns a new dictionary with this model's values overlaid on top of an
@@ -142,17 +226,30 @@ struct ServerPropertiesModel {
     ///
     /// Note: Bedrock port lives in Geyser's config.yml and is not stored in server.properties.
     func mergedInto(_ existing: [String: String]) -> [String: String] {
-        var result = existing
-
-        result["motd"] = motd
-        result["max-players"] = String(maxPlayers)
-        result["difficulty"] = difficulty.rawValue
-        result["gamemode"] = gamemode.rawValue
-        result["view-distance"] = String(viewDistance)
-        result["online-mode"] = onlineMode ? "true" : "false"
-        result["server-port"] = String(serverPort)
-
-        return result
+        var r = existing
+        r["motd"]                = motd
+        r["max-players"]         = String(maxPlayers)
+        r["online-mode"]         = onlineMode    ? "true" : "false"
+        r["server-port"]         = String(serverPort)
+        r["difficulty"]          = difficulty.rawValue
+        r["gamemode"]            = gamemode.rawValue
+        r["hardcore"]            = hardcore       ? "true" : "false"
+        r["pvp"]                 = pvp            ? "true" : "false"
+        r["allow-nether"]        = allowNether    ? "true" : "false"
+        r["allow-flight"]        = allowFlight    ? "true" : "false"
+        r["force-gamemode"]      = forceGamemode  ? "true" : "false"
+        r["spawn-monsters"]      = spawnMonsters  ? "true" : "false"
+        r["spawn-animals"]       = spawnAnimals   ? "true" : "false"
+        r["spawn-npcs"]          = spawnNpcs      ? "true" : "false"
+        r["spawn-protection"]    = String(spawnProtection)
+        r["level-type"]          = levelType.rawValue
+        r["view-distance"]       = String(viewDistance)
+        r["simulation-distance"] = String(simulationDistance)
+        r["white-list"]          = whitelist       ? "true" : "false"
+        r["enforce-whitelist"]   = enforceWhitelist ? "true" : "false"
+        r["player-idle-timeout"] = String(playerIdleTimeout)
+        r["op-permission-level"] = String(opPermissionLevel)
+        return r
     }
 }
 

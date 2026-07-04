@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct SidebarView: View {
     @EnvironmentObject var viewModel: AppViewModel
@@ -21,6 +22,7 @@ struct SidebarView: View {
     var bannerColor: Color = Color(red: 30/255, green: 30/255, blue: 30/255)
 
     @State private var isCrossPlatformExpanded: Bool = false
+    @State private var isHowToConnectExpanded: Bool = false
     @State private var isMaintenanceExpanded: Bool = false
     @State private var isQuickCommandsExpanded: Bool = false
     @State private var isShowingKillJavaProcessConfirm: Bool = false
@@ -80,10 +82,10 @@ struct SidebarView: View {
             steps: [
                 sidebarHelpStep(
                     id: "crossPlatform.header",
-                    title: "Cross-Platform Access",
+                    title: "Console Access",
                     body: isBedrockServer
-                        ? "This is a compact Bedrock access summary for the selected server. It is meant for quick checks and quick toggles, not full setup."
-                        : "This is a compact cross-platform summary for the selected Java server. It gives you quick visibility into the helpers that make Bedrock or console-friendly access possible.",
+                        ? "This is a compact console-access summary for the selected Bedrock server. It is meant for quick checks and quick toggles, not full setup."
+                        : "This is a compact console-access summary for the selected Java server. It gives you quick visibility into the helpers that let console and Bedrock players join.",
                     anchorID: crossPlatformHeaderAnchorID
                 ),
                 sidebarHelpStep(
@@ -274,7 +276,7 @@ struct SidebarView: View {
                                     }
                                 } label: {
                                     Label(
-                                        viewModel.isServerRunning ? "Stop" : viewModel.startButtonTitleForSelectedServer,
+                                        viewModel.isServerRunning ? "Stop" : viewModel.startActionTitleForSelectedServer,
                                         systemImage: viewModel.isServerRunning ? "stop.circle" : "play.circle"
                                     )
                                 }
@@ -310,7 +312,7 @@ struct SidebarView: View {
                         // CROSS-PLATFORM ACCESS — collapsible, no Divider separators
                         if showCrossPlatform {
                             SidebarDisclosureSection(
-                                title: "Cross-Platform Access",
+                                title: "Console Access",
                                 headerAnchorID: crossPlatformHeaderAnchorID,
                                 isExpanded: $isCrossPlatformExpanded,
                                 helpAction: {
@@ -337,6 +339,18 @@ struct SidebarView: View {
                                         .contextualHelpAnchor(crossPlatformContentAnchorID)
                                         .id(crossPlatformContentAnchorID)
                                 }
+                            }
+                        }
+
+                        // HOW TO CONNECT — collapsible connection-address reference
+                        if viewModel.selectedServer != nil {
+                            SidebarDisclosureSection(
+                                title: "How to Connect",
+                                headerAnchorID: "sidebar.howToConnect.header",
+                                isExpanded: $isHowToConnectExpanded
+                            ) {
+                                HowToConnectSidebarSection()
+                                    .environmentObject(viewModel)
                             }
                         }
 
@@ -437,7 +451,7 @@ private struct SidebarDisclosureSection<Content: View>: View {
     let title: String
     let headerAnchorID: String
     @Binding var isExpanded: Bool
-    let helpAction: () -> Void
+    var helpAction: (() -> Void)? = nil
     var setupGuideAction: (() -> Void)? = nil
     @ViewBuilder let content: () -> Content
 
@@ -464,15 +478,17 @@ private struct SidebarDisclosureSection<Content: View>: View {
                     }
                     .buttonStyle(.plain)
 
-                    Button {
-                        helpAction()
-                    } label: {
-                        Image(systemName: "questionmark.circle")
-                            .font(.system(size: 10))
-                            .foregroundStyle(MSC.Colors.tertiary)
+                    if let helpAction = helpAction {
+                        Button {
+                            helpAction()
+                        } label: {
+                            Image(systemName: "questionmark.circle")
+                                .font(.system(size: 10))
+                                .foregroundStyle(MSC.Colors.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Explain \(title)")
                     }
-                    .buttonStyle(.plain)
-                    .help("Explain \(title)")
 
                     if let setupGuideAction = setupGuideAction {
                         Button {
@@ -660,6 +676,149 @@ struct CrossPlatformAccessSidebarSection: View {
                 .contextualHelpAnchor("sidebar.crossPlatform.autoStart")
                 .id("sidebar.crossPlatform.autoStart")
             }
+        }
+    }
+}
+
+// MARK: - How to Connect Sidebar Section
+
+/// Compact, per-method connection-address reference for the selected server.
+/// Rows stack vertically (never side-by-side) so a narrow sidebar doesn't cramp;
+/// long addresses truncate in the middle but copy in full. Only methods that
+/// actually exist are shown. Masking shares the global reveal toggle with the
+/// Overview "Connection Info" card.
+struct HowToConnectSidebarSection: View {
+    @EnvironmentObject var viewModel: AppViewModel
+
+    private struct Row: Identifiable {
+        let id = UUID()
+        let icon: String
+        let color: Color
+        let label: String
+        let value: String
+    }
+
+    private var cfg: ConfigServer? {
+        viewModel.selectedServer.flatMap { viewModel.configServer(for: $0) }
+    }
+
+    private var rows: [Row] {
+        guard let cfg else { return [] }
+        var out: [Row] = []
+        let localIP = AppUtilities.localIPAddress()
+        let showJava = !cfg.isBedrock
+        let showBedrock = cfg.isBedrock
+            || viewModel.playitBedrockAddress != nil
+            || cfg.bedrockPort != nil
+            || cfg.xboxBroadcastEnabled
+
+        if showJava {
+            if let ip = localIP {
+                out.append(Row(icon: "cup.and.saucer.fill", color: .orange,
+                               label: "Java \u{00B7} same Wi-Fi",
+                               value: "\(ip):\(viewModel.javaPortForDisplay)"))
+            }
+            if let playit = viewModel.playitJavaAddress {
+                out.append(Row(icon: "globe", color: .blue,
+                               label: "Java \u{00B7} anywhere",
+                               value: playit))
+            }
+        }
+        if showBedrock {
+            let bport = cfg.bedrockPort.map(String.init) ?? "19132"
+            if let ip = localIP {
+                out.append(Row(icon: "cube.fill", color: .green,
+                               label: "Bedrock \u{00B7} same Wi-Fi",
+                               value: "\(ip):\(bport)"))
+            }
+            if let playitB = viewModel.playitBedrockAddress {
+                out.append(Row(icon: "globe", color: .blue,
+                               label: "Bedrock \u{00B7} anywhere",
+                               value: playitB))
+            }
+        }
+        if cfg.xboxBroadcastEnabled,
+           let tag = cfg.xboxBroadcastAltGamertag?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !tag.isEmpty {
+            out.append(Row(icon: "gamecontroller.fill", color: .green,
+                           label: "Xbox \u{00B7} add friend",
+                           value: tag))
+        }
+        return out
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            if rows.isEmpty {
+                Text("No connection info yet. Start the server once to set up tunnels.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                HStack(spacing: 6) {
+                    Button {
+                        viewModel.showConnectionAddresses.toggle()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: viewModel.showConnectionAddresses ? "eye.slash" : "eye")
+                            Text(viewModel.showConnectionAddresses ? "Hide" : "Show")
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(viewModel.showConnectionAddresses ? "Hide addresses" : "Show addresses")
+                    Spacer(minLength: 0)
+                }
+
+                ForEach(rows) { row in
+                    rowView(row)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func rowView(_ row: Row) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                Image(systemName: row.icon)
+                    .font(.system(size: 10))
+                    .foregroundStyle(row.color)
+                    .frame(width: 14)
+                Text(row.label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 6) {
+                Text(viewModel.showConnectionAddresses ? row.value : String(repeating: "\u{2022}", count: 12))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(row.value, forType: .string)
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Copy \(row.value)")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                    .fill(row.color.opacity(0.08))
+            )
         }
     }
 }

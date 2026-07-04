@@ -94,6 +94,39 @@ extension AppViewModel {
         )
     }
 
+    // MARK: - Reset Xbox sign-in
+
+    /// Signs out of the current Xbox broadcast account by stopping the broadcaster
+    /// and deleting its cached auth token (`cache/cache.json`). The next time the
+    /// server starts, MCXboxBroadcast will prompt for a fresh device-code sign-in —
+    /// used to switch to a different alt account. Leaves the Alt Account Profile
+    /// notes (email/gamertag/photo) untouched so the user can update them after.
+    func resetXboxBroadcastAuth(for server: ConfigServer) {
+        // Stop any running broadcaster so the cache isn't held open.
+        stopBroadcastIfRunning()
+        stopBedrockBroadcastIfRunning()
+
+        let dataDir: URL = server.isBedrock
+            ? BedrockBroadcastManager.dataDirectoryURL(for: server)
+            : broadcastRootDirectoryURL.appendingPathComponent(
+                BroadcastConfigManager.folderName(for: server), isDirectory: true)
+
+        let cacheDir = dataDir.appendingPathComponent("cache", isDirectory: true)
+        let fm = FileManager.default
+        var removed = false
+        if fm.fileExists(atPath: cacheDir.path) {
+            try? fm.removeItem(at: cacheDir)
+            removed = true
+        }
+
+        // Drop the transient captured gamertag so stale info doesn't linger.
+        initiationBroadcastGamertag = nil
+
+        logAppMessage(removed
+            ? "[Broadcast] Reset Xbox sign-in for \(server.displayName). You'll sign in again the next time this server starts."
+            : "[Broadcast] No saved Xbox sign-in found for \(server.displayName) — nothing to reset.")
+    }
+
     // MARK: - Broadcast profile
 
     func updateBroadcastProfile(
@@ -397,6 +430,47 @@ extension AppViewModel {
             logAppMessage("[Broadcast] Failed to start Broadcaster: \(error.localizedDescription)")
             showError(title: "XboxBroadcast Failed", message: error.localizedDescription)
         }
+    }
+
+    // MARK: - Post-sign-in gamertag save offer
+
+    /// After the broadcaster authenticates (gamertag parsed from its log), offer to
+    /// save that gamertag to the running server's broadcast profile — so the user
+    /// has a record of which alt/dummy account they used. Only the gamertag is
+    /// available; email/password are entered on Microsoft's page and never seen here.
+    func maybeOfferSaveBroadcastGamertag(_ gamertag: String) {
+        // Don't interrupt first-time initiation — the completion sheet already
+        // surfaces the gamertag, and a modal here would race the auto-stop.
+        guard !lifecycle.isInitiationPass2 else { return }
+
+        // Identify the server the running broadcaster belongs to.
+        let serverId = lifecycle.runningServerId
+            ?? selectedServer.flatMap { configServer(for: $0)?.id }
+        guard let sid = serverId,
+              let cfg = configManager.config.servers.first(where: { $0.id == sid }) else { return }
+
+        // Skip if already saved (matching), already asking, or declined this session.
+        let existing = cfg.xboxBroadcastAltGamertag?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard existing.caseInsensitiveCompare(gamertag) != .orderedSame else { return }
+        guard pendingBroadcastGamertagSave == nil else { return }
+        guard !broadcastGamertagSaveDeclinedServerIds.contains(sid) else { return }
+
+        pendingBroadcastGamertagSave = BroadcastGamertagSavePrompt(serverId: sid, gamertag: gamertag)
+    }
+
+    /// Look up a config server by its id (used by the save sheet).
+    func configServer(id: String) -> ConfigServer? {
+        configManager.config.servers.first(where: { $0.id == id })
+    }
+
+    /// Persist the gamertag from a save prompt into the server's broadcast profile.
+    func saveBroadcastGamertagFromPrompt(_ prompt: BroadcastGamertagSavePrompt) {
+        if let idx = configManager.config.servers.firstIndex(where: { $0.id == prompt.serverId }) {
+            configManager.config.servers[idx].xboxBroadcastAltGamertag = prompt.gamertag
+            configManager.save()
+            logAppMessage("[Broadcast] Saved gamertag \(prompt.gamertag) to \(configManager.config.servers[idx].displayName)'s broadcast profile.")
+        }
+        pendingBroadcastGamertagSave = nil
     }
 
 }

@@ -2,17 +2,28 @@
 //  BedrockLevelDB.swift
 //  MinecraftServerController
 //
-//  Self-contained LevelDB SST (table) reader for reading Bedrock Edition
-//  player data from the world's LevelDB database.
+//  Self-contained LevelDB reader for Bedrock Edition player data. Reads BOTH
+//  the compacted SST (.ldb) tables AND the write-ahead log (.log), so recently
+//  written records that LevelDB has not yet compacted (e.g. after a short first
+//  session) are still found.
 //  No external Swift dependencies — uses the system zlib via `import zlib`.
 //
-//  LevelDB table format (v1):
+//  LevelDB table (.ldb) format (v1):
 //    - Footer: 48 bytes at end-of-file (two block handles + 8-byte magic)
 //    - Index block: prefix-compressed key→block-handle records
 //    - Data blocks: prefix-compressed key→value records
 //    - Block compression: type byte follows the raw block bytes in the file
 //        0 = uncompressed, 4 = raw deflate (zlib wbits=-15) — used by Bedrock BDS
 //    - Internal key: user_key + 8-byte suffix (7-byte seq LE + 1-byte type)
+//
+//  LevelDB write-ahead log (.log) format:
+//    - A sequence of 32 KB blocks; each holds physical records with a 7-byte
+//      header: crc(4, LE) + length(2, LE) + type(1). Type 1=FULL, 2=FIRST,
+//      3=MIDDLE, 4=LAST — a logical record may be fragmented across blocks.
+//      When < 7 bytes remain in a block they are a zero-padded trailer.
+//    - Each assembled logical record is a WriteBatch: seq(8, LE) + count(4, LE),
+//      then `count` ops. Each op: type(1) [1=value, 0=deletion], varint-prefixed
+//      key, and (for value ops) a varint-prefixed value.
 //
 
 import Foundation
@@ -29,18 +40,34 @@ enum BedrockLevelDB {
 
     /// Reads all `player_<xuid>` and `~local_player` entries from the LevelDB
     /// database at `dbPath`. Returns a mapping of user-key string → raw NBT bytes.
+    ///
+    /// Reads the compacted SST tables first, then overlays the write-ahead log(s):
+    /// the log holds the newest writes that have not yet been compacted into an
+    /// `.ldb` table (e.g. a short session whose data never triggered a flush), so
+    /// log entries override table entries and log deletions remove keys.
     static func readPlayerData(dbPath: String) -> [String: Data] {
         var result: [String: Data] = [:]
         let fm = FileManager.default
         guard let contents = try? fm.contentsOfDirectory(atPath: dbPath) else { return result }
 
+        // 1. Compacted tables (older, already-flushed data).
         let ldbFiles = contents
             .filter { $0.hasSuffix(".ldb") }
             .map { URL(fileURLWithPath: dbPath).appendingPathComponent($0).path }
-
         for path in ldbFiles {
             parseSSTFile(at: path, into: &result)
         }
+
+        // 2. Write-ahead log(s) — newest writes, override the tables. Sorted so a
+        //    higher-numbered (newer) log is applied last and wins on conflicts.
+        let logFiles = contents
+            .filter { $0.hasSuffix(".log") }
+            .sorted()
+            .map { URL(fileURLWithPath: dbPath).appendingPathComponent($0).path }
+        for path in logFiles {
+            parseLogFile(at: path, into: &result)
+        }
+
         return result
     }
 
@@ -169,6 +196,100 @@ enum BedrockLevelDB {
         }
     }
 
+    // MARK: - Write-ahead log (.log) parsing
+
+    private static let kLogBlockSize  = 32768   // LevelDB log block size
+    private static let kLogHeaderSize = 7       // crc(4) + length(2) + type(1)
+
+    /// Reassembles logical records from a `.log` file and applies each contained
+    /// WriteBatch. Records are physically fragmented into FULL/FIRST/MIDDLE/LAST
+    /// pieces across 32 KB blocks; `pending` accumulates a multi-block record.
+    private static func parseLogFile(at path: String, into result: inout [String: Data]) {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return }
+
+        var pending = Data()   // fragments of an in-progress (FIRST…LAST) record
+        var offset  = 0
+
+        while offset + kLogHeaderSize <= data.count {
+            // When fewer than a header's worth of bytes remain in the current
+            // 32 KB block, they are a zero-padded trailer — skip to the next block.
+            let intoBlock = offset % kLogBlockSize
+            if kLogBlockSize - intoBlock < kLogHeaderSize {
+                offset += (kLogBlockSize - intoBlock)
+                continue
+            }
+
+            // Header: skip the 4-byte CRC (not verified), read length + type.
+            let length = Int(data.readLE16(at: offset + 4))
+            let type   = data[offset + 6]
+            offset += kLogHeaderSize
+
+            guard length >= 0, offset + length <= data.count else { break }
+            let fragment = data[offset..<(offset + length)]
+            offset += length
+
+            switch type {
+            case 1: // FULL — a complete record on its own
+                applyWriteBatch(Data(fragment), into: &result)
+                pending.removeAll(keepingCapacity: true)
+            case 2: // FIRST — start of a fragmented record
+                pending = Data(fragment)
+            case 3: // MIDDLE
+                pending.append(contentsOf: fragment)
+            case 4: // LAST — completes the fragmented record
+                pending.append(contentsOf: fragment)
+                applyWriteBatch(pending, into: &result)
+                pending.removeAll(keepingCapacity: true)
+            default: // zero padding / unknown — drop any partial record
+                pending.removeAll(keepingCapacity: true)
+            }
+        }
+    }
+
+    /// Parses one WriteBatch payload and applies its player operations to `result`.
+    /// Log writes are newer than any SST, so value ops overwrite and deletion ops
+    /// remove. Non-player keys are skipped but still length-decoded to advance.
+    private static func applyWriteBatch(_ batch: Data, into result: inout [String: Data]) {
+        guard batch.count >= 12 else { return }
+        let count = batch.readLE32(at: 8)
+        var cursor = 12   // skip sequence(8) + count(4)
+
+        func isPlayerKey(_ key: String) -> Bool {
+            key.hasPrefix("player_") || key == "~local_player"
+        }
+
+        var applied: UInt32 = 0
+        while applied < count, cursor < batch.count {
+            let opType = batch[cursor]; cursor += 1
+
+            guard let keyLen = readVarint(data: batch, cursor: &cursor) else { return }
+            let kl = Int(keyLen)
+            guard cursor + kl <= batch.count else { return }
+            let keyData = batch[cursor..<(cursor + kl)]
+            cursor += kl
+            let keyStr = String(data: keyData, encoding: .utf8)
+
+            switch opType {
+            case 1: // value
+                guard let valLen = readVarint(data: batch, cursor: &cursor) else { return }
+                let vl = Int(valLen)
+                guard cursor + vl <= batch.count else { return }
+                let valData = batch[cursor..<(cursor + vl)]
+                cursor += vl
+                if let keyStr, isPlayerKey(keyStr) {
+                    result[keyStr] = Data(valData)
+                }
+            case 0: // deletion (no value payload)
+                if let keyStr, isPlayerKey(keyStr) {
+                    result.removeValue(forKey: keyStr)
+                }
+            default: // unknown op — can't safely advance further in this batch
+                return
+            }
+            applied += 1
+        }
+    }
+
     // MARK: - Varint reader
 
     @discardableResult
@@ -189,6 +310,11 @@ enum BedrockLevelDB {
 // MARK: - Data extensions
 
 private extension Data {
+    func readLE16(at offset: Int) -> UInt16 {
+        guard offset + 2 <= count else { return 0 }
+        return UInt16(self[offset]) | (UInt16(self[offset + 1]) << 8)
+    }
+
     func readLE32(at offset: Int) -> UInt32 {
         guard offset + 4 <= count else { return 0 }
         return UInt32(self[offset])

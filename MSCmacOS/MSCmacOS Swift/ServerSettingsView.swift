@@ -20,6 +20,7 @@ import SwiftUI
 struct JavaServerSettingsDraft {
     var model: ServerPropertiesModel
     var bedrockPortText: String
+    var purpurConfig: PurpurConfig?
 }
 
 struct BedrockServerSettingsDraft {
@@ -42,6 +43,7 @@ struct ServerSettingsView: View {
     @State private var bedrockModel: BedrockPropertiesModel
     @State private var bedrockPortText: String
     @State private var bedrockPortV6Text: String
+    @State private var purpurConfig: PurpurConfig?
 
     let isInline: Bool
     let sectionFill: Color
@@ -55,6 +57,7 @@ struct ServerSettingsView: View {
         initialBedrockModel: BedrockPropertiesModel = BedrockPropertiesModel(),
         initialBedrockPortText: String? = nil,
         initialBedrockPortV6Text: String? = nil,
+        initialPurpurConfig: PurpurConfig? = nil,
         isInline: Bool = false,
         sectionFill: Color = MSC.Colors.cardBackground,
         onJavaDraftChange: ((JavaServerSettingsDraft) -> Void)? = nil,
@@ -66,6 +69,7 @@ struct ServerSettingsView: View {
         self._bedrockModel            = State(initialValue: initialBedrockModel)
         self._bedrockPortText         = State(initialValue: initialBedrockPortText ?? initialModel.bedrockPort.map(String.init) ?? "")
         self._bedrockPortV6Text       = State(initialValue: initialBedrockPortV6Text ?? String(initialBedrockModel.serverPortV6))
+        self._purpurConfig            = State(initialValue: initialPurpurConfig)
         self.isInline                 = isInline
         self.sectionFill              = sectionFill
         self.onJavaDraftChange        = onJavaDraftChange
@@ -118,26 +122,15 @@ struct ServerSettingsView: View {
             onBedrockDraftChange?(bedrockDraft)
             if configServer.isBedrock { viewModel.fetchBedrockVersionsIfNeeded() }
         }
-        .onChange(of: model.motd)         { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.maxPlayers)   { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.viewDistance) { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.onlineMode)   { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.serverPort)   { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.difficulty)   { _ in onJavaDraftChange?(javaDraft) }
-        .onChange(of: model.gamemode)     { _ in onJavaDraftChange?(javaDraft) }
+        .onChange(of: model) { _ in onJavaDraftChange?(javaDraft) }
+        .onChange(of: purpurConfig) { _ in onJavaDraftChange?(javaDraft) }
         .onChange(of: bedrockPortText) { _ in
             let trimmed = bedrockPortText.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { model.bedrockPort = nil }
             else if let p = Int(trimmed) { model.bedrockPort = p }
             onJavaDraftChange?(javaDraft)
         }
-        .onChange(of: bedrockModel.levelName)   { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.maxPlayers)  { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.onlineMode)  { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.allowCheats) { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.difficulty)  { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.gamemode)    { _ in onBedrockDraftChange?(bedrockDraft) }
-        .onChange(of: bedrockModel.serverPort)  { _ in onBedrockDraftChange?(bedrockDraft) }
+        .onChange(of: bedrockModel) { _ in onBedrockDraftChange?(bedrockDraft) }
         .onChange(of: bedrockPortV6Text) { _ in
             if let p = Int(bedrockPortV6Text.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 bedrockModel.serverPortV6 = p
@@ -151,26 +144,7 @@ struct ServerSettingsView: View {
     private var javaSettingsForm: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
 
-            SettingsSection(title: "General", icon: "text.alignleft", fill: sectionFill) {
-                SettingsRow(label: "MOTD") {
-                    TextField("Server MOTD", text: $model.motd)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 320)
-                }
-                SettingsRow(label: "Max Players") {
-                    TextField("20", value: $model.maxPlayers, formatter: integerFormatter)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                }
-                SettingsRow(label: "Online Mode") {
-                    Toggle("", isOn: $model.onlineMode)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                }
-            }
-            .contextualHelpAnchor("serverEditor.settings.java.general")
-
-            SettingsSection(title: "Gameplay", icon: "gamecontroller", fill: sectionFill) {
+            SettingsSection(title: "World Settings", icon: "globe", fill: sectionFill) {
                 SettingsRow(label: "Difficulty") {
                     Picker("", selection: $model.difficulty) {
                         ForEach(ServerDifficulty.allCases) { d in Text(d.displayName).tag(d) }
@@ -187,13 +161,128 @@ struct ServerSettingsView: View {
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 320)
                 }
+                SettingsRow(label: "World Type") {
+                    Picker("", selection: $model.levelType) {
+                        ForEach(LevelType.allCases) { t in Text(t.displayName).tag(t) }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 220)
+                }
+                SettingsRow(label: "Force Gamemode") {
+                    Toggle("", isOn: $model.forceGamemode)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Hardcore") {
+                    Toggle("", isOn: $model.hardcore)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "PvP") {
+                    Toggle("", isOn: $model.pvp)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Spawn Monsters") {
+                    Toggle("", isOn: $model.spawnMonsters)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Spawn Animals") {
+                    Toggle("", isOn: $model.spawnAnimals)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Spawn NPCs") {
+                    Toggle("", isOn: $model.spawnNpcs)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Allow Nether") {
+                    Toggle("", isOn: $model.allowNether)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Allow Flight") {
+                    Toggle("", isOn: $model.allowFlight)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Spawn Protection Radius") {
+                    TextField("16", value: $model.spawnProtection, formatter: integerFormatter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                }
+                Text("Blocks around the world spawn point that non-ops cannot break. Set to 0 to disable.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
+            }
+            .contextualHelpAnchor("serverEditor.settings.java.world")
+
+            SettingsSection(title: "Server Settings", icon: "text.alignleft", fill: sectionFill) {
+                SettingsRow(label: "MOTD") {
+                    TextField("Server MOTD", text: $model.motd)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 320)
+                }
+                SettingsRow(label: "Max Players") {
+                    TextField("20", value: $model.maxPlayers, formatter: integerFormatter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                }
+                SettingsRow(label: "Online Mode") {
+                    Toggle("", isOn: $model.onlineMode)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
                 SettingsRow(label: "View Distance") {
                     TextField("10", value: $model.viewDistance, formatter: integerFormatter)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
                 }
+                SettingsRow(label: "Simulation Distance") {
+                    TextField("10", value: $model.simulationDistance, formatter: integerFormatter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                }
+                SettingsRow(label: "Whitelist") {
+                    Toggle("", isOn: $model.whitelist)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Enforce Whitelist") {
+                    Toggle("", isOn: $model.enforceWhitelist)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                }
+                SettingsRow(label: "Player Idle Timeout (min)") {
+                    TextField("0", value: $model.playerIdleTimeout, formatter: integerFormatter)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                }
+                Text("Minutes before an idle player is kicked. Set to 0 to disable.")
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
+                SettingsRow(label: "Op Permission Level") {
+                    Picker("", selection: $model.opPermissionLevel) {
+                        Text("1 — Bypass spawn protection").tag(1)
+                        Text("2 — Commands & command blocks").tag(2)
+                        Text("3 — Manage players").tag(3)
+                        Text("4 — All permissions").tag(4)
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 260)
+                }
             }
-            .contextualHelpAnchor("serverEditor.settings.java.gameplay")
+            .contextualHelpAnchor("serverEditor.settings.java.server")
 
             SettingsSection(title: "Network", icon: "network", fill: sectionFill) {
                 SettingsRow(label: "Server Port (TCP)") {
@@ -207,12 +296,12 @@ struct ServerSettingsView: View {
                         .frame(width: 100)
                 }
                 Text("Changing ports may require updating your router / port forwarding.")
-                                    .font(MSC.Typography.caption)
-                                    .foregroundStyle(MSC.Colors.caption)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .padding(.horizontal, MSC.Spacing.md)
-                                    .padding(.top, 2)
-                                    .padding(.bottom, MSC.Spacing.sm)
+                    .font(MSC.Typography.caption)
+                    .foregroundStyle(MSC.Colors.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, MSC.Spacing.md)
+                    .padding(.top, 2)
+                    .padding(.bottom, MSC.Spacing.sm)
                 SettingsRow(label: "Tunnel (playit.gg)") {
                     Toggle("", isOn: Binding(
                         get: { configServer.playitEnabled },
@@ -241,7 +330,64 @@ struct ServerSettingsView: View {
                 playitDownloadRow
             }
             .contextualHelpAnchor("serverEditor.settings.java.network")
+
+            if configServer.javaFlavor == .purpur, let cfg = purpurConfig {
+                purpurSettingsSection(config: cfg)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func purpurSettingsSection(config: PurpurConfig) -> some View {
+        SettingsSection(title: "Purpur", icon: "dial.low", fill: sectionFill) {
+            SettingsRow(label: "Creeper Grief Radius") {
+                TextField("3", value: Binding(
+                    get: { config.creeperGriefRadius },
+                    set: { purpurConfig?.creeperGriefRadius = $0; onJavaDraftChange?(javaDraft) }
+                ), formatter: integerFormatter)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 80)
+            }
+            Text("Explosion radius for creepers. Set to 0 to prevent block damage. -1 uses the vanilla default.")
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.caption)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.top, 2)
+                .padding(.bottom, MSC.Spacing.sm)
+            SettingsRow(label: "Disable Ice & Snow") {
+                Toggle("", isOn: Binding(
+                    get: { config.disableIceAndSnow },
+                    set: { purpurConfig?.disableIceAndSnow = $0; onJavaDraftChange?(javaDraft) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            }
+            SettingsRow(label: "Disable Thunder") {
+                Toggle("", isOn: Binding(
+                    get: { config.disableThunder },
+                    set: { purpurConfig?.disableThunder = $0; onJavaDraftChange?(javaDraft) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            }
+            SettingsRow(label: "Tick Fluids") {
+                Toggle("", isOn: Binding(
+                    get: { config.tickFluids },
+                    set: { purpurConfig?.tickFluids = $0; onJavaDraftChange?(javaDraft) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+            }
+            Text("Disabling fluid ticking stops lava and water from spreading. Useful for creative / build servers.")
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.caption)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.top, 2)
+                .padding(.bottom, MSC.Spacing.sm)
+        }
+        .contextualHelpAnchor("serverEditor.settings.java.purpur")
     }
 
     // MARK: - Bedrock settings form
@@ -376,7 +522,7 @@ struct ServerSettingsView: View {
     // MARK: - Draft accessors
 
     private var javaDraft: JavaServerSettingsDraft {
-        JavaServerSettingsDraft(model: model, bedrockPortText: bedrockPortText)
+        JavaServerSettingsDraft(model: model, bedrockPortText: bedrockPortText, purpurConfig: purpurConfig)
     }
 
     private var bedrockDraft: BedrockServerSettingsDraft {
@@ -476,8 +622,14 @@ struct ServerSettingsView: View {
         if model.viewDistance < 2 || model.viewDistance > 32 {
             return .failure(SettingsValidationError(message: "View distance must be between 2 and 32."))
         }
+        if model.simulationDistance < 2 || model.simulationDistance > 32 {
+            return .failure(SettingsValidationError(message: "Simulation distance must be between 2 and 32."))
+        }
         if model.serverPort < 1 || model.serverPort > 65535 {
             return .failure(SettingsValidationError(message: "Server port must be between 1 and 65535."))
+        }
+        if model.opPermissionLevel < 1 || model.opPermissionLevel > 4 {
+            return .failure(SettingsValidationError(message: "Op permission level must be between 1 and 4."))
         }
         let trimmedBedrock = draft.bedrockPortText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedBedrock.isEmpty {
@@ -536,6 +688,9 @@ struct ServerSettingsView: View {
             model = validatedModel
             do {
                 try viewModel.saveServerPropertiesModel(validatedModel, for: configServer)
+                if let purpur = purpurConfig {
+                    try? viewModel.savePurpurConfig(purpur, for: configServer)
+                }
                 if !isInline { isPresented = false }
             } catch {
                 errorMessage = "Failed to save server.properties: \(error.localizedDescription)"

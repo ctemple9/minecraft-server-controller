@@ -24,8 +24,8 @@ struct DetailsView: View {
     @State private var selectedPlayerName: String? = nil
     @State private var serverNotesText: String = ""
 
-    // Connection info visibility (single global toggle)
-        @State private var showAddresses: Bool = false
+    // Connection info visibility — single global toggle lives on the view model
+    // (shared with the sidebar "How to Connect" section).
 
     // DuckDNS behavior
     @State private var hasSavedDuckDNS: Bool = false
@@ -182,7 +182,7 @@ struct DetailsView: View {
                             isEditingDuckDNS: $isEditingDuckDNS,
                             showCopiedHUD: $showCopiedHUD,
                             copiedHUDText: $copiedHUDText,
-                            showAddresses: $showAddresses,
+                            showAddresses: $viewModel.showConnectionAddresses,
                             hasSavedDuckDNS: $hasSavedDuckDNS,
                             selectedPlayerName: $selectedPlayerName,
                             serverNotesText: $serverNotesText,
@@ -251,6 +251,22 @@ struct DetailsView: View {
             )
         ) {
             FirstStartSheetView(isShowingManageServers: $isShowingManageServers)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if viewModel.isShowingInitiationProgress {
+                InitiationProgressOverlay()
+                    .environmentObject(viewModel)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isShowingInitiationProgress)
+        .onChange(of: viewModel.showFirstStartAlert) { _, showing in
+            // When the completion sheet is dismissed, offer to save the gamertag
+            // captured during initiation (small delay so the sheets don't overlap).
+            guard !showing else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                viewModel.offerPendingInitiationGamertagSaveIfNeeded()
+            }
         }
         .onChange(of: viewModel.triggerExplainWorkspace) { _, triggered in
             guard triggered else { return }

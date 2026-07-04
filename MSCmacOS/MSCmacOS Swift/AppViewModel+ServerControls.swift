@@ -115,9 +115,19 @@ extension AppViewModel {
 
             isServerRunning = true
             isMetricsPaused = false
+            // Mirror the Bedrock VM console to a rolling logs/latest.log on disk.
+            if cfgServer.isBedrock { startBedrockLogFile(serverDir: cfgServer.serverDir) }
             logAppMessage("[App] Starting REAL server: \(server.name)")
             refreshHealthCardsForSelectedServer()
             startResourcePackHostIfNeeded(for: cfgServer)
+
+            // Flow 2: if SVC is installed+enabled and port forwarding is used, ask once
+            // whether the user has forwarded UDP 24454. "Yes" is remembered; "No" re-asks next start.
+            if !cfgServer.playitEnabled,
+               !cfgServer.svcPortForwardingConfirmed,
+               VoiceChatConfigManager.isInstalled(serverDir: cfgServer.serverDir) {
+                pendingSVCPortForwardingPrompt = SVCPortForwardingAlert(serverId: cfgServer.id)
+            }
 
             if !wasFirstRun {
                 fireNotificationIfEnabled(event: .serverStarted,
@@ -144,6 +154,7 @@ extension AppViewModel {
                 }
                 guard !self.isMetricsPaused else { return }
                 self.updateResourceUsageMetrics()
+                self.sampleBedrockPlayerActivity()
                 guard self.lifecycle.serverReadyForAutoMetrics else { return }
                 self.refreshPlayersAndTps()
                 self.refreshWorldTime()
@@ -300,7 +311,7 @@ extension AppViewModel {
     }
 
     private enum CommandOrigin {
-        case user, auto
+        case user, auto, silentAuto
     }
 
     private func sendCommand(_ cmd: String, origin: CommandOrigin) {
@@ -325,6 +336,8 @@ extension AppViewModel {
         case .auto:
             console.markAutoCommand()
             logAppMessage("[Auto → \(server.name)] \(cmd)")
+        case .silentAuto:
+            break
         }
     }
 
@@ -335,6 +348,16 @@ extension AppViewModel {
         guard cfgServer.serverType == .java else { return }
         sendCommand("list", origin: .auto)
         sendCommand("tps", origin: .auto)
+    }
+
+    /// Records a player-count sample for a running Bedrock server so the Performance
+    /// tab's "Player Activity" chart fills in over time. Bedrock has no auto `list`
+    /// poll (its online list is derived from console log parsing), so without a
+    /// periodic sample an idle server would show the "Collecting…" placeholder
+    /// indefinitely instead of a flat baseline that rises when players join.
+    func sampleBedrockPlayerActivity() {
+        guard selectedServerIsBedrock else { return }
+        appendPlayerCountHistory(onlinePlayers.count)
     }
 
     /// Polls the running Java server for the in-game day and time-of-day.
@@ -350,8 +373,8 @@ extension AppViewModel {
               let cfgServer = configServer(for: server),
               cfgServer.serverType == .java else { return }
         pendingTimeQueryKinds = [.gametime, .daytime]
-        sendCommand("time query gametime", origin: .auto)
-        sendCommand("time query day", origin: .auto)
+        sendCommand("time query gametime", origin: .silentAuto)
+        sendCommand("time query day", origin: .silentAuto)
     }
 
     /// Polls the featured player's current health from the running Java server,
@@ -729,5 +752,245 @@ extension AppViewModel {
         configManager.config.servers[idx].autoBackupMaxCount = count
         configManager.save()
         logAppMessage("[Backup] Auto backup max count set to \(count) for \(configManager.config.servers[idx].displayName).")
+    }
+}
+
+// MARK: - First-Time Initiation Orchestration (two-pass)
+
+extension AppViewModel {
+
+    /// Snapshot of initiation lifecycle flags, captured in the termination handler
+    /// BEFORE `resetAfterTermination()` wipes them.
+    struct InitiationTerminationContext {
+        var pass1JustEnded: Bool
+        var pass1ServerId: String?
+        var pass2JustEnded: Bool
+        var pass2ServerId: String?
+    }
+
+    func captureInitiationTerminationContext() -> InitiationTerminationContext {
+        InitiationTerminationContext(
+            pass1JustEnded: lifecycle.initiatingFirstRunServerId != nil && lifecycle.hasIssuedAutoStopForInitiate,
+            pass1ServerId: lifecycle.initiatingFirstRunServerId,
+            pass2JustEnded: lifecycle.isInitiationPass2,
+            pass2ServerId: lifecycle.initiationPass2ServerId
+        )
+    }
+
+    /// Called at the very end of a server termination. Decides whether pass 1 was
+    /// the config-generation run (→ launch pass 2 or show the sheet), or whether
+    /// pass 2 (transport bring-up) just finished (→ show the completion sheet).
+    func routeInitiationAfterTermination(_ ctx: InitiationTerminationContext) {
+        if ctx.pass2JustEnded, let sid = ctx.pass2ServerId,
+           let cfg = configManager.config.servers.first(where: { $0.id == sid }) {
+            presentInitiationCompleteSheet(for: cfg)
+            return
+        }
+        if ctx.pass1JustEnded, let sid = ctx.pass1ServerId,
+           let cfg = configManager.config.servers.first(where: { $0.id == sid }) {
+            if initiationNeedsPass2(for: cfg) {
+                beginInitiationProgress(for: cfg)
+                logAppMessage("[App] Initiation pass 1 complete. Bringing up connections in 5s…")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                    self?.startInitiationPass2(for: cfg)
+                }
+            } else {
+                presentInitiationCompleteSheet(for: cfg)
+            }
+        }
+    }
+
+    /// True when the server has a transport (playit or Xbox broadcast) worth
+    /// bringing up on a second pass before showing connection info.
+    func initiationNeedsPass2(for cfg: ConfigServer) -> Bool {
+        let broadcastOn = configManager.config.xboxBroadcastAutoStartEnabled && cfg.xboxBroadcastEnabled
+        return cfg.playitEnabled || broadcastOn
+    }
+
+    /// Show the non-modal progress overlay and arm per-transport waiting state.
+    private func beginInitiationProgress(for cfg: ConfigServer) {
+        let broadcastOn = configManager.config.xboxBroadcastAutoStartEnabled && cfg.xboxBroadcastEnabled
+        initiationPlayitStatus = cfg.playitEnabled ? .waiting : .notApplicable
+        initiationBroadcastStatus = broadcastOn ? .waiting : .notApplicable
+        initiationBroadcastGamertag = nil
+        isShowingInitiationProgress = true
+    }
+
+    /// Start the server again — this time bringing up playit + Xbox broadcast —
+    /// and arm the pass-2 completion watchers + timeouts.
+    func startInitiationPass2(for cfg: ConfigServer) {
+        guard let sel = selectedServer, configServer(for: sel)?.id == cfg.id else {
+            logAppMessage("[App] Initiation pass 2 skipped — server no longer selected.")
+            isShowingInitiationProgress = false
+            return
+        }
+        lifecycle.isInitiationPass2 = true
+        lifecycle.initiationPass2ServerId = cfg.id
+        lifecycle.hasIssuedAutoStopForPass2 = false
+        lifecycle.pass2BroadcastTechTimerArmed = false
+        logAppMessage("[App] Initiation pass 2 — starting server to bring up connections.")
+        startServer()
+        // playit: poll for addresses and only count toward a failure timeout once a
+        // secret exists — i.e. after the user has finished signing in. We never
+        // penalise the time spent in the sign-in sheet itself.
+        if initiationPlayitStatus == .waiting {
+            scheduleInitiationPlayitWatchdog(techElapsed: 0)
+        }
+        // Absolute backstop so a walked-away setup still ends instead of leaving
+        // the server running forever.
+        scheduleInitiationSafetyCap()
+    }
+
+    /// Polls playit tunnel addresses (~every 5s). While no secret exists the user
+    /// is still signing in, so the failure clock is held at zero. Once a secret
+    /// exists we're only waiting on the tunnel itself — allow ~75s for that.
+    private func scheduleInitiationPlayitWatchdog(techElapsed: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self,
+                  self.lifecycle.isInitiationPass2,
+                  self.initiationPlayitStatus == .waiting else { return }
+            if self.playitSecretKey != nil {
+                self.fetchAndStorePlayitTunnelAddresses()
+                let elapsed = techElapsed + 5
+                if elapsed >= 75 {
+                    self.initiationPlayitStatus = .failed
+                    self.logAppMessage("[App] playit tunnel didn't come up in time — you can finish it later from Edit Server → Network.")
+                    self.checkInitiationPass2Completion()
+                    return
+                }
+                self.scheduleInitiationPlayitWatchdog(techElapsed: elapsed)
+            } else {
+                // Still waiting on the user to sign in — hold the clock.
+                self.scheduleInitiationPlayitWatchdog(techElapsed: 0)
+            }
+        }
+    }
+
+    /// Called once the broadcaster authenticates (gamertag parsed). From there
+    /// it's a technical wait to create the Xbox LIVE session — allow ~60s. Before
+    /// authentication we wait indefinitely (the user may still be signing in).
+    func armInitiationBroadcastTechTimeout() {
+        guard lifecycle.isInitiationPass2,
+              initiationBroadcastStatus == .waiting,
+              !lifecycle.pass2BroadcastTechTimerArmed else { return }
+        lifecycle.pass2BroadcastTechTimerArmed = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
+            guard let self,
+                  self.lifecycle.isInitiationPass2,
+                  self.initiationBroadcastStatus == .waiting else { return }
+            self.initiationBroadcastStatus = .failed
+            self.logAppMessage("[App] Xbox broadcast didn't finish creating its session in time.")
+            self.checkInitiationPass2Completion()
+        }
+    }
+
+    /// Absolute backstop (~10 min). Dismisses any lingering sign-in prompts, marks
+    /// still-waiting transports failed, and finishes so the server can't be left
+    /// running indefinitely by a walked-away setup.
+    private func scheduleInitiationSafetyCap() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 600) { [weak self] in
+            guard let self,
+                  self.lifecycle.isInitiationPass2,
+                  !self.lifecycle.hasIssuedAutoStopForPass2 else { return }
+            self.logAppMessage("[App] Initiation safety cap reached — finishing setup.")
+            self.isShowingPlayitSecretSetup = false
+            self.pendingBroadcastAuthPrompt = nil
+            self.pendingBedrockTunnelMissing = nil
+            if self.initiationPlayitStatus == .waiting { self.initiationPlayitStatus = .failed }
+            if self.initiationBroadcastStatus == .waiting { self.initiationBroadcastStatus = .failed }
+            self.checkInitiationPass2Completion()
+        }
+    }
+
+    /// Mark playit confirmed if we're mid pass-2 (called when tunnel addresses land).
+    /// Only confirms once EVERY configured tunnel has resolved an address — so a
+    /// Java+Bedrock server doesn't finish (and show the completion sheet) with the
+    /// Bedrock address still missing, which would fall back to the raw public IP.
+    func markInitiationPlayitReadyIfNeeded() {
+        guard lifecycle.isInitiationPass2, initiationPlayitStatus == .waiting else { return }
+        guard let sel = selectedServer, let cfg = configServer(for: sel) else { return }
+        let needJava = !cfg.isBedrock
+        let needBedrock = bedrockPortForPlayit(for: cfg) != nil
+        if needJava && configManager.config.playitJavaAddress == nil { return }
+        if needBedrock && configManager.config.playitBedrockAddress == nil { return }
+        initiationPlayitStatus = .ready
+        logAppMessage("[App] Initiation: playit tunnel(s) confirmed.")
+        checkInitiationPass2Completion()
+    }
+
+    /// Mark broadcast confirmed if we're mid pass-2 (Xbox LIVE session created).
+    func markInitiationBroadcastReadyIfNeeded() {
+        guard lifecycle.isInitiationPass2, initiationBroadcastStatus == .waiting else { return }
+        initiationBroadcastStatus = .ready
+        logAppMessage("[App] Initiation: Xbox broadcast confirmed.")
+        checkInitiationPass2Completion()
+    }
+
+    /// User tapped Skip on the playit row.
+    func skipInitiationPlayit() {
+        guard initiationPlayitStatus == .waiting else { return }
+        initiationPlayitStatus = .skipped
+        logAppMessage("[App] Initiation: playit setup skipped by user.")
+        checkInitiationPass2Completion()
+    }
+
+    /// User tapped Skip on the Xbox broadcast row — also dismisses any pending
+    /// sign-in prompt and stops the broadcaster.
+    func skipInitiationBroadcast() {
+        guard initiationBroadcastStatus == .waiting else { return }
+        initiationBroadcastStatus = .skipped
+        pendingBroadcastAuthPrompt = nil
+        stopBroadcastIfRunning()
+        stopBedrockBroadcastIfRunning()
+        logAppMessage("[App] Initiation: Xbox broadcast setup skipped by user.")
+        checkInitiationPass2Completion()
+    }
+
+    /// If every awaited transport is resolved, auto-stop to finish initiation.
+    func checkInitiationPass2Completion() {
+        guard lifecycle.isInitiationPass2, !lifecycle.hasIssuedAutoStopForPass2 else { return }
+        guard initiationPlayitStatus.isResolved, initiationBroadcastStatus.isResolved else { return }
+        lifecycle.hasIssuedAutoStopForPass2 = true
+        logAppMessage("[App] Initiation complete — connections ready. Stopping for the final time.")
+        stopServer()
+    }
+
+    /// Hide the progress overlay and present the enriched completion sheet.
+    private func presentInitiationCompleteSheet(for cfg: ConfigServer) {
+        isShowingInitiationProgress = false
+        if let idx = configManager.config.servers.firstIndex(where: { $0.id == cfg.id }),
+           !configManager.config.servers[idx].hasShownFirstStartPopup {
+            configManager.config.servers[idx].hasShownFirstStartPopup = true
+            configManager.save()
+        }
+        // If broadcast authenticated during initiation (we captured a gamertag), stash
+        // an offer to save it — surfaced once the completion sheet is dismissed, since
+        // the save sheet is suppressed while initiation is running.
+        if let tag = initiationBroadcastGamertag?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !tag.isEmpty {
+            let existing = cfg.xboxBroadcastAltGamertag?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if existing.caseInsensitiveCompare(tag) != .orderedSame,
+               !broadcastGamertagSaveDeclinedServerIds.contains(cfg.id) {
+                pendingInitiationGamertagSave = BroadcastGamertagSavePrompt(serverId: cfg.id, gamertag: tag)
+            }
+        }
+        showFirstStartAlert = true
+    }
+
+    /// Called when the first-start completion sheet is dismissed. If we stashed a
+    /// gamertag-save offer during initiation, surface the save sheet now (unless
+    /// another modal — e.g. Manage Servers — is up).
+    func offerPendingInitiationGamertagSaveIfNeeded() {
+        guard let pending = pendingInitiationGamertagSave else { return }
+        pendingInitiationGamertagSave = nil
+        // Don't stack over another modal (e.g. Manage Servers, opened via the
+        // completion sheet's "Open Server Settings…"). contentViewSheetIsPresented
+        // tracks those; the normal-start path will re-offer later anyway.
+        guard !contentViewSheetIsPresented else { return }
+        guard let cfg = configServer(id: pending.serverId) else { return }
+        let existing = cfg.xboxBroadcastAltGamertag?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard existing.caseInsensitiveCompare(pending.gamertag) != .orderedSame else { return }
+        guard !broadcastGamertagSaveDeclinedServerIds.contains(pending.serverId) else { return }
+        pendingBroadcastGamertagSave = pending
     }
 }

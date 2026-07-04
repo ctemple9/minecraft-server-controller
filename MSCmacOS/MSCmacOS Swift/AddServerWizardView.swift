@@ -70,6 +70,8 @@ struct AddServerWizardView: View {
     @State private var crossPlayBedrockPort: String = "19132"
     @State private var isDownloadingCrossPlay: Bool = false
     @State private var crossPlayDownloadStatus: String? = nil
+    @State private var enableXboxBroadcast: Bool = false
+    @State private var xboxBroadcastDownloadStatus: String? = nil
     @State private var jarSourceMode: FreshJarSourceMode = .downloadLatest
     @State private var selectedTemplateId: String? = nil
 
@@ -122,7 +124,7 @@ struct AddServerWizardView: View {
 
     // MARK: Network step
     @State private var enablePlayit: Bool        = false
-    @State private var isShowingPlayitGuide: Bool = false
+    // @State private var isShowingPlayitGuide: Bool = false  // hidden — app handles playit setup in-flow
     @State private var isShowingPortForwardGuide: Bool = false
 
     // MARK: Shared / creation
@@ -182,6 +184,7 @@ struct AddServerWizardView: View {
             OnboardingOverlayView(
                 ownedSteps: [.wizardChoosePath, .serverName, .serverType,
                              .serverCategory, .serverFlavor, .serverVersion, .serverCrossplay,
+                             .serverXboxBroadcast,
                              .serverSettings, .serverConnectivity, .serverConnectivityPorts,
                              .serverNetworkContinue, .firstWorld,
                              .serverAddOns, .createButton]
@@ -192,12 +195,12 @@ struct AddServerWizardView: View {
                 wizardPath = .fresh
             }
         }
-        .sheet(isPresented: $isShowingPlayitGuide) {
-            PlayitSetupGuideSheet(
-                localPort: currentNetworkLocalPort,
-                bedrockPort: currentNetworkBedrockPort
-            )
-        }
+        // .sheet(isPresented: $isShowingPlayitGuide) {  // hidden — app handles playit setup in-flow
+        //     PlayitSetupGuideSheet(
+        //         localPort: currentNetworkLocalPort,
+        //         bedrockPort: currentNetworkBedrockPort
+        //     )
+        // }
         .sheet(isPresented: $isShowingPortForwardGuide) {
             RouterPortForwardGuideSheet(
                 runtimeContext: networkStepPortForwardContext
@@ -782,6 +785,10 @@ struct AddServerWizardView: View {
 
             crossPlaySection
                 .onboardingAnchor(.serverCrossplayArea)
+
+            if enableCrossPlay && !crossPlayUnavailable {
+                xboxBroadcastSection
+            }
         }
     }
 
@@ -818,7 +825,10 @@ struct AddServerWizardView: View {
                             Task { await downloadCrossPlayIfNeeded() }
                         } else if !enabled {
                             crossPlayDownloadStatus = nil
+                            enableXboxBroadcast = false
+                            xboxBroadcastDownloadStatus = nil
                         }
+                        OnboardingManager.shared.tourCrossplayEnabled = enabled
                     }
             }
             .padding(MSC.Spacing.md)
@@ -853,6 +863,71 @@ struct AddServerWizardView: View {
                     .foregroundStyle(status.contains("Failed") ? .red : .green)
             }
         }
+    }
+
+    private var xboxBroadcastSection: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+            Text("Xbox Broadcast")
+                .font(MSC.Typography.sectionHeader)
+
+            HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.title3)
+                    .foregroundStyle(enableXboxBroadcast ? Color.accentColor : .secondary)
+                    .frame(width: 26)
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Enable Xbox Broadcast")
+                        .font(MSC.Typography.sectionHeader)
+                    Text("Let console, mobile, and PC players see your server in the Xbox Friends tab. MSC downloads the broadcast tool automatically.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Toggle("", isOn: $enableXboxBroadcast)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .onChange(of: enableXboxBroadcast) { _, enabled in
+                        if enabled {
+                            downloadXboxBroadcastIfNeeded()
+                        } else {
+                            xboxBroadcastDownloadStatus = nil
+                        }
+                    }
+            }
+            .padding(MSC.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .fill(enableXboxBroadcast
+                          ? Color.accentColor.opacity(0.08)
+                          : Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                    .stroke(enableXboxBroadcast
+                            ? Color.accentColor : Color(NSColor.separatorColor),
+                            lineWidth: enableXboxBroadcast ? 1.5 : 0.5)
+            )
+
+            if let status = xboxBroadcastDownloadStatus {
+                Text(status).font(.caption)
+                    .foregroundStyle(status.contains("Failed") || status.contains("failed") ? .red : .green)
+            }
+        }
+        .onboardingAnchor(.serverXboxBroadcastArea)
+    }
+
+    private func downloadXboxBroadcastIfNeeded() {
+        guard !viewModel.isXboxBroadcastHelperInstalled else {
+            xboxBroadcastDownloadStatus = "✓ Xbox Broadcast ready."
+            return
+        }
+        xboxBroadcastDownloadStatus = "Downloading Xbox Broadcast…"
+        viewModel.downloadOrUpdateXboxBroadcastJar()
     }
 
     /// Selecting a category defaults the flavor to that category's recommended
@@ -929,6 +1004,8 @@ struct AddServerWizardView: View {
                 Text("Port and connectivity options are on the next step.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+
+            xboxBroadcastSection
         }
     }
 
@@ -1091,18 +1168,18 @@ struct AddServerWizardView: View {
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button {
-                isShowingPlayitGuide = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 12))
-                    Text("How does this work?")
-                        .font(.system(size: 12, weight: .medium))
-                }
-            }
-            .buttonStyle(MSCSecondaryButtonStyle())
-            .controlSize(.small)
+            // Button {  // hidden — app handles playit setup in-flow
+            //     isShowingPlayitGuide = true
+            // } label: {
+            //     HStack(spacing: 6) {
+            //         Image(systemName: "questionmark.circle")
+            //             .font(.system(size: 12))
+            //         Text("How does this work?")
+            //             .font(.system(size: 12, weight: .medium))
+            //     }
+            // }
+            // .buttonStyle(MSCSecondaryButtonStyle())
+            // .controlSize(.small)
         }
     }
 
@@ -1488,7 +1565,14 @@ struct AddServerWizardView: View {
                             infoRow(key: "Software", value: "\(selectedFlavor.displayName) · \(selectedCategory.displayName)")
                             infoRow(key: "Version",  value: selectedVersionEntry.map { $0.displayLabel } ?? "Latest \(selectedFlavor.displayName)")
                         }
-                        infoRow(key: "Port",         value: serverType == .java ? javaPort : bedrockPort)
+                        if serverType == .java {
+                            infoRow(key: "Java Port", value: javaPort)
+                            if enableCrossPlay {
+                                infoRow(key: "Bedrock Port", value: crossPlayBedrockPort)
+                            }
+                        } else {
+                            infoRow(key: "Port", value: bedrockPort)
+                        }
                         infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
                         infoRow(key: "World source",  value: worldSourceMode.rawValue)
                         if worldSourceMode == .fresh {
@@ -1765,6 +1849,7 @@ struct AddServerWizardView: View {
                         enableCrossPlay: enableCrossPlay,
                         crossPlayBedrockPort: crossPort,
                         enablePlayit: enablePlayit,
+                        enableXboxBroadcast: enableXboxBroadcast,
                         difficulty: initialWorldDifficulty.rawValue,
                         gamemode: initialWorldGamemode.rawValue,
                         worldSeed: seedOpt,
@@ -1796,6 +1881,7 @@ struct AddServerWizardView: View {
                         port: port,
                         maxPlayers: maxP,
                         enablePlayit: enablePlayit,
+                        enableXboxBroadcast: enableXboxBroadcast,
                         difficulty: initialWorldDifficulty.rawValue,
                         gamemode: initialWorldGamemode.rawValue,
                         worldSeed: seedOpt,

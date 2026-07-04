@@ -222,6 +222,16 @@ struct ConfigServer: Codable, Identifiable {
     /// voice chat port (24454). Requires playitEnabled to be true.
     var playitVoiceChatEnabled: Bool = false
 
+    // MARK: - Simple Voice Chat prompt preferences (per-server)
+
+    /// Flow 1: user chose "Don't ask again" for the playit.gg voice tunnel mismatch prompt.
+    /// Cleared automatically when playitVoiceChatEnabled is toggled back off.
+    var svcTunnelPromptDismissed: Bool = false
+
+    /// Flow 2: user confirmed they've forwarded UDP 24454 for SVC on their router.
+    /// Stays true permanently (never ask again). Cleared if SVC is removed/disabled.
+    var svcPortForwardingConfirmed: Bool = false
+
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
@@ -267,8 +277,10 @@ struct ConfigServer: Codable, Identifiable {
                         case pluginSources       = "plugin_sources"
                         case addonLinks          = "addon_links"
 
-        case playitEnabled          = "playit_enabled"
-        case playitVoiceChatEnabled = "playit_voice_chat_enabled"
+        case playitEnabled              = "playit_enabled"
+        case playitVoiceChatEnabled     = "playit_voice_chat_enabled"
+        case svcTunnelPromptDismissed   = "svc_tunnel_prompt_dismissed"
+        case svcPortForwardingConfirmed = "svc_port_forwarding_confirmed"
             }
         }
 
@@ -334,8 +346,10 @@ extension ConfigServer {
                         pluginSources      = try c.decodeIfPresent([String: PluginSourceConfig].self, forKey: .pluginSources)
                         addonLinks         = try c.decodeIfPresent([String: AddonLink].self, forKey: .addonLinks)
 
-        playitEnabled          = try c.decodeIfPresent(Bool.self, forKey: .playitEnabled)          ?? false
-        playitVoiceChatEnabled = try c.decodeIfPresent(Bool.self, forKey: .playitVoiceChatEnabled) ?? false
+        playitEnabled              = try c.decodeIfPresent(Bool.self, forKey: .playitEnabled)              ?? false
+        playitVoiceChatEnabled     = try c.decodeIfPresent(Bool.self, forKey: .playitVoiceChatEnabled)     ?? false
+        svcTunnelPromptDismissed   = try c.decodeIfPresent(Bool.self, forKey: .svcTunnelPromptDismissed)   ?? false
+        svcPortForwardingConfirmed = try c.decodeIfPresent(Bool.self, forKey: .svcPortForwardingConfirmed) ?? false
             }
 
     func encode(to encoder: Encoder) throws {
@@ -385,8 +399,10 @@ extension ConfigServer {
                 try c.encodeIfPresent(pluginSources, forKey: .pluginSources)
                 try c.encodeIfPresent(addonLinks, forKey: .addonLinks)
 
-        try c.encode(playitEnabled,          forKey: .playitEnabled)
-        try c.encode(playitVoiceChatEnabled, forKey: .playitVoiceChatEnabled)
+        try c.encode(playitEnabled,              forKey: .playitEnabled)
+        try c.encode(playitVoiceChatEnabled,     forKey: .playitVoiceChatEnabled)
+        try c.encode(svcTunnelPromptDismissed,   forKey: .svcTunnelPromptDismissed)
+        try c.encode(svcPortForwardingConfirmed, forKey: .svcPortForwardingConfirmed)
             }
 }
 

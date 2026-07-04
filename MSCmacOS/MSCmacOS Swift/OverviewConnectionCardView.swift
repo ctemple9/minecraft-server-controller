@@ -150,10 +150,18 @@ struct OverviewConnectionCardView: View {
     }
 
     private var isPlayitActive: Bool {
-        // Active if the container is running AND we have stored tunnel addresses.
+        // Show the playit tunnel addresses whenever this server uses playit and we
+        // have stored addresses — regardless of whether the server is currently
+        // running. playit tunnels keep the same address across restarts, so the
+        // Public tab should always surface them once they exist, not fall back to
+        // the raw public IP while the server is stopped.
         // (playitTunnelAddress is the legacy parsed value; playitJavaAddress is the API-fetched one)
-        viewModel.isPlayitRunning &&
-        (viewModel.playitTunnelAddress != nil || viewModel.playitJavaAddress != nil)
+        guard let server = viewModel.selectedServer,
+              let cfg = viewModel.configServer(for: server),
+              cfg.playitEnabled else { return false }
+        return viewModel.playitTunnelAddress != nil
+            || viewModel.playitJavaAddress != nil
+            || viewModel.playitBedrockAddress != nil
     }
 
     private var effectiveJavaAddress: String {

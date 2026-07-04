@@ -33,6 +33,9 @@ final class AppViewModel: ObservableObject {
     @Published var pendingBroadcastAuthPrompt: BroadcastAuthPrompt?
     @Published var firstStartNotice: FirstStartNotice?
     @Published var errorAlert: AppError?
+    @Published var pendingSVCTunnelMismatch: SVCTunnelMismatchAlert?
+    @Published var pendingSVCPortForwardingPrompt: SVCPortForwardingAlert?
+    @Published var pendingBedrockTunnelMissing: BedrockTunnelMissingAlert?
 
     // MARK: - Components tab state
 
@@ -141,6 +144,7 @@ final class AppViewModel: ObservableObject {
             refreshComponentsSnapshotLocalAndTemplate(clearOnline: true)
                         refreshHealthCardsForSelectedServer()
                         clearConsole()
+            checkSVCTunnelMismatch()
                     }
                 }
 
@@ -151,6 +155,9 @@ final class AppViewModel: ObservableObject {
     @Published var orphanedJavaProcessCount: Int = 0
     @Published var watchdogEnabled: Bool = false
     @Published var isShowingInitialSetup: Bool = false
+    /// Set by ContentView to reflect its own local @State sheet booleans,
+    /// so the ViewModel can gate broadcast auth presentation behind all sheets.
+    @Published var contentViewSheetIsPresented: Bool = false
     @Published var isOnboardingActive: Bool = false
     @Published var isXboxBroadcastRunning: Bool = false
     @Published var isBedrockBroadcastRunning: Bool = false
@@ -178,6 +185,32 @@ final class AppViewModel: ObservableObject {
     @Published var showFirstStartAlert: Bool = false
     @Published var firstStartAlertTitle: String = ""
     @Published var firstStartAlertMessage: String = ""
+
+    /// Single global reveal toggle for connection addresses/ports — shared by the
+    /// Overview "Connection Info" card and the sidebar "How to Connect" section so
+    /// hiding in one place hides everywhere. Defaults to hidden.
+    @Published var showConnectionAddresses: Bool = false
+
+    // MARK: - First-time initiation (pass 2 — transport bring-up)
+
+    /// Drives the non-modal progress overlay shown while playit / Xbox broadcast
+    /// come up during first-time initiation. Non-modal so the in-app Xbox sign-in
+    /// sheet can still present over it.
+    @Published var isShowingInitiationProgress: Bool = false
+    @Published var initiationPlayitStatus: InitiationTransportStatus = .notApplicable
+    @Published var initiationBroadcastStatus: InitiationTransportStatus = .notApplicable
+    /// Gamertag captured live from the broadcast auth line during initiation.
+    /// Transient (not persisted to the server config — auto-fill is deferred).
+    @Published var initiationBroadcastGamertag: String? = nil
+
+    /// After a successful Xbox broadcast sign-in, offers to save the gamertag to
+    /// the server's broadcast profile (for alt/dummy accounts the user may forget).
+    @Published var pendingBroadcastGamertagSave: BroadcastGamertagSavePrompt?
+    /// Servers for which the user declined the save prompt this session (don't re-nag).
+    var broadcastGamertagSaveDeclinedServerIds: Set<String> = []
+    /// Stashed during initiation (where the save sheet is suppressed) so we can offer
+    /// it right after the completion sheet is dismissed.
+    var pendingInitiationGamertagSave: BroadcastGamertagSavePrompt?
 
     // MARK: - Welcome / onboarding
 
@@ -329,6 +362,12 @@ final class AppViewModel: ObservableObject {
     /// when AppConfig.useVMBedrockBackend is true.
     let vmBedrockBackend = VMBedrockServerBackend()
     var activeBackend: ServerBackend?
+
+    /// Open handle for the rolling `logs/latest.log` mirror of the Bedrock console.
+    /// Bedrock (in the VM) streams only to the console and writes no log of its own,
+    /// so the app mirrors it to disk — matching Java's `logs/` convention and making
+    /// the Maintenance → Logs button meaningful for Bedrock servers.
+    var bedrockLogHandle: FileHandle?
 
     let broadcastManager = XboxBroadcastProcessManager()
     let bedrockBroadcastManager = BedrockBroadcastManager()
@@ -1079,7 +1118,10 @@ final class AppViewModel: ObservableObject {
             Task { @MainActor in
                 let reachedReadyState = self.lifecycle.serverReadyForAutoMetrics
                 let wasUserRequestedStop = self.lifecycle.isStopRequested
+                // Capture initiation state BEFORE resetAfterTermination() clears it.
+                let initiation = self.captureInitiationTerminationContext()
                 self.isServerRunning = false
+                self.closeBedrockLogFile()
                 self.serverStartTime = nil
                 self.serverUptimeDisplay = nil
                 self.serverCpuPercent = nil
@@ -1108,6 +1150,7 @@ final class AppViewModel: ObservableObject {
                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
                     self.createInitialWorldSlotIfNeeded(for: cfg)
                 }
+                self.routeInitiationAfterTermination(initiation)
             }
         }
 
@@ -1122,7 +1165,10 @@ final class AppViewModel: ObservableObject {
             Task { @MainActor in
                 let reachedReadyState = self.lifecycle.serverReadyForAutoMetrics
                 let wasStopRequested = self.lifecycle.isStopRequested
+                // Capture initiation state BEFORE resetAfterTermination() clears it.
+                let initiation = self.captureInitiationTerminationContext()
                 self.isServerRunning = false
+                self.closeBedrockLogFile()
                 self.serverStartTime = nil
                 self.serverUptimeDisplay = nil
                 self.serverCpuPercent = nil
@@ -1158,6 +1204,7 @@ final class AppViewModel: ObservableObject {
                                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {
                                     self.createInitialWorldSlotIfNeeded(for: cfg)
                                 }
+                                self.routeInitiationAfterTermination(initiation)
                             }
                         }
 
@@ -1299,6 +1346,72 @@ final class AppViewModel: ObservableObject {
     func showError(title: String, message: String) {
         guard configManager.config.errorPopupsEnabled else { return }
         errorAlert = AppError(title: title, message: message)
+    }
+
+    // MARK: - Broadcast auth deferred presentation
+
+    /// True when any sheet/modal is currently presented in the app.
+    /// Used to gate broadcast auth so it never interrupts another flow.
+    var isAnyModalPresented: Bool {
+        isShowingPlayitSecretSetup  ||
+        isShowingStartupProblems    ||
+        isShowingInitialSetup       ||
+        isShowingConceptGuide       ||
+        isShowingServerHandbook     ||
+        isShowingPreferences        ||
+        isShowingRouterPortForwardGuide ||
+        isShowingCrossPlatformGuide ||
+        contentViewSheetIsPresented ||
+        pendingBroadcastAuthPrompt != nil
+    }
+
+    private var queuedBroadcastAuthPrompt: BroadcastAuthPrompt?
+    private var broadcastAuthPresentTimer: Timer?
+
+    /// Present the broadcast auth sheet now if no other modal is up, otherwise queue it
+    /// and retry every 0.5 s until the coast is clear.
+    func enqueueBroadcastAuthPrompt(_ prompt: BroadcastAuthPrompt) {
+        if !isAnyModalPresented {
+            pendingBroadcastAuthPrompt = prompt
+        } else {
+            queuedBroadcastAuthPrompt = prompt
+            guard broadcastAuthPresentTimer == nil else { return }
+            broadcastAuthPresentTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+                guard let self else { timer.invalidate(); return }
+                guard !self.isAnyModalPresented else { return }
+                self.pendingBroadcastAuthPrompt = self.queuedBroadcastAuthPrompt
+                self.queuedBroadcastAuthPrompt = nil
+                timer.invalidate()
+                self.broadcastAuthPresentTimer = nil
+            }
+        }
+    }
+
+    // MARK: - Simple Voice Chat prompt checks
+
+    /// Evaluates the Flow 1 mismatch: SVC installed + playit on + voice tunnel off + not dismissed.
+    /// Call after server selection changes or after voice chat / playit settings change.
+    func checkSVCTunnelMismatch() {
+        guard let cfg = selectedServerConfig else {
+            pendingSVCTunnelMismatch = nil
+            return
+        }
+        guard cfg.playitEnabled,
+              !cfg.playitVoiceChatEnabled,
+              !cfg.svcTunnelPromptDismissed,
+              VoiceChatConfigManager.isInstalled(serverDir: cfg.serverDir) else {
+            pendingSVCTunnelMismatch = nil
+            return
+        }
+        pendingSVCTunnelMismatch = SVCTunnelMismatchAlert(serverId: cfg.id)
+    }
+
+    /// Clears both SVC prompt preferences for a server (call when SVC is disabled/removed).
+    func clearSVCPromptPrefs(for serverId: String) {
+        guard let idx = configManager.config.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        configManager.config.servers[idx].svcTunnelPromptDismissed   = false
+        configManager.config.servers[idx].svcPortForwardingConfirmed = false
+        configManager.save()
     }
 
     func logAppMessage(_ msg: String) {

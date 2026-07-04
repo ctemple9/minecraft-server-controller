@@ -200,6 +200,7 @@ extension AppViewModel {
     }
 
     func saveServerPropertiesModel(_ model: ServerPropertiesModel, for configServer: ConfigServer) throws {
+        let oldBedrockPort = configServer.bedrockPort
         let existing = ServerPropertiesManager.readProperties(serverDir: configServer.serverDir)
         let merged = model.mergedInto(existing)
         do {
@@ -235,6 +236,21 @@ extension AppViewModel {
             loadServerSettings()
             loadGeyserConfig()
         }
+        // When the user sets a Bedrock port for the first time on a playit-enabled server,
+        // alert them that a Bedrock tunnel still needs to be created on the account.
+        if oldBedrockPort == nil,
+           model.bedrockPort != nil,
+           configServer.playitEnabled,
+           configManager.config.playitBedrockAddress == nil {
+            pendingBedrockTunnelMissing = BedrockTunnelMissingAlert(serverId: configServer.id)
+        }
+    }
+
+    // MARK: - Purpur
+
+    func savePurpurConfig(_ config: PurpurConfig, for configServer: ConfigServer) throws {
+        try PurpurConfigManager.writeConfig(serverDir: configServer.serverDir, config: config)
+        logAppMessage("[Purpur] Updated purpur.yml for \(configServer.displayName).")
     }
 
     // MARK: - Geyser

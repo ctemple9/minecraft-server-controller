@@ -265,12 +265,13 @@ struct ServerHandbookView: View {
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
 
-                Text("Your long-term reference for hosting, configuring, and managing Minecraft servers on your Mac.")
+                Text("Your long-term reference for hosting, configuring, and managing Minecraft servers.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
             }
             .padding(.horizontal, MSC.Spacing.xl)
             .padding(.bottom, MSC.Spacing.lg)
+            .padding(.trailing, 180)
 
             // Close button
             VStack {

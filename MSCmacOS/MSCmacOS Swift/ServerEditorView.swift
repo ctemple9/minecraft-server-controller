@@ -96,6 +96,7 @@ struct ServerEditorView: View {
     @State var showBroadcastAltPassword: Bool = false
     @State var broadcastAvatarPath: String = ""
     @State var broadcastAvatarImage: NSImage?
+    @State var isShowingBroadcastAuthResetConfirm: Bool = false
 
     // HUD
     @State var showSaveHUD: Bool = false
@@ -1090,9 +1091,11 @@ struct ServerEditorView: View {
         }
 
         let javaModel = viewModel.loadServerPropertiesModel(for: cfg)
+        let purpurCfg = PurpurConfigManager.readConfig(serverDir: cfg.serverDir)
         javaSettingsDraft = JavaServerSettingsDraft(
             model: javaModel,
-            bedrockPortText: javaModel.bedrockPort.map(String.init) ?? ""
+            bedrockPortText: javaModel.bedrockPort.map(String.init) ?? "",
+            purpurConfig: purpurCfg
         )
 
         let bedrockModel = viewModel.bedrockPropertiesModel(for: cfg)
@@ -1109,9 +1112,13 @@ struct ServerEditorView: View {
             switch ServerSettingsView.validatedJavaModel(from: javaSettingsDraft) {
             case .success(let validatedModel):
                 try viewModel.saveServerPropertiesModel(validatedModel, for: cfg)
+                if let purpur = javaSettingsDraft.purpurConfig {
+                    try? viewModel.savePurpurConfig(purpur, for: cfg)
+                }
                 self.javaSettingsDraft = JavaServerSettingsDraft(
                     model: validatedModel,
-                    bedrockPortText: validatedModel.bedrockPort.map(String.init) ?? ""
+                    bedrockPortText: validatedModel.bedrockPort.map(String.init) ?? "",
+                    purpurConfig: javaSettingsDraft.purpurConfig
                 )
             case .failure(let message):
                 throw NSError(domain: "ServerEditorSettings", code: 1, userInfo: [NSLocalizedDescriptionKey: message])

@@ -68,7 +68,7 @@ var generalTab: some View {
             }
         } else {
             SEBlock {
-                SERow(label: "Memory Limit", hint: "VM memory limit · 0 = no limit") {
+                SERow(label: "Memory Limit", hint: "Total RAM for the VM · 0 = default (2 GB)") {
                     HStack(spacing: 4) {
                         TextField("0", text: $data.maxRamGB)
                             .textFieldStyle(.roundedBorder)
@@ -83,7 +83,7 @@ var generalTab: some View {
             color: .blue,
             text: data.serverType == .java
                 ? "2 GB min / 4 GB max is a solid starting point for a small friend server. Don't exceed ~60% of your Mac's total RAM."
-                : "Sets the VM memory limit. 0 = no limit. 4–6 GB is typical for a Bedrock server."
+                : "The fixed RAM the VM runs with — not a shared-host cap like Docker. 0 = default 2 GB. Bedrock uses ~1–1.5 GB for a small world; 3–4 GB gives headroom for more players or a bigger world."
         )
 
         // ── EULA (Java only) ─────────────────────────────────────────

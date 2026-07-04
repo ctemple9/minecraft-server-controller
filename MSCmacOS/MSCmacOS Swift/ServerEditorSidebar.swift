@@ -16,6 +16,15 @@ struct ServerEditorSidebarView: View {
         return viewModel.worldSlots.first(where: { $0.id == id })?.name
     }
 
+    /// On-disk thumbnail of the active world slot (the photo set in the World tab),
+    /// or nil when none is set — in which case the procedural placeholder is drawn.
+    private var activeWorldThumbnailURL: URL? {
+        guard let cfg = editingConfigServer,
+              let id = viewModel.activeWorldSlotId(forServerDir: cfg.serverDir),
+              let slot = viewModel.worldSlots.first(where: { $0.id == id }) else { return nil }
+        return WorldSlotManager.thumbnailURL(forSlot: slot, serverDir: cfg.serverDir)
+    }
+
     private var backupSummary: String {
         guard let cfg = editingConfigServer else { return "Off" }
         guard cfg.autoBackupEnabled else { return "Off" }
@@ -178,28 +187,36 @@ struct ServerEditorSidebarView: View {
     @ViewBuilder
     private var thumbnailView: some View {
         ZStack(alignment: .topTrailing) {
-            LinearGradient(
-                colors: [
-                    Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
-                    Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .aspectRatio(16/9, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous))
-            .overlay(
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
-                        .frame(height: 6)
-                    Rectangle()
-                        .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
-                        .frame(height: 12)
+            Group {
+                if let url = activeWorldThumbnailURL, let img = NSImage(contentsOf: url) {
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    LinearGradient(
+                        colors: [
+                            Color(hue: 0.57, saturation: 0.60, brightness: 0.85),
+                            Color(hue: 0.57, saturation: 0.45, brightness: 0.65)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .overlay(
+                        VStack(spacing: 0) {
+                            Rectangle()
+                                .fill(Color(hue: 0.33, saturation: 0.55, brightness: 0.42))
+                                .frame(height: 6)
+                            Rectangle()
+                                .fill(Color(hue: 0.07, saturation: 0.45, brightness: 0.35))
+                                .frame(height: 12)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    )
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous))
-            )
+            }
+            .aspectRatio(16/9, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous))
 
             if isRunning {
                 Circle()

@@ -43,6 +43,23 @@ final class ServerLifecycleManager {
     /// Prevents more than one auto-stop from firing for a single Initiate run.
     var hasIssuedAutoStopForInitiate: Bool = false
 
+    // MARK: - Two-pass initiation (pass 2 — transport bring-up)
+
+    /// True while pass 2 (playit / Xbox broadcast bring-up) is active for the
+    /// server being initiated. Pass 1 = generate config files (existing flags
+    /// above); pass 2 = bring up network transports, confirm, then auto-stop.
+    var isInitiationPass2: Bool = false
+
+    /// The server undergoing pass-2 initiation (guards against server switches).
+    var initiationPass2ServerId: String? = nil
+
+    /// Prevents more than one auto-stop from firing for a single pass-2 run.
+    var hasIssuedAutoStopForPass2: Bool = false
+
+    /// Ensures the broadcast "technical" failure timer is armed only once, after
+    /// the broadcaster authenticates (so we never time out the user's sign-in).
+    var pass2BroadcastTechTimerArmed: Bool = false
+
     // MARK: - Timer management
 
     /// Start (or restart) the metrics timer.
@@ -80,6 +97,10 @@ final class ServerLifecycleManager {
         hasLoggedReadyOnce = false
         initiatingFirstRunServerId = nil
         hasIssuedAutoStopForInitiate = false
+        isInitiationPass2 = false
+        initiationPass2ServerId = nil
+        hasIssuedAutoStopForPass2 = false
+        pass2BroadcastTechTimerArmed = false
         isStopRequested = false
     }
 

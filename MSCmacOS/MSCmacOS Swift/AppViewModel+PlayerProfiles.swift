@@ -64,6 +64,15 @@ extension AppViewModel {
         }
     }
 
+    /// Re-scan Bedrock profiles in response to a live console join/leave, passing the
+    /// event's gamertag so console-first auto-naming can bind it to the player's
+    /// anonymous `server_<uuid>` record. On a first-ever join the record may not be on
+    /// disk yet (no bind); the leave event fires after BDS saves, so it reliably binds.
+    func refreshBedrockProfilesAfterPlayerEvent(nameHint: String) {
+        guard let cfg = selectedConfigServerForProfiles(), cfg.isBedrock else { return }
+        loadBedrockPlayerProfiles(for: cfg, nameHint: nameHint)
+    }
+
     /// Full scan + async UUID resolution for a given Java server.
     func loadPlayerProfiles(for cfg: ConfigServer) {
         isLoadingProfiles = true
@@ -118,11 +127,22 @@ extension AppViewModel {
     // MARK: - Bedrock profile loading
 
     /// Scans the Bedrock LevelDB, applies online/op state, then resolves XUIDs → gamertags.
-    func loadBedrockPlayerProfiles(for cfg: ConfigServer) {
+    ///
+    /// `nameHint` is the gamertag of the player involved in the console event that
+    /// triggered this refresh (a join or leave). It lets the console-first naming
+    /// step bind a departing player (no longer in `onlinePlayers`) to their freshly
+    /// saved `server_<uuid>` record.
+    func loadBedrockPlayerProfiles(for cfg: ConfigServer, nameHint: String? = nil) {
         isLoadingProfiles = true
         let serverDir = cfg.serverDir
         let levelName = currentLevelName(for: cfg)
         let onlineXUIDs = Set(onlinePlayers.compactMap { $0.xuid })
+        let onlineNames = Set(onlinePlayers.map { $0.name.lowercased() })
+        // Gamertags known from the live console this session — the "console-first"
+        // source for naming anonymous broadcast/transfer joins. Includes the
+        // currently-online players plus the departing player (nameHint), if any.
+        var liveNames = onlinePlayers.map { $0.name }
+        if let nameHint { liveNames.append(nameHint) }
 
         Task.detached(priority: .userInitiated) {
             // 1. Scan LevelDB (NBT is parsed here — stats + inventory pre-populated).
@@ -163,11 +183,37 @@ extension AppViewModel {
                 }
             }
 
-            // 4. Mark online players
-            for i in profiles.indices {
-                if let xuid = profiles[i].xuid {
-                    profiles[i].isOnline = onlineXUIDs.contains(xuid)
+            // 3b. Console-first auto-naming. Broadcast/transfer joins are stored on
+            //     disk as anonymous `server_<uuid>` records that share NO identifier
+            //     with the console identity (the numeric XUID, pfid, and gamertag never
+            //     appear on disk), so they can't be matched to a live player by id.
+            //     Correlate by liveness instead: if exactly one unresolved `server_`
+            //     profile exists and exactly one live gamertag is unaccounted for, they
+            //     must be the same person — bind the name and cache it against the stable
+            //     `server_<uuid>` key so it sticks for every future session. Ambiguous
+            //     cases (multiple unknowns at once) are left for manual "Identify Player".
+            let unresolvedServer = profiles.indices.filter { i in
+                guard let x = profiles[i].xuid, x.hasPrefix("server_"), !hidden.contains(x) else { return false }
+                return profiles[i].username == nil || profiles[i].username == "Unknown Player"
+            }
+            let knownNames = Set(profiles.compactMap { $0.username?.lowercased() })
+            let pendingNames = Set(liveNames.map { $0.lowercased() }).subtracting(knownNames)
+            if unresolvedServer.count == 1, pendingNames.count == 1,
+               let lower = pendingNames.first,
+               let name = liveNames.first(where: { $0.lowercased() == lower }) {
+                let i = unresolvedServer[0]
+                profiles[i].username = name
+                if let serverKey = profiles[i].xuid {
+                    BedrockNameCache.record(xuid: serverKey, name: name, serverDir: serverDir)
                 }
+            }
+
+            // 4. Mark online players — by XUID (numeric Xbox) or, for `server_` profiles
+            //    named via the console/cache, by matching the live gamertag.
+            for i in profiles.indices {
+                let byXUID = profiles[i].xuid.map { onlineXUIDs.contains($0) } ?? false
+                let byName = profiles[i].username.map { onlineNames.contains($0.lowercased()) } ?? false
+                profiles[i].isOnline = byXUID || byName
             }
 
             await MainActor.run {

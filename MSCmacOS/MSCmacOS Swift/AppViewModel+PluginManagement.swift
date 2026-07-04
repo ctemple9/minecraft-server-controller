@@ -130,7 +130,12 @@ extension AppViewModel {
         do {
             try FileManager.default.moveItem(at: currentURL, to: newURL)
             logAppMessage("[Plugins] \(entry.isEnabled ? "Disabled" : "Enabled") \(entry.displayName).")
+            // SVC just disabled → clear saved SVC prompt prefs so they re-evaluate
+            if entry.isEnabled && isSVCJar(entry.filename) {
+                clearSVCPromptPrefs(for: cfg.id)
+            }
             refreshDiscoveredPlugins()
+            checkSVCTunnelMismatch()
         } catch {
             logAppMessage("[Plugins] Failed to toggle \(entry.displayName): \(error.localizedDescription)")
         }
@@ -148,11 +153,61 @@ extension AppViewModel {
         do {
             try FileManager.default.removeItem(at: url)
             logAppMessage("[Plugins] Removed \(entry.displayName).")
+            if isSVCJar(entry.filename) {
+                clearSVCPromptPrefs(for: cfg.id)
+            }
             refreshDiscoveredPlugins()
             invalidateAddonPlan()
+            checkSVCTunnelMismatch()
         } catch {
             logAppMessage("[Plugins] Failed to remove \(entry.displayName): \(error.localizedDescription)")
         }
+    }
+
+    private func isSVCJar(_ filename: String) -> Bool {
+        let n = filename.lowercased()
+        return n.contains("voicechat") || n.contains("voice-chat")
+    }
+
+    // MARK: - SVC alert actions (called from ContentView alert handlers)
+
+    /// Disables the SVC plugin for the given server (Flow 1 "Disable Voice Chat" action).
+    /// Performs the rename directly so it works regardless of which server is currently selected.
+    func disableSVCPlugin(for serverId: String) {
+        guard let cfg = configManager.config.servers.first(where: { $0.id == serverId }) else { return }
+        let pluginsDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+            .appendingPathComponent("plugins", isDirectory: true)
+        guard let items = try? FileManager.default.contentsOfDirectory(atPath: pluginsDir.path) else { return }
+        guard let svcFilename = items.first(where: {
+            let n = $0.lowercased()
+            return n.hasSuffix(".jar") && isSVCJar(n)
+        }) else { return }
+        let src = pluginsDir.appendingPathComponent(svcFilename)
+        let dst = pluginsDir.appendingPathComponent(svcFilename + ".disabled")
+        do {
+            try FileManager.default.moveItem(at: src, to: dst)
+            logAppMessage("[Plugins] Disabled Simple Voice Chat (SVC tunnel mismatch resolution).")
+            clearSVCPromptPrefs(for: serverId)
+            refreshDiscoveredPlugins()
+        } catch {
+            logAppMessage("[Plugins] Failed to disable SVC: \(error.localizedDescription)")
+        }
+        pendingSVCTunnelMismatch = nil
+    }
+
+    /// Stores "don't ask again" for the Flow 1 mismatch on the given server.
+    func dismissSVCTunnelMismatch(for serverId: String) {
+        guard let idx = configManager.config.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        configManager.config.servers[idx].svcTunnelPromptDismissed = true
+        configManager.save()
+        pendingSVCTunnelMismatch = nil
+    }
+
+    /// Stores the user's "Yes" answer for the Flow 2 port forwarding prompt.
+    func confirmSVCPortForwarding(for serverId: String) {
+        guard let idx = configManager.config.servers.firstIndex(where: { $0.id == serverId }) else { return }
+        configManager.config.servers[idx].svcPortForwardingConfirmed = true
+        configManager.save()
     }
 
     // MARK: - Source URL management

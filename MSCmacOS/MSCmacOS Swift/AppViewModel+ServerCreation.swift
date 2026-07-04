@@ -136,6 +136,7 @@ extension AppViewModel {
         enableCrossPlay: Bool,
         crossPlayBedrockPort: Int? = nil,
         enablePlayit: Bool = false,
+        enableXboxBroadcast: Bool = false,
         difficulty: String,
         gamemode: String,
         worldSeed: String?,
@@ -346,6 +347,7 @@ extension AppViewModel {
             }
             cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
             cfgServer.playitEnabled = enablePlayit
+            cfgServer.xboxBroadcastEnabled = enableXboxBroadcast
             if enableCrossPlay, let bedrockPort = crossPlayBedrockPort {
                 cfgServer.bedrockPort = bedrockPort
             }
@@ -406,6 +408,7 @@ extension AppViewModel {
         port: Int,
         maxPlayers: Int,
         enablePlayit: Bool = false,
+        enableXboxBroadcast: Bool = false,
         difficulty: String,
         gamemode: String,
         worldSeed: String?,
@@ -507,6 +510,7 @@ extension AppViewModel {
                 return (trimmed.isEmpty || trimmed == "LATEST") ? nil : trimmed
             }()
             cfgServer.bedrockPort = port
+            cfgServer.xboxBroadcastEnabled = enableXboxBroadcast
             cfgServer.bannerColorHex = configManager.config.defaultBannerColorHex
 
             guard await createInitialPersistentWorldSlot(

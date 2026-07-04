@@ -72,6 +72,7 @@ struct DetailsSettingsTabView: View {
                         initialBedrockModel: currentBedrockDraft.model,
                         initialBedrockPortText: currentJavaDraft.bedrockPortText,
                         initialBedrockPortV6Text: currentBedrockDraft.bedrockPortV6Text,
+                        initialPurpurConfig: currentJavaDraft.purpurConfig,
                         isInline: true,
                         sectionFill: MSC.Colors.tierContent,
                         onJavaDraftChange: { updatedDraft in
@@ -132,9 +133,11 @@ struct DetailsSettingsTabView: View {
 
         if cfg.isJava {
             let loadedJava = viewModel.loadServerPropertiesModel(for: cfg)
+            let purpurCfg = PurpurConfigManager.readConfig(serverDir: cfg.serverDir)
             javaDraft = JavaServerSettingsDraft(
                 model: loadedJava,
-                bedrockPortText: loadedJava.bedrockPort.map(String.init) ?? ""
+                bedrockPortText: loadedJava.bedrockPort.map(String.init) ?? "",
+                purpurConfig: purpurCfg
             )
 
             let loadedBedrock = viewModel.bedrockPropertiesModel(for: cfg)
@@ -143,16 +146,8 @@ struct DetailsSettingsTabView: View {
                 bedrockPortV6Text: String(loadedBedrock.serverPortV6)
             )
         } else {
-            let placeholderJava = ServerPropertiesModel(
-                motd: cfg.displayName,
-                maxPlayers: 20,
-                difficulty: .normal,
-                gamemode: .survival,
-                viewDistance: 10,
-                onlineMode: true,
-                serverPort: 19132
-            )
-            javaDraft = JavaServerSettingsDraft(model: placeholderJava, bedrockPortText: "")
+            let placeholderJava = ServerPropertiesModel(from: [:], fallbackMotd: cfg.displayName)
+            javaDraft = JavaServerSettingsDraft(model: placeholderJava, bedrockPortText: "", purpurConfig: nil)
 
             let loadedBedrock = viewModel.bedrockPropertiesModel(for: cfg)
             bedrockDraft = BedrockServerSettingsDraft(
@@ -175,9 +170,13 @@ struct DetailsSettingsTabView: View {
             case .success(let validatedModel):
                 do {
                     try viewModel.saveServerPropertiesModel(validatedModel, for: cfg)
+                    if let purpur = javaDraft.purpurConfig {
+                        try? viewModel.savePurpurConfig(purpur, for: cfg)
+                    }
                     self.javaDraft = JavaServerSettingsDraft(
                         model: validatedModel,
-                        bedrockPortText: validatedModel.bedrockPort.map(String.init) ?? ""
+                        bedrockPortText: validatedModel.bedrockPort.map(String.init) ?? "",
+                        purpurConfig: javaDraft.purpurConfig
                     )
                     hasUnsavedChanges = false
                 } catch {
