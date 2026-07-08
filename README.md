@@ -6,9 +6,11 @@
 
 I made this app because Realms kept charging me for months I barely played, and self-hosting a server on macOS was more annoying than it needed to be. Terminal works, but parsing through console output gets old, and keeping things updated is a pain when you've never done it before. I also wanted cross-play between Bedrock and Java, which meant setting up Geyser and Floodgate, which meant more things to break.
 
-So I built MSC. It handles all of it. You pick a server type, it sets everything up, and a guide walks you through port forwarding so friends outside your house can actually connect. No terminal, no config files, no hunting down the right version of paper/plugins.
+So I built MSC. You pick the kind of server you want to run, and the app handles the setup for you. Java, Bedrock, or both. No terminal, no digging through config files, no hunting down the right Paper version, plugins, or mod loader.
 
-If you just want to play Minecraft with friends or family without paying for Realms every month, this is probably what you need.
+To let other people join your server, MSC helps you handle the connection setup too. You can either follow the app's port forwarding guidance and use your router, or use Playit.gg if you don't know how to port forward, don't have access to your router, or just want an easier option.
+
+If you want a simple way to host Minecraft for friends or family without paying for Realms every month, this is probably what you need.
 
 > [!WARNING]
 > **Work in progress.** It works, but you will hit bugs. Open an issue if something breaks, it genuinely helps.
@@ -16,28 +18,51 @@ If you just want to play Minecraft with friends or family without paying for Rea
 ---
 
 ## This is for you if:
-You're on a Mac, you want to host a server for friends or family, and you don't want to learn how servers work to do it. Java, Bedrock, or both. 
+You're on a Mac and you want to host a Minecraft server for friends or family without having to figure out all of the server setup alone.
+
+This app is especially for you if:
+- You want to play **Java**
+- You want to play **Bedrock**
+- You want **Java and Bedrock players together**
+- You don't know how to port forward
+- You don't have access to your router settings
+- You do have router access and want help setting it up properly
+- You just want the easiest way to get a server online for your group
 
 ## This is probably not for you if:
-You need Windows or Linux, or you're running a large public server.
+- You need Windows or Linux support
+- You're running a large public server
+- You already prefer doing everything manually in Terminal
 
 ## Quick Start
 
-### Before you begin (the app walks through these steps if you need help)
+### Before you begin
 - **macOS 13+**
-- **Java** is required for **Paper / Java Edition** servers
+- **Java** is required for **Java Edition** servers
 - **Bedrock** servers run in a built-in VM — no extra install needed
-- **Port forwarding is required** if players outside your home network will join
-- You must be able to log into your router and change its port forwarding settings
+- To let other people join your server, MSC gives you **two ways** to handle connection setup:
+  - **Router port forwarding** if you have access to your router
+  - **Playit.gg** if you don't know how to port forward, don't have router access, or just don't want to deal with it
 
 ### Start a server
 1. Download and open **Minecraft Server Controller**
 2. Create a new server
 3. Choose your server type — **Standard Java** (Paper, Purpur, Vanilla), **Modded Java** (Fabric, NeoForge, Forge), or **Bedrock**
 4. Complete setup and start the server
-5. Open **Port Forwarding Help**
-6. Log into your router and forward the server port
-7. Share your public IP or DuckDNS hostname with friends
+5. Choose how other people will connect:
+   - **Router port forwarding** for a direct connection
+   - **Playit.gg** for a simpler setup with no router changes
+6. Share the connection info MSC gives you
+
+## Connection Options
+
+### Option 1: Router Port Forwarding
+If you have access to your router and want the most direct setup, MSC can guide you through port forwarding so other people can join your server.
+
+### Option 2: Playit.gg
+If you don't know how to port forward, don't have access to your router, or simply don't want to learn it right now, **Playit.gg is totally fine**. MSC supports it in-app and can get your server online without changing router settings.
+
+There may be a **small amount of extra lag sometimes** compared to direct port forwarding, but for most casual servers with friends, it works well.
 
 ---
 

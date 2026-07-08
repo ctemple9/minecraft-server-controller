@@ -194,8 +194,6 @@
 		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02050000000000000001 /* PlayerSkinStore.swift */; };
 		9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02060000000000000001 /* PlayerSkinRenderer.swift */; };
-		9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */; };
-		9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */; };
 		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
 		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
 		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
@@ -217,6 +215,8 @@
 		9AFE02190000000000000002 /* VMAppliance/appliance-initramfs.gz in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02190000000000000001 /* VMAppliance/appliance-initramfs.gz */; };
 		9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021A0000000000000001 /* BedrockProvisioner.swift */; };
 		9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021B0000000000000001 /* PurpurConfigManager.swift */; };
+		9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */; };
+		9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -431,8 +431,6 @@
 		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		9AFE02050000000000000001 /* PlayerSkinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinStore.swift; sourceTree = "<group>"; };
 		9AFE02060000000000000001 /* PlayerSkinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinRenderer.swift; sourceTree = "<group>"; };
-		9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+Settings.swift"; sourceTree = "<group>"; };
-		9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+UserRoutes.swift"; sourceTree = "<group>"; };
 		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
 		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
 		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
@@ -454,6 +452,8 @@
 		9AFE02190000000000000001 /* VMAppliance/appliance-initramfs.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; path = "VMAppliance/appliance-initramfs.gz"; sourceTree = "<group>"; };
 		9AFE021A0000000000000001 /* BedrockProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvisioner.swift; sourceTree = "<group>"; };
 		9AFE021B0000000000000001 /* PurpurConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurpurConfigManager.swift; sourceTree = "<group>"; };
+		9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+Settings.swift"; sourceTree = "<group>"; };
+		9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+UserRoutes.swift"; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -1208,7 +1208,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.12;
+				MARKETING_VERSION = 1.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1247,7 +1247,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.12;
+				MARKETING_VERSION = 1.13;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
