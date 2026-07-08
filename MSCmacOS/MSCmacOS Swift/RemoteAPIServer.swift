@@ -58,7 +58,7 @@ final class RemoteAPIServer {
     private let postRateLimitMax: Int = 10
     private let postRateLimitWindowSeconds: TimeInterval = 5.0
 
-    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/components/update"]
+    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install", "/components/version", "/allowlist", "/settings", "/backups/config", "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair", "/health/repair", "/playit/start", "/playit/stop", "/duckdns", "/config/geyser", "/users", "/users/revoke", "/users/update"]
 
     // Console ring buffer (kept on `queue`)
     var consoleBuffer: [ConsoleLineDTO] = []
@@ -72,6 +72,8 @@ final class RemoteAPIServer {
     enum TokenRole {
         case admin
         case guest
+        /// Permission-scoped named token. Only the listed permission categories are granted.
+        case named(label: String, permissions: [String])
     }
 
     // Providers can change (Preferences updates), so these must be mutable.
@@ -89,6 +91,24 @@ final class RemoteAPIServer {
     var sessionLogProvider: () -> SessionLogResponseDTO
     var configServersProvider: () -> [ConfigServer]
     var serverConnectionInfoProvider: (String) -> ServerConnectionInfoDTO?
+    var renameServerProvider: (_ serverId: String, _ name: String) async -> ServerRenameResultDTO = { _, _ in
+        ServerRenameResultDTO(success: false, message: "not_available")
+    }
+    var deleteServerProvider: (_ serverId: String) async -> ServerDeleteResultDTO = { _ in
+        ServerDeleteResultDTO(success: false, message: "not_available")
+    }
+    var templatesProvider: () async -> TemplatesResponseDTO = {
+        TemplatesResponseDTO(note: "not_available")
+    }
+    var templateMutationProvider: (_ request: TemplateMutationRequestDTO) async -> TemplateMutationResultDTO = { _ in
+        TemplateMutationResultDTO(success: false, message: "not_available")
+    }
+    var serverImportScanProvider: (_ request: ServerImportRequestDTO) async -> ServerImportScanResponseDTO = { _ in
+        ServerImportScanResponseDTO(success: false, message: "not_available")
+    }
+    var serverImportProvider: (_ request: ServerImportRequestDTO) async -> ServerImportResultDTO = { _ in
+        ServerImportResultDTO(success: false, message: "not_available")
+    }
     var componentsProvider: () async -> ComponentsStatusDTO
     var updateComponentProvider: (String, @escaping (ComponentUpdateResultDTO) -> Void) -> Void
     var broadcastStatusProvider: () -> BroadcastStatusDTO
@@ -101,12 +121,148 @@ final class RemoteAPIServer {
     var disableWatchdogProvider: () -> String?  = { nil }
 
     var playerProfilesProvider:    () -> PlayerProfilesResponseDTO = { PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
+    var playerSkinProvider: (_ profileId: String) async -> PlayerSkinResponseDTO = { _ in
+        PlayerSkinResponseDTO(success: false, message: "not_available")
+    }
+    var playerSkinOverrideProvider: (_ profileId: String, _ lookupIdentifier: String?) async -> PlayerSkinOverrideResultDTO = { profileId, _ in
+        PlayerSkinOverrideResultDTO(success: false, message: "not_available", profileId: profileId, lookupIdentifier: nil)
+    }
+    var hiddenProfileProvider: (_ profileId: String, _ hidden: Bool) async -> HiddenProfileMutationResultDTO = { profileId, hidden in
+        HiddenProfileMutationResultDTO(success: false, message: "not_available", profileId: profileId, isHidden: hidden)
+    }
+    var filesProvider: (_ path: String?) async -> ServerFilesResponseDTO = { _ in
+        ServerFilesResponseDTO(note: "not_available")
+    }
+    var fileReadProvider: (_ path: String) async -> ServerFileReadResponseDTO = { _ in
+        ServerFileReadResponseDTO(success: false, message: "not_available")
+    }
+    var clientExportProvider: (_ selectedIds: [String]?) async -> ClientExportResponseDTO = { _ in
+        ClientExportResponseDTO(note: "not_available")
+    }
+
+    /// Mutates the active Bedrock server's allowlist. `action` is "add" or "remove".
+    /// Returns the freshly-read list so callers stay in sync in one round-trip.
+    /// Defaulted (additive) so older wiring compiles unchanged.
+    var mutateAllowlistProvider: (_ action: String, _ name: String) -> AllowlistMutationResultDTO = { _, _ in
+        AllowlistMutationResultDTO(success: false, message: "not_available", serverType: "java", entries: [])
+    }
+
+    /// Returns the current add-on update plan (Modrinth-tracked mods/plugins).
+    var addonsProvider:       () async -> AddonsResponseDTO          = { AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false) }
+    /// Updates a specific add-on (jarStem) or all updatable add-ons (updateAll=true). Fire-and-forget.
+    var updateAddonProvider:  (_ jarStem: String?, _ updateAll: Bool) -> AddonUpdateResultDTO = { _, _ in AddonUpdateResultDTO(result: "not_available", jarStem: nil, count: 0) }
+    /// Removes an installed add-on by jarStem. Returns result after file deletion.
+    var removeAddonProvider:  (_ jarStem: String) -> AddonRemoveResultDTO = { s in AddonRemoveResultDTO(success: false, message: "not_available", jarStem: s) }
+
+    /// Searches the add-on catalog (Modrinth) for the active server's loader + version (GET /catalog/search).
+    var catalogSearchProvider: (_ query: String, _ offset: Int) async -> CatalogSearchResponseDTO = { _, _ in
+        CatalogSearchResponseDTO(supportsAddons: false, note: "not_available")
+    }
+    /// Installs the latest compatible version of a catalog add-on into the active server (POST /components/install).
+    var installAddonProvider: (_ projectId: String, _ slug: String, _ title: String) async -> CatalogInstallResultDTO = { pid, _, _ in
+        CatalogInstallResultDTO(success: false, message: "not_available", projectId: pid)
+    }
+
+    /// Available server JAR versions for the active server's flavor (GET /versions).
+    var versionsProvider: () async -> VersionsResponseDTO = {
+        VersionsResponseDTO(supportsVersions: false, note: "not_available")
+    }
+    /// Downloads / installs a chosen version for the active server (POST /components/version).
+    var changeVersionProvider: (_ versionId: String, _ loaderVersion: String?) async -> VersionChangeResultDTO = { _, _ in
+        VersionChangeResultDTO(success: false, message: "not_available", requiresRestart: false)
+    }
+
+    /// Lists installed resource packs for the active server (GET /resourcepacks).
+    var resourcePacksProvider: () async -> ResourcePacksResponseDTO = {
+        ResourcePacksResponseDTO(serverType: "java", note: "not_available")
+    }
+    /// Activates or clears the active Java resource pack (POST /resourcepacks/activate).
+    var activateResourcePackProvider: (_ packId: String?, _ require: Bool) async -> ResourcePackMutationResultDTO = { _, _ in
+        ResourcePackMutationResultDTO(success: false, message: "not_available")
+    }
+    /// Sets a custom URL as the active Java resource pack (POST /resourcepacks/seturl).
+    var setResourcePackURLProvider: (_ url: String, _ sha1: String?, _ require: Bool) async -> ResourcePackMutationResultDTO = { _, _, _ in
+        ResourcePackMutationResultDTO(success: false, message: "not_available")
+    }
+    /// Enables or disables a Geyser pack (POST /resourcepacks/toggle).
+    var toggleGeyserPackProvider: (_ packId: String, _ enabled: Bool) async -> ResourcePackMutationResultDTO = { _, _ in
+        ResourcePackMutationResultDTO(success: false, message: "not_available")
+    }
+    /// Removes a resource pack from disk (POST /resourcepacks/remove).
+    var removeResourcePackProvider: (_ packId: String, _ packKind: String) async -> ResourcePackMutationResultDTO = { _, _ in
+        ResourcePackMutationResultDTO(success: false, message: "not_available")
+    }
+
+    /// Typed server.properties schema for the active server (GET /settings).
+    var settingsProvider:       () -> SettingsResponseDTO = {
+        SettingsResponseDTO(serverType: "java", serverName: "", serverRunning: false, editable: false, sections: [], note: "not_available")
+    }
+    /// Applies a sparse set of setting changes to the active server (POST /settings).
+    var updateSettingsProvider: (_ changes: [String: String]) -> SettingsUpdateResultDTO = { _ in
+        SettingsUpdateResultDTO(success: false, message: "not_available", restartRequired: false, appliedKeys: [])
+    }
 
     var worldSlotsProvider:        () -> WorldSlotsResponseDTO = { WorldSlotsResponseDTO(slots: [], activeSlotId: nil, serverRunning: false) }
     var activateWorldSlotProvider: (String) -> Bool            = { _ in false }
+    // World management verbs (P9). All async (world I/O is slow) and echo fresh slot state.
+    var createWorldSlotProvider:  (_ name: String, _ seed: String?) async -> WorldMutationResultDTO = { _, _ in
+        WorldMutationResultDTO(success: false, message: "not_available")
+    }
+    var renameWorldSlotProvider:  (_ slotId: String, _ newName: String) async -> WorldMutationResultDTO = { _, _ in
+        WorldMutationResultDTO(success: false, message: "not_available")
+    }
+    var replaceWorldSlotProvider: (_ slotId: String, _ sourceSlotId: String) async -> WorldMutationResultDTO = { _, _ in
+        WorldMutationResultDTO(success: false, message: "not_available")
+    }
+    var repairWorldSlotProvider:  (_ slotId: String) async -> WorldMutationResultDTO = { _ in
+        WorldMutationResultDTO(success: false, message: "not_available")
+    }
+    // Diagnostics (P10): health cards + startup-problem repair.
+    var healthProvider: () async -> HealthResponseDTO = { HealthResponseDTO(serverType: "java", note: "not_available") }
+    var healthProblemsProvider: () async -> HealthProblemsResponseDTO = { HealthProblemsResponseDTO(serverType: "java", note: "not_available") }
+    var repairHealthProblemProvider: (_ problemId: String, _ action: String) async -> HealthRepairResultDTO = { _, _ in
+        HealthRepairResultDTO(success: false, message: "not_available")
+    }
+    // Connectivity (P11): is the active server joinable right now?
+    var connectivityProvider: () async -> ConnectivityResponseDTO = {
+        ConnectivityResponseDTO(serverType: "java", status: "unknown", severity: "gray",
+                                headline: "Connectivity unavailable", note: "not_available")
+    }
+    // Playit tunnel (P12)
+    var playitStatusProvider: () async -> PlayitStatusResponseDTO = {
+        PlayitStatusResponseDTO(serverName: "", serverType: "java", playitEnabled: false, isRunning: false, hasSecretKey: false, note: "not_available")
+    }
+    var startPlayitProvider: () async -> PlayitActionResultDTO = { PlayitActionResultDTO(result: "not_available") }
+    var stopPlayitProvider:  () async -> PlayitActionResultDTO = { PlayitActionResultDTO(result: "not_available") }
+    // DuckDNS (P13)
+    var duckdnsStatusProvider: () async -> DuckDNSStatusResponseDTO = { DuckDNSStatusResponseDTO() }
+    var updateDuckDNSProvider: (_ hostname: String?) async -> DuckDNSUpdateResultDTO = { _ in DuckDNSUpdateResultDTO(success: false, message: "not_available") }
+    // Geyser config (P13)
+    var geyserConfigProvider: () async -> GeyserConfigResponseDTO = { GeyserConfigResponseDTO(note: "not_available") }
+    var updateGeyserConfigProvider: (_ address: String?, _ port: Int?) async -> GeyserConfigUpdateResultDTO = { _, _ in GeyserConfigUpdateResultDTO(success: false, message: "not_available") }
     var backupItemsProvider:       () -> BackupsResponseDTO    = { BackupsResponseDTO(backups: []) }
     var createBackupNowProvider:   () -> Void                  = { }
     var restoreBackupProvider:     (String) -> Bool            = { _ in false }
+    var backupConfigProvider:      () -> BackupConfigResponseDTO = {
+        BackupConfigResponseDTO(serverName: "", autoBackupEnabled: false, autoBackupIntervalMinutes: 30, autoBackupMaxCount: 12, note: "not_available")
+    }
+    var updateBackupConfigProvider: (_ enabled: Bool?, _ intervalMinutes: Int?, _ maxCount: Int?) -> BackupConfigUpdateResultDTO = { _, _, _ in
+        BackupConfigUpdateResultDTO(success: false, message: "not_available")
+    }
+
+    // Named users / shared access (P17)
+    var listUsersProvider:   () async -> UserListResponseDTO = {
+        UserListResponseDTO(users: [])
+    }
+    var createUserProvider:  (_ label: String, _ role: String, _ permissions: [String]?, _ expiresInDays: Int?) async -> UserCreateResultDTO = { _, _, _, _ in
+        UserCreateResultDTO(success: false, message: "not_available")
+    }
+    var revokeUserProvider:  (_ userId: String) async -> UserRevokeResultDTO = { _ in
+        UserRevokeResultDTO(success: false, message: "not_available")
+    }
+    var updateUserProvider:  (_ userId: String, _ label: String?, _ role: String?, _ permissions: [String]?, _ expiresInDays: Int?) async -> UserUpdateResultDTO = { _, _, _, _, _ in
+        UserUpdateResultDTO(success: false, message: "not_available")
+    }
 
     var authPromptProvider: () -> BroadcastAuthPromptDTO
     var dismissAuthPromptProvider: () -> Void

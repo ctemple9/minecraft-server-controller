@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A11041E5020C4A20BA98F002 /* AllowlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11041E5020C4A20BA98F001 /* AllowlistView.swift */; };
+		B21042F6131D5B31CB99A002 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */; };
+		C31043A7242E6C42DCAAB002 /* CatalogBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31043A7242E6C42DCAAB001 /* CatalogBrowserView.swift */; };
+		D41044B8353F7D53EDB5C002 /* ServerVersionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D41044B8353F7D53EDB5C001 /* ServerVersionView.swift */; };
+		E51055C9464G8E64FEC6D002 /* ResourcePacksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51055C9464G8E64FEC6D001 /* ResourcePacksView.swift */; };
+		F61056DA575H9F75GFD7E002 /* PlayitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61056DA575H9F75GFD7E001 /* PlayitView.swift */; };
+		G71067EB687J1I08JHB0E002 /* UsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G71067EB687J1I08JHB0E001 /* UsersView.swift */; };
 		0CE786C8E7F04DC5B2C38F3C /* WorldsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037EF9722FFE4A20BA98F8BE /* WorldsView.swift */; };
 		9A1695D52F6627D6002BB92F /* NetworkSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1695C42F6627D6002BB92F /* NetworkSafety.swift */; };
 		9A1695D62F6627D6002BB92F /* QuickGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1695CC2F6627D6002BB92F /* QuickGuideView.swift */; };
@@ -55,6 +62,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A11041E5020C4A20BA98F001 /* AllowlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllowlistView.swift; sourceTree = "<group>"; };
+		B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsView.swift; sourceTree = "<group>"; };
+		C31043A7242E6C42DCAAB001 /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
+		D41044B8353F7D53EDB5C001 /* ServerVersionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerVersionView.swift; sourceTree = "<group>"; };
+		E51055C9464G8E64FEC6D001 /* ResourcePacksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcePacksView.swift; sourceTree = "<group>"; };
+		F61056DA575H9F75GFD7E001 /* PlayitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitView.swift; sourceTree = "<group>"; };
+		G71067EB687J1I08JHB0E001 /* UsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsersView.swift; sourceTree = "<group>"; };
 		037EF9722FFE4A20BA98F8BE /* WorldsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldsView.swift; sourceTree = "<group>"; };
 		9A1695B72F6627D6002BB92F /* AppIconMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconMark.swift; sourceTree = "<group>"; };
 		9A1695B82F6627D6002BB92F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -162,6 +176,13 @@
 				9AB1C0002F9A00000000AA01 /* HealthView.swift */,
 				9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */,
 				9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */,
+				A11041E5020C4A20BA98F001 /* AllowlistView.swift */,
+				B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */,
+				C31043A7242E6C42DCAAB001 /* CatalogBrowserView.swift */,
+				D41044B8353F7D53EDB5C001 /* ServerVersionView.swift */,
+				E51055C9464G8E64FEC6D001 /* ResourcePacksView.swift */,
+				F61056DA575H9F75GFD7E001 /* PlayitView.swift */,
+				G71067EB687J1I08JHB0E001 /* UsersView.swift */,
 				037EF9722FFE4A20BA98F8BE /* WorldsView.swift */,
 			);
 			path = MSCRemoteiOS_Swift;
@@ -299,6 +320,13 @@
 				9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */,
 				9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */,
 				9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */,
+				A11041E5020C4A20BA98F002 /* AllowlistView.swift in Sources */,
+				B21042F6131D5B31CB99A002 /* ServerSettingsView.swift in Sources */,
+				C31043A7242E6C42DCAAB002 /* CatalogBrowserView.swift in Sources */,
+				D41044B8353F7D53EDB5C002 /* ServerVersionView.swift in Sources */,
+				E51055C9464G8E64FEC6D002 /* ResourcePacksView.swift in Sources */,
+				F61056DA575H9F75GFD7E002 /* PlayitView.swift in Sources */,
+				G71067EB687J1I08JHB0E002 /* UsersView.swift in Sources */,
 				0CE786C8E7F04DC5B2C38F3C /* WorldsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

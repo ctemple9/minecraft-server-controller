@@ -412,21 +412,31 @@ struct RemoteAPISharedAccessEntry: Codable, Identifiable {
     var id: String
     var label: String
     var token: String
-    /// "admin" or "guest". Defaults to "admin" for entries created before this field existed.
+    /// "admin", "guest", or "named". Defaults to "admin" for entries created before this field existed.
     var role: String
     var createdAtISO8601: String?
+    /// When non-nil, the token is permission-scoped (role semantics are ignored).
+    /// Valid strings: "serverControl", "players", "settings", "addons",
+    ///                "worlds", "broadcast", "networking", "fleet"
+    var permissions: [String]?
+    /// ISO 8601 expiry date. nil = never expires.
+    var expiresAtISO8601: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, label, token, role
+        case id, label, token, role, permissions
         case createdAtISO8601 = "created_at"
+        case expiresAtISO8601 = "expires_at"
     }
 
-    init(id: String, label: String, token: String, role: String = "admin", createdAtISO8601: String? = nil) {
+    init(id: String, label: String, token: String, role: String = "admin",
+         createdAtISO8601: String? = nil, permissions: [String]? = nil, expiresAtISO8601: String? = nil) {
         self.id = id
         self.label = label
         self.token = token
         self.role = role
         self.createdAtISO8601 = createdAtISO8601
+        self.permissions = permissions
+        self.expiresAtISO8601 = expiresAtISO8601
     }
 
     init(from decoder: Decoder) throws {
@@ -435,17 +445,33 @@ struct RemoteAPISharedAccessEntry: Codable, Identifiable {
         label = try c.decode(String.self, forKey: .label)
         token = try c.decode(String.self, forKey: .token)
         role  = (try? c.decodeIfPresent(String.self, forKey: .role)) ?? "admin"
-        createdAtISO8601 = try? c.decodeIfPresent(String.self, forKey: .createdAtISO8601)
+        createdAtISO8601  = try? c.decodeIfPresent(String.self, forKey: .createdAtISO8601)
+        permissions       = try? c.decodeIfPresent([String].self, forKey: .permissions)
+        expiresAtISO8601  = try? c.decodeIfPresent(String.self, forKey: .expiresAtISO8601)
     }
 
-    static func make(label: String, token: String, role: String = "admin") -> RemoteAPISharedAccessEntry {
-        RemoteAPISharedAccessEntry(
+    static func make(label: String, token: String, role: String = "admin",
+                     permissions: [String]? = nil, expiresInDays: Int? = nil) -> RemoteAPISharedAccessEntry {
+        let fmt = ISO8601DateFormatter()
+        let expiryStr: String? = expiresInDays.flatMap { days in
+            Calendar.current.date(byAdding: .day, value: days, to: Date()).map { fmt.string(from: $0) }
+        }
+        return RemoteAPISharedAccessEntry(
             id: UUID().uuidString,
             label: label,
             token: token,
             role: role,
-            createdAtISO8601: ISO8601DateFormatter().string(from: Date())
+            createdAtISO8601: fmt.string(from: Date()),
+            permissions: permissions,
+            expiresAtISO8601: expiryStr
         )
+    }
+
+    /// True when the token has expired.
+    var isExpired: Bool {
+        guard let str = expiresAtISO8601,
+              let date = ISO8601DateFormatter().date(from: str) else { return false }
+        return date <= Date()
     }
 }
 

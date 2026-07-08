@@ -1011,5 +1011,158 @@ extension AppViewModel {
             }
         }
     }
+
+    // MARK: - Connectivity snapshot (P11)
+
+    /// Answers "can players actually connect right now?" for the active server. Resolves the
+    /// effective public endpoint (playit tunnel → DuckDNS → public IP) and probes it externally
+    /// with the SAME primitives the port health card uses (`probeLocalPort` + `queryServerStatus`),
+    /// then folds in playit + broadcast state. Lives in this file so it can reuse those private
+    /// probes — there's one reachability implementation, not two.
+    func connectivitySnapshot() async -> RemoteAPIServer.ConnectivityResponseDTO {
+        struct Ctx {
+            let isBedrock: Bool
+            let running: Bool
+            let startTime: Date?
+            let duckHost: String
+            let publicIP: String?
+            let playitEnabled: Bool
+            let playitRunning: Bool
+            let playitJava: String?
+            let playitBedrock: String?
+            let xbox: Bool
+            let bedrockBroadcast: Bool
+            let gamePort: Int
+            let playerCount: Int
+            let serverName: String
+        }
+
+        let maybe: Ctx? = await MainActor.run {
+            guard let server = self.selectedServer, let cfg = self.configServer(for: server) else { return nil }
+            let duck = self.duckdnsInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let gamePort = cfg.isBedrock ? (self.effectiveBedrockPort(for: cfg) ?? 19132)
+                                         : self.loadServerPropertiesModel(for: cfg).serverPort
+            return Ctx(isBedrock: cfg.isBedrock, running: self.isServerRunning, startTime: self.serverStartTime,
+                       duckHost: duck, publicIP: self.cachedPublicIPAddress,
+                       playitEnabled: cfg.playitEnabled, playitRunning: self.isPlayitRunning,
+                       playitJava: self.playitJavaAddress, playitBedrock: self.playitBedrockAddress,
+                       xbox: self.isXboxBroadcastRunning, bedrockBroadcast: self.isBedrockBroadcastRunning,
+                       gamePort: gamePort, playerCount: self.onlinePlayers.count, serverName: cfg.displayName)
+        }
+
+        guard let ctx = maybe else {
+            return RemoteAPIServer.ConnectivityResponseDTO(serverType: "java", status: "unknown", severity: "gray",
+                headline: "No active server", note: "no_active_server")
+        }
+
+        let serverType = ctx.isBedrock ? "bedrock" : "java"
+        let isUDP = ctx.isBedrock
+        let playitDTO = RemoteAPIServer.ConnectivityPlayitDTO(
+            enabled: ctx.playitEnabled, running: ctx.playitRunning,
+            address: ctx.isBedrock ? ctx.playitBedrock : ctx.playitJava)
+        let broadcastDTO = RemoteAPIServer.ConnectivityBroadcastDTO(
+            xboxRunning: ctx.xbox, bedrockRunning: ctx.bedrockBroadcast)
+
+        // Effective public endpoint: playit tunnel → DuckDNS → public IP.
+        var host: String? = nil
+        var extPort: Int = ctx.gamePort
+        var method = "none"
+        let tunnelAddr = ctx.isBedrock ? ctx.playitBedrock : ctx.playitJava
+        if ctx.playitEnabled, let addr = tunnelAddr {
+            let parts = addr.split(separator: ":").map(String.init)
+            if let h = parts.first, !h.isEmpty {
+                host = h
+                if parts.count == 2, let p = Int(parts[1]) { extPort = p }
+                method = "playit"
+            }
+        }
+        if host == nil, !ctx.duckHost.isEmpty {
+            host = ctx.duckHost; method = "duckdns"
+        }
+        if host == nil, let ip = ctx.publicIP, !ip.isEmpty, ip != "unknown" {
+            host = ip; method = "public-ip"
+        }
+        let joinAddress = host.map { "\($0):\(extPort)" }
+
+        func result(_ status: String, _ severity: String, _ headline: String, _ detail: String?,
+                    local: Bool? = nil, ext: Bool? = nil,
+                    players: Int? = nil, maxP: Int? = nil, motd: String? = nil) -> RemoteAPIServer.ConnectivityResponseDTO {
+            RemoteAPIServer.ConnectivityResponseDTO(
+                serverType: serverType, serverName: ctx.serverName, serverRunning: ctx.running,
+                status: status, severity: severity, headline: headline, detail: detail,
+                joinAddress: joinAddress, method: method, localListening: local, externallyReachable: ext,
+                playersOnline: players, playersMax: maxP, motd: motd,
+                playit: playitDTO, broadcast: broadcastDTO)
+        }
+
+        // Server off → not joinable, but not an error.
+        guard ctx.running else {
+            return result("offline", "gray", "Server is off",
+                          "Start the server so players can join.")
+        }
+
+        let localListening = await probeLocalPort(port: ctx.gamePort, isUDP: isUDP)
+        let secondsSinceStart = ctx.startTime.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
+        let booting = secondsSinceStart < 45
+
+        // No public address to probe from the internet side.
+        guard let host else {
+            if booting {
+                return result("starting", "gray", "Server starting up…",
+                              "Give it a moment, then check again.", local: localListening)
+            }
+            return result("unknown", "yellow", "Reachability unknown",
+                          "No public address is configured. Enable playit or set a DuckDNS hostname so players outside your network can connect.",
+                          local: localListening)
+        }
+
+        let ext = await queryServerStatus(host: host, port: extPort, isUDP: isUDP)
+
+        // UDP fallback: a connected player proves the port is open even if the API can't confirm it.
+        if isUDP, ctx.playerCount > 0 {
+            let s = ctx.playerCount == 1 ? "" : "s"
+            return result("reachable", "green", "Players can connect",
+                          "\(ctx.playerCount) player\(s) connected — the server is reachable at \(host):\(extPort).",
+                          local: true, ext: true, players: ext?.playersOnline, maxP: ext?.playersMax, motd: ext?.motd)
+        }
+
+        if let ext {
+            if ext.online {
+                return result("reachable", "green", "Players can connect",
+                              "Reachable from the internet at \(host):\(extPort).",
+                              local: true, ext: true, players: ext.playersOnline, maxP: ext.playersMax, motd: ext.motd)
+            }
+            // API says offline.
+            if booting {
+                return result("starting", "gray", "Server starting up…",
+                              "Listening locally — verifying external reachability…", local: localListening)
+            }
+            if localListening {
+                let hint = method == "playit"
+                    ? "The playit tunnel may be down — check it on the Mac."
+                    : "Check your router's port forwarding for port \(ctx.gamePort)."
+                return result("unreachable", "yellow", "Not reachable from the internet",
+                              "The server is running but players outside your network can't reach it. \(hint)",
+                              local: true, ext: false)
+            }
+            return result("unreachable", "red", "Server isn't listening",
+                          "The server is running but nothing is listening on port \(ctx.gamePort).",
+                          local: false, ext: false)
+        }
+
+        // External check inconclusive (API unreachable / parse failure).
+        if booting {
+            return result("starting", "gray", "Server starting up…",
+                          "Give it a moment, then check again.", local: localListening)
+        }
+        if localListening {
+            return result("unknown", "yellow", "Reachability unverified",
+                          "The server is listening locally, but external reachability couldn't be verified. Try joining from mobile data to confirm.",
+                          local: true, ext: nil)
+        }
+        return result("unreachable", "red", "Server isn't listening",
+                      "The server is running but nothing is listening on port \(ctx.gamePort).",
+                      local: false, ext: false)
+    }
 }
 

@@ -706,9 +706,10 @@ struct HowToConnectSidebarSection: View {
         guard let cfg else { return [] }
         var out: [Row] = []
         let localIP = AppUtilities.localIPAddress()
+        let usePlayitAddresses = cfg.playitEnabled
         let showJava = !cfg.isBedrock
         let showBedrock = cfg.isBedrock
-            || viewModel.playitBedrockAddress != nil
+            || (usePlayitAddresses && viewModel.playitBedrockAddress != nil)
             || cfg.bedrockPort != nil
             || cfg.xboxBroadcastEnabled
 
@@ -718,10 +719,14 @@ struct HowToConnectSidebarSection: View {
                                label: "Java \u{00B7} same Wi-Fi",
                                value: "\(ip):\(viewModel.javaPortForDisplay)"))
             }
-            if let playit = viewModel.playitJavaAddress {
+            if usePlayitAddresses, let playit = viewModel.playitJavaAddress {
                 out.append(Row(icon: "globe", color: .blue,
                                label: "Java \u{00B7} anywhere",
                                value: playit))
+            } else if let pub = viewModel.cachedPublicIPAddress {
+                out.append(Row(icon: "globe", color: .blue,
+                               label: "Java \u{00B7} public",
+                               value: "\(pub):\(viewModel.javaPortForDisplay)"))
             }
         }
         if showBedrock {
@@ -731,10 +736,14 @@ struct HowToConnectSidebarSection: View {
                                label: "Bedrock \u{00B7} same Wi-Fi",
                                value: "\(ip):\(bport)"))
             }
-            if let playitB = viewModel.playitBedrockAddress {
+            if usePlayitAddresses, let playitB = viewModel.playitBedrockAddress {
                 out.append(Row(icon: "globe", color: .blue,
                                label: "Bedrock \u{00B7} anywhere",
                                value: playitB))
+            } else if let pub = viewModel.cachedPublicIPAddress {
+                out.append(Row(icon: "globe", color: .blue,
+                               label: "Bedrock \u{00B7} public",
+                               value: "\(pub):\(bport)"))
             }
         }
         if cfg.xboxBroadcastEnabled,

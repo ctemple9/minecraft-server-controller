@@ -3,8 +3,9 @@
 //  MinecraftServerController
 //
 //  Visual mental model walkthrough for first-time users.
-//  7 pages: server, connections, Java vs Bedrock, worlds, active-world
-//  routing (auto-loop), settings separation, and a next-steps CTA.
+//  7 pages: getting an address (port forward / Playit), sharing it with
+//  players (direct / Xbox), Java vs Bedrock, worlds, active-world routing
+//  (auto-loop), settings separation, and a next-steps CTA.
 //
 
 import SwiftUI
@@ -217,138 +218,15 @@ private struct CGTextBlock: View {
     }
 }
 
-// MARK: - Page 1: The Server
+// MARK: - Shared method node (icon tile + label + optional audience sublabel)
 
-private struct CGPage1_Server: View {
-    @State private var step = 0
-
-    var body: some View {
-        CGTwoColumnLayout(accentColor: .blue) {
-            VStack(spacing: 44) {
-                CGServerNodeView(size: 130, color: .blue)
-                    .opacity(step >= 1 ? 1 : 0)
-                    .offset(y: step >= 1 ? 0 : 10)
-
-                HStack(spacing: 10) {
-                    CGTagPill(icon: "network", label: "IP Address", color: .blue)
-                    CGTagPill(icon: "number", label: "Port", color: .blue)
-                    CGTagPill(icon: "antenna.radiowaves.left.and.right", label: "Playit.gg", color: .blue)
-                }
-                .opacity(step >= 2 ? 1 : 0)
-                .offset(y: step >= 2 ? 0 : 8)
-            }
-        } textContent: {
-            CGTextBlock(
-                eyebrow: "The Foundation",
-                headline: "The server is an address.",
-                bodyText: "It runs on your Mac and listens for incoming connections. Your IP address, port, and Playit.gg tunnel all belong to it.",
-                note: "Think of it like a phone number. It's how players reach you.",
-                noteIcon: "phone.circle"
-            )
-        }
-        .task {
-            try? await Task.sleep(nanoseconds: 280_000_000)
-            withAnimation(.easeOut(duration: 0.4)) { step = 1 }
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            withAnimation(.easeOut(duration: 0.38)) { step = 2 }
-        }
-    }
-}
-
-// MARK: - Page 2: How Players Connect
-
-private struct CGPage2_Connections: View {
-    @State private var step = 0
-
-    private let nodeSpacing: CGFloat = 64
-    private var arrowColor: Color { .white.opacity(0.3) }
+private struct CGMethodNode: View {
+    var icon: String
+    var label: String
+    var color: Color
+    var sublabel: String? = nil
 
     var body: some View {
-        CGTwoColumnLayout(accentColor: .blue) {
-            VStack(spacing: 0) {
-                // Tier 1: Two ways to get a public address
-                HStack(spacing: nodeSpacing) {
-                    VStack(spacing: 8) {
-                        methodNode(icon: "wifi.router", label: "Port\nForward", color: .blue)
-                        Image(systemName: "arrow.down.forward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 2 ? 1 : 0)
-                    }
-                    VStack(spacing: 8) {
-                        methodNode(icon: "cloud.fill", label: "Playit.gg\nTunnel", color: .purple)
-                        Image(systemName: "arrow.down.backward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 2 ? 1 : 0)
-                    }
-                }
-                .opacity(step >= 1 ? 1 : 0)
-                .offset(y: step >= 1 ? 0 : -8)
-
-                // IP + Port: convergence point
-                CGTagPill(icon: "network", label: "Your IP + Port", color: .cyan)
-                    .padding(.top, 6)
-                    .padding(.bottom, 6)
-                    .opacity(step >= 2 ? 1 : 0)
-                    .offset(y: step >= 2 ? 0 : 4)
-
-                // Tier 2: Two ways players receive the address
-                HStack(spacing: nodeSpacing) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "arrow.down.backward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 3 ? 1 : 0)
-                        methodNode(icon: "link", label: "Direct\nShare", color: .teal)
-                        Image(systemName: "arrow.down.forward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 4 ? 1 : 0)
-                    }
-                    VStack(spacing: 8) {
-                        Image(systemName: "arrow.down.forward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 3 ? 1 : 0)
-                        methodNode(icon: "antenna.radiowaves.left.and.right", label: "Xbox\nBroadcast", color: .green)
-                        Image(systemName: "arrow.down.backward")
-                            .font(.system(size: 12))
-                            .foregroundStyle(arrowColor)
-                            .opacity(step >= 4 ? 1 : 0)
-                    }
-                }
-                .opacity(step >= 3 ? 1 : 0)
-                .offset(y: step >= 3 ? 0 : 4)
-
-                // Server node
-                CGServerNodeView(size: 78, color: .green)
-                    .padding(.top, 6)
-                    .opacity(step >= 4 ? 1 : 0)
-                    .offset(y: step >= 4 ? 0 : 6)
-            }
-        } textContent: {
-            CGTextBlock(
-                eyebrow: "Connections",
-                headline: "Address first, share second.",
-                bodyText: "Port forwarding or Playit.gg gives your server a public address. Players connect through whichever method you shared with them.",
-                note: "Xbox Broadcast needs an address to point to. Set up port forwarding or Playit.gg first.",
-                noteIcon: "info.circle"
-            )
-        }
-        .task {
-            try? await Task.sleep(nanoseconds: 250_000_000)
-            withAnimation(.easeOut(duration: 0.38)) { step = 1 }
-            try? await Task.sleep(nanoseconds: 420_000_000)
-            withAnimation(.easeOut(duration: 0.35)) { step = 2 }
-            try? await Task.sleep(nanoseconds: 380_000_000)
-            withAnimation(.easeOut(duration: 0.35)) { step = 3 }
-            try? await Task.sleep(nanoseconds: 360_000_000)
-            withAnimation(.easeOut(duration: 0.32)) { step = 4 }
-        }
-    }
-
-    private func methodNode(icon: String, label: String, color: Color) -> some View {
         VStack(spacing: 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -362,8 +240,172 @@ private struct CGPage2_Connections: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
-                .frame(width: 90)
+                .frame(width: 96)
                 .lineLimit(2)
+            if let sublabel {
+                Text(sublabel)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 104)
+                    .lineLimit(2)
+            }
+        }
+    }
+}
+
+// MARK: - Page 1: The Server needs an address
+
+private struct CGPage1_Server: View {
+    @State private var step = 0
+
+    private var arrowColor: Color { .white.opacity(0.3) }
+
+    var body: some View {
+        CGTwoColumnLayout(accentColor: .blue) {
+            VStack(spacing: 0) {
+                // Two ways to get an address (pick one)
+                HStack(alignment: .top, spacing: 30) {
+                    VStack(spacing: 8) {
+                        CGMethodNode(icon: "wifi.router", label: "Port\nForward", color: .blue)
+                        Image(systemName: "arrow.down.forward")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 2 ? 1 : 0)
+                    }
+                    Text("OR")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.35))
+                        .padding(.top, 20)
+                        .opacity(step >= 1 ? 1 : 0)
+                    VStack(spacing: 8) {
+                        CGMethodNode(icon: "cloud.fill", label: "Playit.gg\nTunnel", color: .purple)
+                        Image(systemName: "arrow.down.backward")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 2 ? 1 : 0)
+                    }
+                }
+                .opacity(step >= 1 ? 1 : 0)
+                .offset(y: step >= 1 ? 0 : -8)
+
+                // Convergence: the address
+                CGTagPill(icon: "network", label: "Your IP + Port", color: .cyan)
+                    .padding(.top, 6)
+                    .opacity(step >= 2 ? 1 : 0)
+                    .offset(y: step >= 2 ? 0 : 4)
+
+                // The server it belongs to
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.blue.opacity(0.4))
+                    .padding(.top, 8)
+                    .opacity(step >= 3 ? 1 : 0)
+                CGServerNodeView(size: 78, color: .blue)
+                    .padding(.top, 8)
+                    .opacity(step >= 3 ? 1 : 0)
+                    .offset(y: step >= 3 ? 0 : 6)
+            }
+        } textContent: {
+            CGTextBlock(
+                eyebrow: "The Foundation",
+                headline: "Your server needs an address.",
+                bodyText: "Players reach it at your machine's IP + a port. There are two ways to get one — and you only need one: forward a port on your router, or run a Playit.gg tunnel.",
+                note: "Playit.gg does the tunneling for you — no router settings to touch.",
+                noteIcon: "wand.and.stars"
+            )
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            withAnimation(.easeOut(duration: 0.38)) { step = 1 }
+            try? await Task.sleep(nanoseconds: 420_000_000)
+            withAnimation(.easeOut(duration: 0.35)) { step = 2 }
+            try? await Task.sleep(nanoseconds: 380_000_000)
+            withAnimation(.easeOut(duration: 0.35)) { step = 3 }
+        }
+    }
+}
+
+// MARK: - Page 2: Share the address with players
+
+private struct CGPage2_Connections: View {
+    @State private var step = 0
+
+    private let nodeSpacing: CGFloat = 64
+    private var arrowColor: Color { .white.opacity(0.3) }
+
+    var body: some View {
+        CGTwoColumnLayout(accentColor: .teal) {
+            VStack(spacing: 0) {
+                // Starting point: the address from page 1
+                CGTagPill(icon: "network", label: "Your IP + Port", color: .cyan)
+                    .opacity(step >= 1 ? 1 : 0)
+                    .offset(y: step >= 1 ? 0 : -8)
+
+                // Two ways to route players to it
+                HStack(spacing: nodeSpacing) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.down.backward")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 2 ? 1 : 0)
+                        CGMethodNode(
+                            icon: "link",
+                            label: "Direct Share",
+                            color: .teal,
+                            sublabel: "PC — Java & Bedrock"
+                        )
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 3 ? 1 : 0)
+                    }
+                    VStack(spacing: 8) {
+                        Image(systemName: "arrow.down.forward")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 2 ? 1 : 0)
+                        CGMethodNode(
+                            icon: "antenna.radiowaves.left.and.right",
+                            label: "Xbox Broadcast",
+                            color: .green,
+                            sublabel: "Console"
+                        )
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 12))
+                            .foregroundStyle(arrowColor)
+                            .opacity(step >= 3 ? 1 : 0)
+                    }
+                }
+                .padding(.top, 6)
+                .opacity(step >= 2 ? 1 : 0)
+                .offset(y: step >= 2 ? 0 : 4)
+
+                // Players land in the game
+                HStack(spacing: nodeSpacing + 20) {
+                    CGPlayerFigure(label: "PC players", color: .teal, size: 46)
+                    CGPlayerFigure(label: "Console players", color: .green, size: 46)
+                }
+                .padding(.top, 6)
+                .opacity(step >= 3 ? 1 : 0)
+                .offset(y: step >= 3 ? 0 : 6)
+            }
+        } textContent: {
+            CGTextBlock(
+                eyebrow: "Connections",
+                headline: "Now share that address.",
+                bodyText: "Once you have the address, you pick how players get it — type it in directly, or broadcast it to your Xbox friends.",
+                note: "Same-Wi-Fi players use your private (LAN) IP; players outside use your public IP. Direct Share: you pick which to hand out. Xbox Broadcast: set it under IP Mode. A Playit.gg tunnel works for everyone.",
+                noteIcon: "info.circle"
+            )
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            withAnimation(.easeOut(duration: 0.38)) { step = 1 }
+            try? await Task.sleep(nanoseconds: 420_000_000)
+            withAnimation(.easeOut(duration: 0.35)) { step = 2 }
+            try? await Task.sleep(nanoseconds: 380_000_000)
+            withAnimation(.easeOut(duration: 0.35)) { step = 3 }
         }
     }
 }

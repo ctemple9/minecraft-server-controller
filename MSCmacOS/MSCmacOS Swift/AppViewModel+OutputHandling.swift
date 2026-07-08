@@ -34,6 +34,10 @@ extension AppViewModel {
                 refreshHealthCardsForSelectedServer()
                 scanPaperSoftFailures(for: cfg)
             }
+            // Pass 2: if transport(s) confirmed before server finished booting, complete now.
+            if lifecycle.isInitiationPass2 {
+                checkInitiationPass2Completion()
+            }
         }
 
         console.appendRaw(line, source: .server)

@@ -192,10 +192,11 @@ struct FirstStartSheetView: View {
         var rows: [ConnectRow] = []
         let localIP = AppUtilities.localIPAddress() ?? "your-mac-ip"
         let publicIP = viewModel.cachedPublicIPAddress
+        let usePlayitAddresses = cfg.playitEnabled
 
         let showJava = !cfg.isBedrock
         let showBedrock = cfg.isBedrock
-            || viewModel.playitBedrockAddress != nil
+            || (usePlayitAddresses && viewModel.playitBedrockAddress != nil)
             || cfg.bedrockPort != nil
             || cfg.xboxBroadcastEnabled
 
@@ -206,7 +207,7 @@ struct FirstStartSheetView: View {
                 title: "Java — same Wi-Fi",
                 detail: "Friends on your network join with your Mac's local address.",
                 value: "\(localIP):\(port)"))
-            if let playit = viewModel.playitJavaAddress {
+            if usePlayitAddresses, let playit = viewModel.playitJavaAddress {
                 rows.append(ConnectRow(
                     icon: "globe", color: .blue,
                     title: "Java — anywhere (playit.gg)",
@@ -228,7 +229,7 @@ struct FirstStartSheetView: View {
                 title: "Bedrock — same Wi-Fi",
                 detail: "Mobile, console & Windows friends on your network.",
                 value: "\(localIP):\(bport)"))
-            if let playitB = viewModel.playitBedrockAddress {
+            if usePlayitAddresses, let playitB = viewModel.playitBedrockAddress {
                 rows.append(ConnectRow(
                     icon: "globe", color: .blue,
                     title: "Bedrock — anywhere (playit.gg)",
@@ -536,4 +537,3 @@ struct InitiationProgressOverlay: View {
         }
     }
 }
-

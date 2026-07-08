@@ -176,16 +176,13 @@ struct ServerHandbookView: View {
     @State private var visitedTopics: Set<HandbookTopic> = [.overview]
     @State private var searchText: String = ""
     @State private var topicTransitionID: UUID = UUID()
+    @State private var showReassuranceBanner: Bool = true
 
     private var filteredTopics: [HandbookTopic] {
         if searchText.isEmpty { return HandbookTopic.allCases }
         return HandbookTopic.allCases.filter {
             $0.title.localizedCaseInsensitiveContains(searchText)
         }
-    }
-
-    private var progressFraction: Double {
-        Double(visitedTopics.count) / Double(HandbookTopic.allCases.count)
     }
 
     private func selectTopic(_ topic: HandbookTopic) {
@@ -215,6 +212,11 @@ struct ServerHandbookView: View {
 
             // ── Hero Banner ───────────────────────────────────────────────
             heroHeader
+
+            // ── Reassurance banner (always visible until dismissed) ───────
+            if showReassuranceBanner {
+                reassuranceBanner
+            }
 
             // ── Content area ─────────────────────────────────────────────
             HStack(spacing: 0) {
@@ -307,21 +309,64 @@ struct ServerHandbookView: View {
         .frame(height: 200)
     }
 
+    // MARK: - Reassurance Banner
+
+    private var reassuranceBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "hand.wave.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(.blue)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("You don\u{2019}t need to read all of this.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.primary)
+                Text("This is a reference \u{2014} dip in whenever you have a question. To make your first server you don\u{2019}t need to read any of it: just open **Getting Started \u{2192} Your First Server**, or skip the handbook entirely and use the setup wizard.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.primary.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                selectTopic(.firstServer)
+            } label: {
+                Text("Getting Started")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.blue)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { showReassuranceBanner = false }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(5)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Dismiss")
+        }
+        .padding(.horizontal, MSC.Spacing.xl)
+        .padding(.vertical, MSC.Spacing.md)
+        .background(Color.blue.opacity(0.08))
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
     private var progressPill: some View {
         HStack(spacing: 6) {
-            Image(systemName: "chart.bar.fill")
+            Image(systemName: "book.fill")
                 .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.8))
-            Text("\(visitedTopics.count) of \(HandbookTopic.allCases.count) topics read")
+            Text("Reference \u{2014} \(selectedTopic.category.rawValue)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.9))
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.25)).frame(height: 4)
-                    Capsule().fill(.white).frame(width: geo.size.width * progressFraction, height: 4)
-                }
-            }
-            .frame(width: 60, height: 4)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)

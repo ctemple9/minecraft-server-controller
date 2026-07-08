@@ -946,9 +946,12 @@ extension AppViewModel {
         checkInitiationPass2Completion()
     }
 
-    /// If every awaited transport is resolved, auto-stop to finish initiation.
+    /// If every awaited transport is resolved AND the server has finished booting, auto-stop
+    /// to finish initiation. Called from both transport-ready paths and the "Done" output handler
+    /// so whichever arrives last triggers the stop.
     func checkInitiationPass2Completion() {
         guard lifecycle.isInitiationPass2, !lifecycle.hasIssuedAutoStopForPass2 else { return }
+        guard lifecycle.serverReadyForAutoMetrics else { return }
         guard initiationPlayitStatus.isResolved, initiationBroadcastStatus.isResolved else { return }
         lifecycle.hasIssuedAutoStopForPass2 = true
         logAppMessage("[App] Initiation complete — connections ready. Stopping for the final time.")

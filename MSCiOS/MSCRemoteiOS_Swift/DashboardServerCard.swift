@@ -8,6 +8,7 @@ struct DashboardServerCard: View {
     let isPaired: Bool
     let isRunning: Bool
     @Binding var selectedServerId: String
+    let manageAction: () -> Void
     let startAction: () -> Void
     let stopAction: () -> Void
 
@@ -23,53 +24,71 @@ struct DashboardServerCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, MSCRemoteStyle.spaceMD)
             } else {
-                Menu {
-                    ForEach(servers, id: \.id) { server in
-                        Button {
-                            selectedServerId = server.id
-                        } label: {
-                            if server.id == activeServerId {
-                                Label(server.name, systemImage: "checkmark")
-                            } else {
-                                Label(server.name, systemImage: server.resolvedServerType.iconName)
+                HStack(spacing: MSCRemoteStyle.spaceSM) {
+                    Menu {
+                        ForEach(servers, id: \.id) { server in
+                            Button {
+                                selectedServerId = server.id
+                            } label: {
+                                if server.id == activeServerId {
+                                    Label(server.name, systemImage: "checkmark")
+                                } else {
+                                    Label(server.name, systemImage: server.resolvedServerType.iconName)
+                                }
                             }
                         }
-                    }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(activeServerNameText)
-                                .font(.system(.subheadline, design: .rounded).weight(.medium))
-                                .foregroundStyle(MSCRemoteStyle.textPrimary)
-                            HStack(spacing: 5) {
-                                Image(systemName: activeServerType.iconName)
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(MSCRemoteStyle.textTertiary)
-                                Text(activeServerType.displayName)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(MSCRemoteStyle.textTertiary)
-                                Text("·")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(MSCRemoteStyle.textTertiary)
-                                Text("Tap to switch server")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(activeServerNameText)
+                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .foregroundStyle(MSCRemoteStyle.textPrimary)
+                                HStack(spacing: 5) {
+                                    Image(systemName: activeServerType.iconName)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                                    Text(activeServerType.displayName)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                                    Text("·")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                                    Text("Tap to switch server")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                                }
                             }
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(MSCRemoteStyle.textTertiary)
                         }
-                        Spacer()
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .padding(MSCRemoteStyle.spaceMD)
+                        .background(MSCRemoteStyle.bgElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                                .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
+                        )
                     }
-                    .padding(MSCRemoteStyle.spaceMD)
-                    .background(MSCRemoteStyle.bgElevated)
-                    .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
-                            .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
-                    )
+                    .disabled(!isPaired)
+
+                    Button(action: manageAction) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(MSCRemoteStyle.accent)
+                            .frame(width: 44, height: 44)
+                            .background(MSCRemoteStyle.bgElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                                    .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
+                            )
+                        }
+                    .buttonStyle(.plain)
+                    .disabled(!isPaired)
+                    .accessibilityLabel("Manage Servers")
                 }
-                .disabled(!isPaired)
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
             }
 

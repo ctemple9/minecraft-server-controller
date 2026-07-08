@@ -148,8 +148,6 @@
 		9A5633032F65AD6D00FB8246 /* ContextualHelpFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56320F2F65AD6C00FB8246 /* ContextualHelpFoundation.swift */; };
 		9A5633042F65AD6D00FB8246 /* OverviewConnectionHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5632332F65AD6C00FB8246 /* OverviewConnectionHelpers.swift */; };
 		9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */; };
-		9AFE02180000000000000002 /* vmlinuz-kata in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02180000000000000001 /* vmlinuz-kata */; };
-		9AFE02190000000000000002 /* appliance-initramfs.gz in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02190000000000000001 /* appliance-initramfs.gz */; };
 		9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A5631FE2F65AD6C00FB8246 /* Assets.xcassets */; };
 		9A5633082F65AD6D00FB8246 /* WorldRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633092F65AD6C00FB8246 /* WorldRepairView.swift */; };
 		9A56330A2F65AD6D00FB8246 /* AppViewModel+WorldRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56330B2F65AD6C00FB8246 /* AppViewModel+WorldRepair.swift */; };
@@ -196,10 +194,8 @@
 		9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02040000000000000001 /* JavaHiddenProfiles.swift */; };
 		9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02050000000000000001 /* PlayerSkinStore.swift */; };
 		9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02060000000000000001 /* PlayerSkinRenderer.swift */; };
-		9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021A0000000000000001 /* BedrockProvisioner.swift */; };
-		9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021B0000000000000001 /* PurpurConfigManager.swift */; };
-		9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02160000000000000001 /* VMBedrockServerBackend.swift */; };
-		9AFE02170000000000000002 /* UDPRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02170000000000000001 /* UDPRelay.swift */; };
+		9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */; };
+		9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */; };
 		9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02070000000000000001 /* BedrockSkinFetcher.swift */; };
 		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
 		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
@@ -215,6 +211,12 @@
 		9AFE02130000000000000002 /* StartupProblemsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02130000000000000001 /* StartupProblemsSheet.swift */; };
 		9AFE02140000000000000002 /* AppViewModel+ClientExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */; };
 		9AFE02150000000000000002 /* ClientExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02150000000000000001 /* ClientExportSheet.swift */; };
+		9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02160000000000000001 /* VMBedrockServerBackend.swift */; };
+		9AFE02170000000000000002 /* UDPRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02170000000000000001 /* UDPRelay.swift */; };
+		9AFE02180000000000000002 /* VMAppliance/vmlinuz-kata in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02180000000000000001 /* VMAppliance/vmlinuz-kata */; };
+		9AFE02190000000000000002 /* VMAppliance/appliance-initramfs.gz in Resources */ = {isa = PBXBuildFile; fileRef = 9AFE02190000000000000001 /* VMAppliance/appliance-initramfs.gz */; };
+		9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021A0000000000000001 /* BedrockProvisioner.swift */; };
+		9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021B0000000000000001 /* PurpurConfigManager.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -371,8 +373,6 @@
 		9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWizardView.swift; sourceTree = "<group>"; };
 		9A5632662F65AD6C00FB8246 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = splash_intro.mp4; sourceTree = "<group>"; };
-		9AFE02180000000000000001 /* vmlinuz-kata */ = {isa = PBXFileReference; lastKnownFileType = file; path = "VMAppliance/vmlinuz-kata"; sourceTree = "<group>"; };
-		9AFE02190000000000000001 /* appliance-initramfs.gz */ = {isa = PBXFileReference; lastKnownFileType = file; path = "VMAppliance/appliance-initramfs.gz"; sourceTree = "<group>"; };
 		9A5632682F65AD6C00FB8246 /* SplashGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashGateView.swift; sourceTree = "<group>"; };
 		9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateItemDisplay.swift; sourceTree = "<group>"; };
 		9A56326B2F65AD6C00FB8246 /* TemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateView.swift; sourceTree = "<group>"; };
@@ -431,10 +431,8 @@
 		9AFE02040000000000000001 /* JavaHiddenProfiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaHiddenProfiles.swift; sourceTree = "<group>"; };
 		9AFE02050000000000000001 /* PlayerSkinStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinStore.swift; sourceTree = "<group>"; };
 		9AFE02060000000000000001 /* PlayerSkinRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSkinRenderer.swift; sourceTree = "<group>"; };
-		9AFE021A0000000000000001 /* BedrockProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvisioner.swift; sourceTree = "<group>"; };
-		9AFE021B0000000000000001 /* PurpurConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurpurConfigManager.swift; sourceTree = "<group>"; };
-		9AFE02160000000000000001 /* VMBedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMBedrockServerBackend.swift; sourceTree = "<group>"; };
-		9AFE02170000000000000001 /* UDPRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPRelay.swift; sourceTree = "<group>"; };
+		9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+Settings.swift"; sourceTree = "<group>"; };
+		9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+UserRoutes.swift"; sourceTree = "<group>"; };
 		9AFE02070000000000000001 /* BedrockSkinFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockSkinFetcher.swift; sourceTree = "<group>"; };
 		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
 		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
@@ -450,6 +448,12 @@
 		9AFE02130000000000000001 /* StartupProblemsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupProblemsSheet.swift; sourceTree = "<group>"; };
 		9AFE02140000000000000001 /* AppViewModel+ClientExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ClientExport.swift"; sourceTree = "<group>"; };
 		9AFE02150000000000000001 /* ClientExportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientExportSheet.swift; sourceTree = "<group>"; };
+		9AFE02160000000000000001 /* VMBedrockServerBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VMBedrockServerBackend.swift; sourceTree = "<group>"; };
+		9AFE02170000000000000001 /* UDPRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPRelay.swift; sourceTree = "<group>"; };
+		9AFE02180000000000000001 /* VMAppliance/vmlinuz-kata */ = {isa = PBXFileReference; lastKnownFileType = file; path = "VMAppliance/vmlinuz-kata"; sourceTree = "<group>"; };
+		9AFE02190000000000000001 /* VMAppliance/appliance-initramfs.gz */ = {isa = PBXFileReference; lastKnownFileType = archive.gzip; path = "VMAppliance/appliance-initramfs.gz"; sourceTree = "<group>"; };
+		9AFE021A0000000000000001 /* BedrockProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvisioner.swift; sourceTree = "<group>"; };
+		9AFE021B0000000000000001 /* PurpurConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurpurConfigManager.swift; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -610,6 +614,8 @@
 				9AFE02040000000000000001 /* JavaHiddenProfiles.swift */,
 				9AFE02050000000000000001 /* PlayerSkinStore.swift */,
 				9AFE02060000000000000001 /* PlayerSkinRenderer.swift */,
+				9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */,
+				9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */,
 				9AFE021A0000000000000001 /* BedrockProvisioner.swift */,
 				9AFE021B0000000000000001 /* PurpurConfigManager.swift */,
 				9AFE02160000000000000001 /* VMBedrockServerBackend.swift */,
@@ -700,8 +706,8 @@
 				9A5632652F65AD6C00FB8246 /* SetupWizardView.swift */,
 				9A5632662F65AD6C00FB8246 /* SidebarView.swift */,
 				9A5632672F65AD6C00FB8246 /* splash_intro.mp4 */,
-				9AFE02180000000000000001 /* vmlinuz-kata */,
-				9AFE02190000000000000001 /* appliance-initramfs.gz */,
+				9AFE02180000000000000001 /* VMAppliance/vmlinuz-kata */,
+				9AFE02190000000000000001 /* VMAppliance/appliance-initramfs.gz */,
 				9A5632682F65AD6C00FB8246 /* SplashGateView.swift */,
 				9A5632692F65AD6C00FB8246 /* TemplateItemDisplay.swift */,
 				9A56326B2F65AD6C00FB8246 /* TemplateView.swift */,
@@ -810,8 +816,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				9A5633052F65AD6D00FB8246 /* splash_intro.mp4 in Resources */,
-				9AFE02180000000000000002 /* vmlinuz-kata in Resources */,
-				9AFE02190000000000000002 /* appliance-initramfs.gz in Resources */,
+				9AFE02180000000000000002 /* VMAppliance/vmlinuz-kata in Resources */,
+				9AFE02190000000000000002 /* VMAppliance/appliance-initramfs.gz in Resources */,
 				9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -992,6 +998,8 @@
 				9AFE02040000000000000002 /* JavaHiddenProfiles.swift in Sources */,
 				9AFE02050000000000000002 /* PlayerSkinStore.swift in Sources */,
 				9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */,
+				9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */,
+				9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */,
 				9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */,
 				9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */,
 				9AFE02170000000000000002 /* UDPRelay.swift in Sources */,

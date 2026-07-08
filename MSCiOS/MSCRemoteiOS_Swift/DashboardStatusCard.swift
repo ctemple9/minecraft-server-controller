@@ -7,6 +7,7 @@ struct DashboardStatusCard: View {
     let serverStartedAt: Date?
     let now: Date
     let refreshAction: () -> Void
+    var connectivity: ConnectivityResponseDTO? = nil
 
     private var uptimeString: String? {
         guard isRunning, let start = serverStartedAt else { return nil }
@@ -71,6 +72,11 @@ struct DashboardStatusCard: View {
                 .foregroundStyle(MSCRemoteStyle.warning)
                 .padding(.top, MSCRemoteStyle.spaceMD)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else if connectivity != nil {
+                Divider()
+                    .background(MSCRemoteStyle.borderSubtle)
+                    .padding(.vertical, MSCRemoteStyle.spaceSM)
+                ConnectivityBadge(connectivity: connectivity, showDetail: false)
             }
 
             Spacer(minLength: 0)

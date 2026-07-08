@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - PlayersView
 //
@@ -41,6 +42,9 @@ struct PlayersView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: MSCRemoteStyle.spaceLG) {
                             playerCountCard
+                            if activeServerType == .bedrock {
+                                allowlistLinkCard
+                            }
                             playerListCard
                             playerProfilesCard
                             sessionLogCard
@@ -73,7 +77,12 @@ struct PlayersView: View {
         guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
         async let p: () = vm.fetchPlayerProfiles(baseURL: baseURL, token: token)
         async let s: () = vm.fetchSessionLog(baseURL: baseURL, token: token)
-        _ = await (p, s)
+        if activeServerType == .bedrock {
+            async let a: () = vm.fetchAllowlist(baseURL: baseURL, token: token)
+            _ = await (p, s, a)
+        } else {
+            _ = await (p, s)
+        }
     }
 
     // MARK: - Player Profiles Card
@@ -143,19 +152,7 @@ struct PlayersView: View {
 
     private func profileRow(_ profile: PlayerProfileDTO) -> some View {
         HStack(spacing: MSCRemoteStyle.spaceMD) {
-            AsyncImage(url: profile.avatarURL) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().interpolation(.none).scaledToFit()
-                default:
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 4, style: .continuous).fill(MSCRemoteStyle.bgElevated)
-                        Image(systemName: "person.fill").font(.system(size: 14)).foregroundStyle(MSCRemoteStyle.textTertiary)
-                    }
-                }
-            }
-            .frame(width: 36, height: 36)
-            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            PlayerSkinImageView(profile: profile, size: 36, cornerRadius: 5)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
@@ -168,7 +165,15 @@ struct PlayersView: View {
                     if profile.isOp {
                         Image(systemName: "star.fill")
                             .font(.system(size: 9))
-                            .foregroundStyle(Color.yellow)
+                            .foregroundStyle(MSCRemoteStyle.warning)
+                    }
+                    if profile.isHiddenResolved {
+                        Text("Hidden")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(MSCRemoteStyle.warning)
+                            .padding(.horizontal, MSCRemoteStyle.spaceSM)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(MSCRemoteStyle.warning.opacity(0.12)))
                     }
                 }
                 if let lastSeen = profile.lastSeen {
@@ -185,6 +190,7 @@ struct PlayersView: View {
                 .foregroundStyle(MSCRemoteStyle.textTertiary)
         }
         .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
+        .opacity(profile.isHiddenResolved ? 0.62 : 1.0)
         .contentShape(Rectangle())
     }
 
@@ -300,6 +306,44 @@ struct PlayersView: View {
         .mscCard()
     }
 
+    // MARK: - Allowlist Link (Bedrock only)
+
+    private var allowlistLinkCard: some View {
+        NavigationLink {
+            AllowlistView()
+                .environmentObject(settings)
+                .environmentObject(vm)
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                Image(systemName: "list.bullet.clipboard")
+                    .font(.system(size: 18))
+                    .foregroundStyle(MSCRemoteStyle.accent)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Allowlist")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    Text(allowlistSubtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+            }
+            .mscCard()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var allowlistSubtitle: String {
+        if let count = vm.allowlistResponse?.entries.count {
+            return count == 0 ? "Empty — all players can join" : "\(count) player\(count == 1 ? "" : "s") allowed"
+        }
+        return "Manage who can join this Bedrock server"
+    }
+
     // MARK: - Player List Card
 
     private var playerListCard: some View {
@@ -329,6 +373,7 @@ struct PlayersView: View {
                         ExpandablePlayerRow(
                             player: player,
                             serverType: activeServerType,
+                            skinProfile: profileForOnlinePlayer(player),
                             isExpanded: expandedPlayerName == player.name,
                             onToggle: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
@@ -354,6 +399,12 @@ struct PlayersView: View {
             }
         }
         .mscCard()
+    }
+
+    private func profileForOnlinePlayer(_ player: PlayerDTO) -> PlayerProfileDTO? {
+        vm.playerProfilesResponse?.profiles.first {
+            $0.displayName.caseInsensitiveCompare(player.name) == .orderedSame
+        }
     }
 
     // MARK: - Footer
@@ -389,9 +440,61 @@ struct PlayersView: View {
 // tap. Inline expansion keeps the player name visible throughout the action,
 // so there's no ambiguity about who you're acting on.
 
+struct PlayerSkinImageView: View {
+    let profile: PlayerProfileDTO?
+    let size: CGFloat
+    let cornerRadius: CGFloat
+
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var vm: DashboardViewModel
+
+    private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
+    private var resolvedToken: String? { settings.resolvedToken() }
+
+    private var cacheKey: String {
+        guard let profile else { return "none" }
+        return "\(profile.id)-\(profile.skinOverrideIdentifier ?? "")-\(profile.hasSkinFileOverride == true)"
+    }
+
+    private var uiImage: UIImage? {
+        guard let profile,
+              let base64 = vm.playerSkinResponses[profile.id]?.imageBase64,
+              let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+
+    var body: some View {
+        Group {
+            if let uiImage {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+                    .background(MSCRemoteStyle.bgElevated)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(MSCRemoteStyle.bgElevated)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: max(12, size * 0.38)))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+                .frame(width: size, height: size)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .task(id: cacheKey) {
+            guard let profile, let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+            await vm.fetchPlayerSkin(baseURL: baseURL, token: token, profileId: profile.id)
+        }
+    }
+}
+
 struct ExpandablePlayerRow: View {
     let player: PlayerDTO
     let serverType: ServerType
+    let skinProfile: PlayerProfileDTO?
     let isExpanded: Bool
     let onToggle: () -> Void
     let onAction: (String) -> Void
@@ -411,9 +514,7 @@ struct ExpandablePlayerRow: View {
             // Tappable header row
             Button(action: onToggle) {
                 HStack(spacing: MSCRemoteStyle.spaceMD) {
-                    playerAvatar
-                        .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    PlayerSkinImageView(profile: skinProfile, size: 32, cornerRadius: 4)
 
                     Text(player.name)
                         .font(.system(size: 14, weight: .medium))
@@ -707,6 +808,20 @@ struct ExpandablePlayerRow: View {
 struct PlayerProfileSheet: View {
     let profile: PlayerProfileDTO
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var vm: DashboardViewModel
+
+    @State private var skinOverrideInput: String = ""
+    @State private var isSavingSkinOverride: Bool = false
+    @State private var isTogglingHidden: Bool = false
+    @State private var controlToast: String? = nil
+
+    private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
+    private var resolvedToken: String? { settings.resolvedToken() }
+    private var isAdmin: Bool { vm.connectedRole == "admin" }
+    private var currentProfile: PlayerProfileDTO {
+        vm.playerProfilesResponse?.profiles.first(where: { $0.id == profile.id }) ?? profile
+    }
 
     var body: some View {
         NavigationStack {
@@ -715,6 +830,7 @@ struct PlayerProfileSheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: MSCRemoteStyle.spaceLG) {
                         headerSection
+                        profileControlsSection
                         if let stats = profile.stats {
                             statsSection(stats)
                         } else {
@@ -729,7 +845,7 @@ struct PlayerProfileSheet: View {
                     .padding(.bottom, MSCRemoteStyle.space2XL)
                 }
             }
-            .navigationTitle(profile.displayName)
+            .navigationTitle(currentProfile.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -739,6 +855,9 @@ struct PlayerProfileSheet: View {
                         .foregroundStyle(MSCRemoteStyle.accent)
                 }
             }
+            .task(id: currentProfile.id) {
+                skinOverrideInput = currentProfile.skinOverrideIdentifier ?? ""
+            }
         }
     }
 
@@ -746,32 +865,21 @@ struct PlayerProfileSheet: View {
 
     private var headerSection: some View {
         HStack(spacing: MSCRemoteStyle.spaceLG) {
-            AsyncImage(url: profile.avatarURL) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().interpolation(.none).scaledToFit()
-                default:
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous).fill(MSCRemoteStyle.bgElevated)
-                        Image(systemName: "person.fill").font(.system(size: 28)).foregroundStyle(MSCRemoteStyle.textTertiary)
-                    }
-                }
-            }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            PlayerSkinImageView(profile: currentProfile, size: 72, cornerRadius: 8)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(profile.displayName)
+                Text(currentProfile.displayName)
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(MSCRemoteStyle.textPrimary)
 
                 HStack(spacing: 6) {
                     statusBadge
                     if profile.isOp { opBadge }
+                    if currentProfile.isHiddenResolved { hiddenBadge }
                 }
 
-                if let lastSeen = profile.lastSeen {
-                    Text(profile.isOnline ? "Online now" : lastSeenText(lastSeen))
+                if let lastSeen = currentProfile.lastSeen {
+                    Text(currentProfile.isOnline ? "Online now" : lastSeenText(lastSeen))
                         .font(.system(size: 11))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
                 }
@@ -788,25 +896,199 @@ struct PlayerProfileSheet: View {
     private var statusBadge: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(profile.isOnline ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                .fill(currentProfile.isOnline ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
                 .frame(width: 6, height: 6)
-            Text(profile.isOnline ? "Online" : "Offline")
+            Text(currentProfile.isOnline ? "Online" : "Offline")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(profile.isOnline ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                .foregroundStyle(currentProfile.isOnline ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(Capsule().fill((profile.isOnline ? MSCRemoteStyle.success : Color.gray).opacity(0.12)))
+        .background(Capsule().fill((currentProfile.isOnline ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary).opacity(0.12)))
     }
 
     private var opBadge: some View {
         HStack(spacing: 4) {
-            Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(Color.yellow)
-            Text("Operator").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.yellow)
+            Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(MSCRemoteStyle.warning)
+            Text("Operator").font(.system(size: 11, weight: .semibold)).foregroundStyle(MSCRemoteStyle.warning)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(Capsule().fill(Color.yellow.opacity(0.12)))
+        .background(Capsule().fill(MSCRemoteStyle.warning.opacity(0.12)))
+    }
+
+    private var hiddenBadge: some View {
+        Text("Hidden")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(MSCRemoteStyle.warning)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(MSCRemoteStyle.warning.opacity(0.12)))
+    }
+
+    private var profileControlsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            MSCSectionHeader(title: "Profile Controls")
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(currentProfile.isHiddenResolved ? "Hidden from overview" : "Visible in overview")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    Text("Hide removes the profile from spotlight lists without deleting player data.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                if isAdmin {
+                    Button {
+                        Task { await toggleHiddenProfile() }
+                    } label: {
+                        if isTogglingHidden {
+                            ProgressView().scaleEffect(0.75)
+                                .frame(width: 32, height: 32)
+                        } else {
+                            Image(systemName: currentProfile.isHiddenResolved ? "eye" : "eye.slash")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(currentProfile.isHiddenResolved ? MSCRemoteStyle.accent : MSCRemoteStyle.warning)
+                                .frame(width: 32, height: 32)
+                                .background(MSCRemoteStyle.bgElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isTogglingHidden)
+                }
+            }
+
+            Divider()
+                .background(MSCRemoteStyle.borderSubtle)
+                .padding(.vertical, MSCRemoteStyle.spaceMD)
+
+            if isAdmin {
+                VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceSM) {
+                    Text("Skin Lookup Override")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    TextField("Username, UUID, or .BedrockGamertag", text: $skinOverrideInput)
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, MSCRemoteStyle.spaceMD)
+                        .padding(.vertical, 10)
+                        .background(MSCRemoteStyle.bgElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+
+                    HStack(spacing: MSCRemoteStyle.spaceSM) {
+                        profileControlButton(
+                            title: isSavingSkinOverride ? "Saving..." : "Save Override",
+                            icon: "checkmark",
+                            enabled: !isSavingSkinOverride,
+                            primary: true
+                        ) {
+                            Task { await saveSkinOverride(clear: false) }
+                        }
+                        profileControlButton(
+                            title: "Clear",
+                            icon: "xmark",
+                            enabled: !isSavingSkinOverride && currentProfile.hasSkinOverride,
+                            primary: false
+                        ) {
+                            Task { await saveSkinOverride(clear: true) }
+                        }
+                    }
+                }
+            } else {
+                Text(currentProfile.hasSkinOverride ? "A skin override is set." : "No skin override is set.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(MSCRemoteStyle.textSecondary)
+            }
+
+            if let controlToast {
+                Text(controlToast)
+                    .font(.system(size: 11))
+                    .foregroundStyle(MSCRemoteStyle.success)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, MSCRemoteStyle.spaceMD)
+                    .transition(.opacity)
+            }
+        }
+        .mscCard()
+        .animation(.easeInOut(duration: 0.2), value: controlToast)
+    }
+
+    private func profileControlButton(title: String, icon: String, enabled: Bool, primary: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: MSCRemoteStyle.spaceSM) {
+                if isSavingSkinOverride && primary {
+                    ProgressView().scaleEffect(0.75)
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 38)
+            .foregroundStyle(enabled ? (primary ? MSCRemoteStyle.bgBase : MSCRemoteStyle.textPrimary) : MSCRemoteStyle.textTertiary)
+            .background(enabled ? (primary ? MSCRemoteStyle.accent : MSCRemoteStyle.bgElevated) : MSCRemoteStyle.bgElevated)
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                    .strokeBorder(primary ? MSCRemoteStyle.borderMid.opacity(0) : MSCRemoteStyle.borderMid, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
+    private func toggleHiddenProfile() async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        hapticLight()
+        isTogglingHidden = true
+        let target = !currentProfile.isHiddenResolved
+        let error = await vm.setHiddenProfile(baseURL: baseURL, token: token, profileId: currentProfile.id, hidden: target)
+        isTogglingHidden = false
+        if let error {
+            hapticError()
+            showControlToast(error)
+        } else {
+            hapticSuccess()
+            showControlToast(target ? "Profile hidden." : "Profile visible.")
+        }
+    }
+
+    private func saveSkinOverride(clear: Bool) async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        hapticLight()
+        isSavingSkinOverride = true
+        let trimmed = skinOverrideInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let error = await vm.setPlayerSkinOverride(
+            baseURL: baseURL,
+            token: token,
+            profileId: currentProfile.id,
+            lookupIdentifier: clear ? nil : trimmed
+        )
+        isSavingSkinOverride = false
+        if let error {
+            hapticError()
+            showControlToast(error)
+        } else {
+            hapticSuccess()
+            if clear { skinOverrideInput = "" }
+            showControlToast(clear ? "Skin override cleared." : "Skin override saved.")
+        }
+    }
+
+    private func showControlToast(_ message: String) {
+        withAnimation { controlToast = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation { controlToast = nil }
+        }
     }
 
     // MARK: - Stats

@@ -92,10 +92,72 @@ extension RemoteAPIServer {
 
     // Routes that require admin role — guests get 403 on these.
     private static let adminOnlyPOSTPaths: Set<String> = [
-        "/command", "/active-server", "/components/update",
+        "/command", "/active-server", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install",
+        "/components/version",
         "/broadcast/credentials", "/broadcast/start", "/broadcast/stop",
         "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss",
-        "/worlds/activate", "/backups/now", "/backups/restore"
+        "/worlds/activate", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair",
+        "/backups/now", "/backups/restore", "/backups/config",
+        "/allowlist", "/settings",
+        "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove",
+        "/health/repair",
+        "/playit/start", "/playit/stop",
+        "/duckdns", "/config/geyser",
+        // Named-user management — owner admin token only (named tokens can never manage users)
+        "/users", "/users/revoke", "/users/update"
+    ]
+
+    // Maps POST paths to the permission string a named token must hold to use them.
+    // Paths absent from this map are accessible to all authenticated tokens (admin, guest, named).
+    // Admin and guest tokens bypass this map and use adminOnlyPOSTPaths instead.
+    private static let pathPermissions: [String: String] = [
+        // serverControl — operate the server process
+        "/start": "serverControl",
+        "/stop": "serverControl",
+        "/command": "serverControl",
+        "/active-server": "serverControl",
+        // players — allowlist and profile management
+        "/allowlist": "players",
+        "/players/skin-override": "players",
+        "/players/hidden": "players",
+        // settings — server configuration files
+        "/settings": "settings",
+        "/config/geyser": "settings",
+        "/duckdns": "settings",
+        "/backups/config": "settings",
+        "/health/repair": "settings",
+        // addons — mod/plugin and resource-pack management
+        "/components/update": "addons",
+        "/components/remove": "addons",
+        "/components/install": "addons",
+        "/components/version": "addons",
+        "/resourcepacks/activate": "addons",
+        "/resourcepacks/seturl": "addons",
+        "/resourcepacks/toggle": "addons",
+        "/resourcepacks/remove": "addons",
+        // worlds — world slots and backups
+        "/worlds/activate": "worlds",
+        "/worlds/create": "worlds",
+        "/worlds/rename": "worlds",
+        "/worlds/replace": "worlds",
+        "/worlds/repair": "worlds",
+        "/backups/now": "worlds",
+        "/backups/restore": "worlds",
+        // broadcast — Xbox/LAN broadcast control
+        "/broadcast/start": "broadcast",
+        "/broadcast/stop": "broadcast",
+        "/broadcast/restart": "broadcast",
+        "/broadcast/credentials": "broadcast",
+        "/broadcast/autostart": "broadcast",
+        "/broadcast/auth-prompt/dismiss": "broadcast",
+        // networking — tunnel agent control
+        "/playit/start": "networking",
+        "/playit/stop": "networking",
+        // fleet — server list management
+        "/servers/rename": "fleet",
+        "/servers/delete": "fleet",
+        "/servers/import": "fleet",
+        "/templates": "fleet",
     ]
 
     func respond(to request: Request, clientFD: Int32) -> Bool {
@@ -141,6 +203,27 @@ extension RemoteAPIServer {
                     clientFD: clientFD
                 )
                 return true
+            }
+        }
+
+        // Named (permission-scoped) tokens: only allow POST paths they hold the permission for.
+        // GET requests are always allowed for authenticated tokens.
+        // User-management paths (/users*) are never accessible to named tokens — only the admin.
+        if case .named(_, let permissions) = requestRole {
+            let method = request.method.uppercased()
+            let path = request.path
+            if method == "POST" {
+                if Self.adminOnlyPOSTPaths.contains(path), !Self.pathPermissions.keys.contains(path) {
+                    // Path is admin-only but has no permission category (e.g., /users/*) — deny.
+                    sendJSON(statusCode: 403, reason: "Forbidden",
+                             jsonObject: ["error": "forbidden"], clientFD: clientFD)
+                    return true
+                }
+                if let required = Self.pathPermissions[path], !permissions.contains(required) {
+                    sendJSON(statusCode: 403, reason: "Forbidden",
+                             jsonObject: ["error": "forbidden"], clientFD: clientFD)
+                    return true
+                }
             }
         }
 
@@ -205,6 +288,14 @@ extension RemoteAPIServer {
             let serverId: String
         }
 
+        if method == "GET", path.hasPrefix("/players/"), path.hasSuffix("/skin") {
+            let prefix = "/players/"
+            let suffix = "/skin"
+            let rawId = String(path.dropFirst(prefix.count).dropLast(suffix.count))
+            handleGetPlayerSkin(profileId: urlDecode(rawId), clientFD: clientFD)
+            return false
+        }
+
         switch (method, path) {
         case ("GET", "/servers"):
             let servers = serversProvider()
@@ -223,6 +314,26 @@ extension RemoteAPIServer {
             }
             sendJSON(statusCode: 200, reason: "OK", encodable: dtos, clientFD: clientFD)
             return true
+
+        case ("POST", "/servers/rename"):
+            handleRenameServer(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/servers/delete"):
+            handleDeleteServer(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("GET", "/templates"):
+            handleGetTemplates(clientFD: clientFD)
+            return false
+
+        case ("POST", "/templates"):
+            handleMutateTemplates(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/servers/import"):
+            handleImportServer(body: request.body, clientFD: clientFD)
+            return false
 
         case ("GET", "/status"):
             let status = statusProvider()
@@ -360,10 +471,53 @@ extension RemoteAPIServer {
             sendJSON(statusCode: 200, reason: "OK", encodable: response, clientFD: clientFD)
             return true
 
+        case ("POST", "/players/skin-override"):
+            handleSetPlayerSkinOverride(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/players/hidden"):
+            handleSetHiddenProfile(body: request.body, clientFD: clientFD)
+            return false
+
         // Bedrock allowlist
         case ("GET", "/allowlist"):
             let response = allowlistProvider()
             sendJSON(statusCode: 200, reason: "OK", encodable: response, clientFD: clientFD)
+            return true
+
+        // Bedrock allowlist add/remove
+        case ("POST", "/allowlist"):
+            guard !request.body.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "missing_body"], clientFD: clientFD)
+                return true
+            }
+            do {
+                let decoded = try JSONDecoder().decode(AllowlistMutationRequestDTO.self, from: request.body)
+                let action = decoded.action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let name = decoded.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard action == "add" || action == "remove" else {
+                    sendJSON(statusCode: 400, reason: "Bad Request",
+                             jsonObject: ["error": "invalid_action"], clientFD: clientFD)
+                    return true
+                }
+                guard !name.isEmpty else {
+                    sendJSON(statusCode: 400, reason: "Bad Request",
+                             jsonObject: ["error": "missing_name"], clientFD: clientFD)
+                    return true
+                }
+                let result = mutateAllowlistProvider(action, name)
+                if result.success {
+                    sendJSON(statusCode: 200, reason: "OK", encodable: result, clientFD: clientFD)
+                } else if result.message == "not_bedrock" {
+                    sendJSON(statusCode: 409, reason: "Conflict", encodable: result, clientFD: clientFD)
+                } else {
+                    sendJSON(statusCode: 500, reason: "Internal Server Error", encodable: result, clientFD: clientFD)
+                }
+            } catch {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+            }
             return true
 
         // Session log
@@ -386,10 +540,92 @@ extension RemoteAPIServer {
             handleGetComponents(clientFD: clientFD)
             return false  // async handler sends its own response
 
-        // Component update
+        // Component update (system components + Modrinth add-ons)
         case ("POST", "/components/update"):
             handleUpdateComponent(body: request.body, clientFD: clientFD)
             return false  // async handler sends its own response
+
+        // Add-on list with update status
+        case ("GET", "/addons"):
+            handleGetAddons(clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        case ("GET", "/files"):
+            handleGetFiles(path: request.query["path"], clientFD: clientFD)
+            return false
+
+        case ("GET", "/files/read"):
+            handleReadFile(path: request.query["path"] ?? "", clientFD: clientFD)
+            return false
+
+        case ("GET", "/components/client-export"):
+            let selected = request.query["selected"]?
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            handleGetClientExport(selectedIds: selected, clientFD: clientFD)
+            return false
+
+        // Remove an installed add-on
+        case ("POST", "/components/remove"):
+            handleRemoveAddon(body: request.body, clientFD: clientFD)
+            return true
+
+        // Search the add-on catalog (Modrinth) for the active server
+        case ("GET", "/catalog/search"):
+            let q = request.query["q"] ?? ""
+            let offset = Int(request.query["offset"] ?? "0") ?? 0
+            handleCatalogSearch(query: q, offset: offset, clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Install an add-on from the catalog into the active server
+        case ("POST", "/components/install"):
+            handleInstallAddon(body: request.body, clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Available server JAR versions for the active server's flavor
+        case ("GET", "/versions"):
+            handleGetVersions(clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Download / install a chosen server JAR version
+        case ("POST", "/components/version"):
+            handleChangeVersion(body: request.body, clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Resource packs — list
+        case ("GET", "/resourcepacks"):
+            handleGetResourcePacks(clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Resource packs — activate/clear local pack
+        case ("POST", "/resourcepacks/activate"):
+            handleActivateResourcePack(body: request.body, clientFD: clientFD)
+            return false
+
+        // Resource packs — set a custom URL directly in server.properties
+        case ("POST", "/resourcepacks/seturl"):
+            handleSetResourcePackURL(body: request.body, clientFD: clientFD)
+            return false
+
+        // Resource packs — Geyser enable/disable
+        case ("POST", "/resourcepacks/toggle"):
+            handleToggleGeyserPack(body: request.body, clientFD: clientFD)
+            return false
+
+        // Resource packs — remove from disk
+        case ("POST", "/resourcepacks/remove"):
+            handleRemoveResourcePack(body: request.body, clientFD: clientFD)
+            return false
+
+        // Typed server.properties schema (read + write)
+        case ("GET", "/settings"):
+            handleGetSettings(clientFD: clientFD)
+            return true
+
+        case ("POST", "/settings"):
+            handleUpdateSettings(body: request.body, clientFD: clientFD)
+            return true
 
         case ("GET", "/broadcast/autostart"):
             handleGetBroadcastAutoStart(clientFD: clientFD)
@@ -433,8 +669,16 @@ extension RemoteAPIServer {
 
         // Token role info
         case ("GET", "/me"):
-            let roleString = (requestRole == .admin) ? "admin" : "guest"
-            sendJSON(statusCode: 200, reason: "OK", jsonObject: ["role": roleString], clientFD: clientFD)
+            let dto: MeResponseDTO
+            switch requestRole {
+            case .admin:
+                dto = MeResponseDTO(role: "admin")
+            case .guest:
+                dto = MeResponseDTO(role: "guest")
+            case .named(let label, let permissions):
+                dto = MeResponseDTO(role: "named", name: label, permissions: permissions, isNamedToken: true)
+            }
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
             return true
 
         // Player profiles (all-time, with stats)
@@ -477,6 +721,72 @@ extension RemoteAPIServer {
             }
             return true
 
+        // World management verbs (P9) — async handlers send their own response.
+        case ("POST", "/worlds/create"):
+            handleCreateWorld(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/worlds/rename"):
+            handleRenameWorld(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/worlds/replace"):
+            handleReplaceWorld(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/worlds/repair"):
+            handleRepairWorld(body: request.body, clientFD: clientFD)
+            return false
+
+        // Connectivity (P11) — async handler sends its own response.
+        case ("GET", "/connectivity"):
+            handleGetConnectivity(clientFD: clientFD)
+            return false
+
+        // Playit tunnel (P12) — async handlers send their own response.
+        case ("GET", "/playit"):
+            handleGetPlayitStatus(clientFD: clientFD)
+            return false
+
+        case ("POST", "/playit/start"):
+            handleStartPlayit(clientFD: clientFD)
+            return false
+
+        case ("POST", "/playit/stop"):
+            handleStopPlayit(clientFD: clientFD)
+            return false
+
+        // DuckDNS (P13)
+        case ("GET", "/duckdns"):
+            handleGetDuckDNS(clientFD: clientFD)
+            return false
+
+        case ("POST", "/duckdns"):
+            handleUpdateDuckDNS(body: request.body, clientFD: clientFD)
+            return false
+
+        // Geyser config (P13)
+        case ("GET", "/config/geyser"):
+            handleGetGeyserConfig(clientFD: clientFD)
+            return false
+
+        case ("POST", "/config/geyser"):
+            handleUpdateGeyserConfig(body: request.body, clientFD: clientFD)
+            return false
+
+        // Diagnostics (P10) — async handlers send their own response.
+        case ("GET", "/health"):
+            handleGetHealth(clientFD: clientFD)
+            return false
+
+        case ("GET", "/health/problems"):
+            handleGetHealthProblems(clientFD: clientFD)
+            return false
+
+        case ("POST", "/health/repair"):
+            handleRepairHealthProblem(body: request.body, clientFD: clientFD)
+            return false
+
         // Backups
         case ("GET", "/backups"):
             let response = backupItemsProvider()
@@ -517,6 +827,56 @@ extension RemoteAPIServer {
             }
             return true
 
+        case ("GET", "/backups/config"):
+            let dto = backupConfigProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+            return true
+
+        case ("POST", "/backups/config"):
+            guard !request.body.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "missing_body"], clientFD: clientFD)
+                return true
+            }
+            do {
+                let decoded = try JSONDecoder().decode(BackupConfigUpdateRequestDTO.self, from: request.body)
+                guard decoded.autoBackupEnabled != nil || decoded.autoBackupIntervalMinutes != nil || decoded.autoBackupMaxCount != nil else {
+                    sendJSON(statusCode: 400, reason: "Bad Request",
+                             jsonObject: ["error": "no_changes"], clientFD: clientFD)
+                    return true
+                }
+                let result = updateBackupConfigProvider(decoded.autoBackupEnabled, decoded.autoBackupIntervalMinutes, decoded.autoBackupMaxCount)
+                let status = result.success ? 200 : 409
+                sendJSON(statusCode: status, reason: result.success ? "OK" : "Conflict",
+                         encodable: result, clientFD: clientFD)
+            } catch {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+            }
+            return true
+
+        // Named users (P17) — admin-only management
+        case ("GET", "/users"):
+            guard case .admin = requestRole else {
+                sendJSON(statusCode: 403, reason: "Forbidden",
+                         jsonObject: ["error": "forbidden"], clientFD: clientFD)
+                return true
+            }
+            handleGetUsers(clientFD: clientFD)
+            return false
+
+        case ("POST", "/users"):
+            handleCreateUser(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/users/revoke"):
+            handleRevokeUser(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/users/update"):
+            handleUpdateUser(body: request.body, clientFD: clientFD)
+            return false
+
         // Watchdog
         case ("GET", "/watchdog/status"):
             let enabled = watchdogStatusProvider()
@@ -551,17 +911,27 @@ extension RemoteAPIServer {
 
         default:
             let knownPaths: Set<String> = [
-                "/servers", "/status", "/performance", "/players", "/allowlist", "/session-log",
+                "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/status", "/performance", "/players", "/players/skin-override", "/players/hidden", "/allowlist", "/session-log",
                 "/active-server", "/start", "/stop", "/command",
                 "/console/tail", "/console/stream",
-                "/components", "/components/update",
+                "/components", "/components/update", "/components/remove", "/components/install", "/components/version", "/addons",
+                "/components/client-export", "/files", "/files/read",
+                "/catalog/search", "/versions",
                 "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart", "/broadcast/credentials",
                 "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
                 "/broadcast/autostart", "/me",
                 "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
                 "/players/profiles",
-                "/worlds", "/worlds/activate",
-                "/backups", "/backups/now", "/backups/restore"
+                "/worlds", "/worlds/activate", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair",
+                "/backups", "/backups/now", "/backups/restore", "/backups/config",
+                "/settings",
+                "/resourcepacks", "/resourcepacks/activate", "/resourcepacks/seturl",
+                "/resourcepacks/toggle", "/resourcepacks/remove",
+                "/health", "/health/problems", "/health/repair",
+                "/connectivity",
+                "/playit", "/playit/start", "/playit/stop",
+                "/duckdns", "/config/geyser",
+                "/users", "/users/revoke", "/users/update"
             ]
             if knownPaths.contains(path) {
                 sendJSON(

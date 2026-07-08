@@ -72,6 +72,10 @@ struct JoinCardView: View {
             MSCSectionHeader(title: "Join Card")
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
 
+            // ── Live reachability ─────────────────────────────────────────
+            ConnectivityBadge(connectivity: vm.connectivityResponse, showDetail: true)
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
             // ── Flip card ─────────────────────────────────────────────────
             ZStack {
                 JoinCardFrontFace(server: activeServer, cardColor: cardColor, gamertag: settings.xboxGamertag)
@@ -608,6 +612,64 @@ struct JoinCardBackFace: View {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.75)
         )
+    }
+}
+
+// MARK: - Connectivity badge (P11)
+
+/// Live "can people connect right now?" indicator, driven by GET /connectivity.
+/// Used on the Join card (with detail) and the Dashboard status card (compact).
+struct ConnectivityBadge: View {
+    let connectivity: ConnectivityResponseDTO?
+    var showDetail: Bool = false
+
+    private var severity: String { connectivity?.severity ?? "gray" }
+
+    private var color: Color {
+        switch severity {
+        case "green":  return MSCRemoteStyle.success
+        case "yellow": return MSCRemoteStyle.warning
+        case "red":    return MSCRemoteStyle.danger
+        default:       return MSCRemoteStyle.textTertiary
+        }
+    }
+
+    private var label: String {
+        guard let c = connectivity else { return "Checking reachability…" }
+        switch c.status {
+        case "reachable":   return "Reachable"
+        case "unreachable": return "Not reachable"
+        case "offline":     return "Server off"
+        case "starting":    return "Starting up…"
+        default:            return "Unverified"
+        }
+    }
+
+    var body: some View {
+        HStack(alignment: showDetail ? .top : .center, spacing: 8) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+                .padding(.top, showDetail ? 4 : 0)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(color)
+                if showDetail, let detail = connectivity?.detail {
+                    Text(detail)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+            if let players = connectivity?.playersOnline, let maxP = connectivity?.playersMax,
+               connectivity?.status == "reachable" {
+                Text("\(players)/\(maxP)")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+            }
+        }
     }
 }
 
