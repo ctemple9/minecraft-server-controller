@@ -264,6 +264,13 @@ final class AppViewModel: ObservableObject {
 
     enum TimeQueryKind { case gametime, daytime }
 
+    /// Transient console-line waiters. Flush-consistent backups register a waiter
+    /// here to await a save-confirmation line (e.g. Java "Saved the game", Bedrock
+    /// "ready to be copied"); `handleServerOutputLine` — the single console
+    /// observation point — feeds every line to them. Empty when no backup is pausing
+    /// saves. See `waitForConsoleLine(timeout:matching:)` in AppViewModel+Backups.
+    var consoleLineWaiters: [ConsoleLineWaiter] = []
+
     /// The player whose full-body render is featured in the Overview Players card.
     /// Drives the live health query so we only poll the one shown character.
     @Published var featuredPlayerName: String? = nil {

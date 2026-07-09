@@ -341,6 +341,19 @@ extension AppViewModel {
         }
     }
 
+    /// Sends a command as part of an automated maintenance flow (currently the
+    /// flush-consistent backup pause/resume). Reuses the same backend send path as
+    /// `sendCommand`, including the Bedrock leading-slash strip, but never shows a
+    /// blocking error alert on failure — the backup caller logs a warning and
+    /// proceeds. Returns whether the backend accepted the command.
+    @discardableResult
+    func sendBackupCommand(_ cmd: String) -> Bool {
+        guard activeBackend?.isRunning == true else { return false }
+        let finalCmd = (selectedServerIsBedrock && cmd.hasPrefix("/"))
+            ? String(cmd.dropFirst()) : cmd
+        return activeBackend?.sendCommand(finalCmd) == true
+    }
+
     func refreshPlayersAndTps() {
         guard activeBackend?.isRunning == true else { return }
         guard let server = selectedServer,

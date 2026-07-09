@@ -18,6 +18,11 @@ extension AppViewModel {
             return
         }
 
+        // Feed any registered console-line waiters (flush-consistent backups await
+        // save-confirmation lines here). This is the single observation point — no
+        // separate console parser is spun up for backups.
+        notifyConsoleLineWaiters(clean)
+
         let isBedrockServer = selectedServer.flatMap { configServer(for: $0) }?.isBedrock ?? false
         let didReachReadyState =
             clean.contains("Done (") ||

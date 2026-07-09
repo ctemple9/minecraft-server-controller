@@ -237,6 +237,21 @@ extension AppViewModel {
         let kind = isAutomatic ? "auto" : "manual"
         await MainActor.run { logAppMessage("[Backup] Starting \(kind) backup of \(joined) to:\n\(zipURL.path)") }
 
+        // Flush-consistent snapshot: when we're backing up the server that's actually
+        // running, pause world saves so the zip captures a coherent copy rather than a
+        // torn region file / LevelDB mid-write. Only the running *active* server can be
+        // driven via `activeBackend`; a stopped (or different) server zips directly, as
+        // before. Saves are ALWAYS re-enabled afterwards, even if the zip fails.
+        let targetIsRunning = isServerRunning && configManager.config.activeServerId == configServer.id
+        let isBedrock = configServer.serverType == .bedrock
+        var savesPaused = false
+        if targetIsRunning {
+            savesPaused = await pauseSavesForBackup(isBedrock: isBedrock)
+        }
+
+        // Run the zip, capturing the outcome instead of returning early, so the
+        // save-resume step below always runs (defer-equivalent) before we return.
+        let zipOutcome: Result<Int32, Error>
         do {
             let status: Int32 = try await Task.detached(priority: .userInitiated) { () -> Int32 in
                 let process = Process()
@@ -247,7 +262,18 @@ extension AppViewModel {
                 process.waitUntilExit()
                 return process.terminationStatus
             }.value
+            zipOutcome = .success(status)
+        } catch {
+            zipOutcome = .failure(error)
+        }
 
+        // ALWAYS re-enable saves before returning — the whole point of pausing them.
+        if savesPaused {
+            await resumeSavesAfterBackup(for: configServer, isBedrock: isBedrock)
+        }
+
+        switch zipOutcome {
+        case .success(let status):
             await MainActor.run {
                 if status == 0 {
                     // Write sidecar immediately after a successful zip.
@@ -274,9 +300,8 @@ extension AppViewModel {
                     }
                 }
             }
-
             return status == 0
-        } catch {
+        case .failure(let error):
             await MainActor.run {
                 logAppMessage("[Backup] Failed to start zip: \(error.localizedDescription)")
                 if !isAutomatic {
@@ -286,6 +311,161 @@ extension AppViewModel {
             return false
         }
     }
+
+    // MARK: - Flush-consistent save pause / resume
+
+    /// Pauses world saves on the running server so the backup zip captures a
+    /// crash-consistent snapshot, waiting for the backend's save-confirmation line.
+    ///
+    /// - Java: `save-all flush` then `save-off`, waiting for the "Saved the game"
+    ///   flush confirmation (10 s timeout fallback).
+    /// - Bedrock: `save hold`, then polls `save query` until BDS reports the world
+    ///   files are ready to copy (10 s timeout fallback).
+    ///
+    /// Returns `true` when saves were actually disabled and MUST be re-enabled by
+    /// `resumeSavesAfterBackup`. A timeout is NOT a failure — we still proceed with
+    /// the zip and still re-enable saves. Returns `false` only when the pause command
+    /// couldn't be sent at all, in which case the caller zips the live files as before.
+    func pauseSavesForBackup(isBedrock: Bool) async -> Bool {
+        if isBedrock {
+            logAppMessage("[Backup] Pausing Bedrock saves (save hold) for a consistent snapshot…")
+            guard sendBackupCommand("save hold") else {
+                logAppMessage("[Backup] Warning: could not send 'save hold'; backing up live files without a save pause.")
+                return false
+            }
+            let ready = await waitForBedrockSaveReady(timeout: 10)
+            if ready {
+                logAppMessage("[Backup] Bedrock reports world files are ready to copy.")
+            } else {
+                logAppMessage("[Backup] Warning: timed out waiting for Bedrock 'save query' to report ready; proceeding with the zip anyway.")
+            }
+            return true
+        } else {
+            logAppMessage("[Backup] Flushing and pausing Java saves (save-all flush / save-off)…")
+            let flushSent = sendBackupCommand("save-all flush")
+            let offSent = sendBackupCommand("save-off")
+            guard flushSent || offSent else {
+                logAppMessage("[Backup] Warning: could not send save commands; backing up live files without a save pause.")
+                return false
+            }
+            let confirmed = await waitForConsoleLine(timeout: 10) { clean in
+                clean.localizedCaseInsensitiveContains("Saved the game") ||
+                clean.localizedCaseInsensitiveContains("Saved the world")
+            }
+            if confirmed {
+                logAppMessage("[Backup] Java saves flushed to disk and auto-save paused.")
+            } else {
+                logAppMessage("[Backup] Warning: timed out waiting for the save-flush confirmation; proceeding with the zip anyway.")
+            }
+            // Only claim a pause (requiring resume) when save-off was actually accepted.
+            // Re-sending save-on later is harmless regardless, but this keeps intent clear.
+            return offSent
+        }
+    }
+
+    /// Re-enables world saves after a flush-consistent backup. Safe to call on every
+    /// path: if the server stopped mid-backup there is nothing to resume, and a failed
+    /// send is logged as a warning rather than surfaced as an error. Java: `save-on`;
+    /// Bedrock: `save resume`.
+    func resumeSavesAfterBackup(for configServer: ConfigServer, isBedrock: Bool) async {
+        guard isServerRunning, configManager.config.activeServerId == configServer.id else {
+            logAppMessage("[Backup] Server is no longer running; nothing to re-enable (saves resume automatically on next start).")
+            return
+        }
+        if isBedrock {
+            if sendBackupCommand("save resume") {
+                logAppMessage("[Backup] Re-enabled Bedrock saves (save resume).")
+            } else {
+                logAppMessage("[Backup] Warning: could not send 'save resume'. If saves stay held, run it once from the console.")
+            }
+        } else {
+            if sendBackupCommand("save-on") {
+                logAppMessage("[Backup] Re-enabled Java auto-save (save-on).")
+            } else {
+                logAppMessage("[Backup] Warning: could not send 'save-on'. If auto-save stays off, run it once from the console.")
+            }
+        }
+    }
+
+    /// Polls Bedrock `save query` until it reports the world files are ready to copy,
+    /// or until `timeout` elapses. BDS answers a `save query` after `save hold` with
+    /// "… files are now ready to be copied" once the snapshot is consistent; until then
+    /// it reports that saving is still in progress. Returns whether readiness was seen.
+    private func waitForBedrockSaveReady(timeout: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            _ = sendBackupCommand("save query")
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else { break }
+            let slice = min(1.0, remaining)
+            let ready = await waitForConsoleLine(timeout: slice) { clean in
+                clean.localizedCaseInsensitiveContains("ready to be copied")
+            }
+            if ready { return true }
+        }
+        return false
+    }
+
+    // MARK: - Console-line observation (shared with handleServerOutputLine)
+
+    /// Suspends until a server console line satisfies `predicate`, or `timeout`
+    /// seconds elapse. Returns `true` if a matching line arrived, `false` on timeout.
+    /// Reuses `handleServerOutputLine` as the single observation point — it forwards
+    /// every (sanitized) line to `notifyConsoleLineWaiters`, so this builds no separate
+    /// parser. Runs entirely on the main actor, so there is no gap between registering
+    /// the waiter and receiving lines.
+    func waitForConsoleLine(timeout: TimeInterval, matching predicate: @escaping (String) -> Bool) async -> Bool {
+        let waiter = ConsoleLineWaiter(matches: predicate)
+        let timeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+            self?.resolveConsoleWaiter(waiter, matched: false)
+        }
+        let matched = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            waiter.continuation = cont
+            consoleLineWaiters.append(waiter)
+        }
+        timeoutTask.cancel()
+        return matched
+    }
+
+    /// Delivers a sanitized console line to every registered waiter; matching waiters
+    /// are resumed with `true`. Called from `handleServerOutputLine`.
+    func notifyConsoleLineWaiters(_ clean: String) {
+        guard !consoleLineWaiters.isEmpty else { return }
+        // Snapshot matches first; resolving mutates `consoleLineWaiters`.
+        let matched = consoleLineWaiters.filter { $0.matches(clean) }
+        for waiter in matched { resolveConsoleWaiter(waiter, matched: true) }
+    }
+
+    /// Removes `waiter` and resumes it exactly once. The array-membership check makes
+    /// the match-vs-timeout race safe: whichever fires first removes the waiter, and
+    /// the loser finds it already gone (both run on the main actor, so no true
+    /// concurrency).
+    private func resolveConsoleWaiter(_ waiter: ConsoleLineWaiter, matched: Bool) {
+        guard let idx = consoleLineWaiters.firstIndex(where: { $0 === waiter }) else { return }
+        consoleLineWaiters.remove(at: idx)
+        waiter.resume(matched)
+    }
+}
+
+/// A pending await on a server console line, used by flush-consistent backups.
+/// Lifecycle is managed entirely on the main actor by `AppViewModel`.
+final class ConsoleLineWaiter {
+    let matches: (String) -> Bool
+    var continuation: CheckedContinuation<Bool, Never>?
+
+    init(matches: @escaping (String) -> Bool) {
+        self.matches = matches
+    }
+
+    /// Resumes the awaiting caller once; subsequent calls are no-ops.
+    func resume(_ value: Bool) {
+        continuation?.resume(returning: value)
+        continuation = nil
+    }
+}
+
+extension AppViewModel {
 
     // MARK: - Sidecar read / write helpers
 
