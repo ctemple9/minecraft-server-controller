@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Combine
 
 // Shared UserDefaults key for the "don't show again" quit warning preference.
 let MSCSuppressQuitWarningKey = "MSC.suppressQuitWhileRunningWarning"
@@ -21,6 +22,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var mainWindowResizeObserver: NSObjectProtocol?
 
+    // MARK: - Graceful-quit bookkeeping
+    //
+    // When Cmd+Q / Quit is issued while a server is running we defer termination
+    // (.terminateLater), run the same graceful stop the Stop button uses, and reply
+    // to the termination request only once — either when the server actually stops
+    // (isServerRunning flips to false) or after a hard timeout.
+    private var pendingQuitCancellable: AnyCancellable?
+    private var pendingQuitTimeout: DispatchWorkItem?
+    private var hasRepliedToPendingQuit = false
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Single-instance guard for launchd watchdog compatibility.
         // When launchd relaunches MSC it doesn't know an instance is already running,
@@ -40,6 +51,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.showsAlpha = false
         NSColorPanel.setPickerMask(.wheelModeMask)
         NSColorPanel.setPickerMode(.wheel)
+    }
+
+    /// Intercepts Cmd+Q / Quit so a running server is stopped *gracefully* before the
+    /// app exits, instead of being hard-killed by `applicationWillTerminate`.
+    ///
+    /// - No server running → terminate immediately.
+    /// - Server running, warning suppressed → skip the dialog but STILL perform a
+    ///   graceful stop (the suppression only silences the prompt, never the safe stop;
+    ///   the Bedrock VM must never be hard-powered-off mid-write).
+    /// - Server running, warning not suppressed → confirm with an NSAlert (with a
+    ///   "Don't ask again" checkbox wired to `MSCSuppressQuitWarningKey`).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let viewModel, viewModel.isServerRunning else {
+            return .terminateNow
+        }
+
+        let suppressed = UserDefaults.standard.bool(forKey: MSCSuppressQuitWarningKey)
+        if suppressed {
+            beginGracefulShutdownForQuit(viewModel)
+            return .terminateLater
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "A server is running"
+        alert.informativeText = "Quitting now will stop the running Minecraft server. "
+            + "MSC will stop it safely (saving the world first) before quitting."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Stop Server & Quit")
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don't ask again"
+
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else {
+            return .terminateCancel
+        }
+
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: MSCSuppressQuitWarningKey)
+        }
+
+        beginGracefulShutdownForQuit(viewModel)
+        return .terminateLater
+    }
+
+    /// Runs the exact Stop-button path (`stopServer()`), which fires the stop-time
+    /// auto-backup, tears down broadcasts/playit, marks the stop as user-requested (so
+    /// no "unexpected stop" dialog), and sends the graceful stop to the backend —
+    /// `stop()`, never `terminate()`, for the Bedrock VM. Then waits for the server to
+    /// actually terminate before replying to the deferred termination request.
+    private func beginGracefulShutdownForQuit(_ viewModel: AppViewModel) {
+        hasRepliedToPendingQuit = false
+
+        viewModel.stopServer()
+
+        // Reply as soon as the backend's onDidTerminate handler flips isServerRunning
+        // to false. The @Published publisher also delivers the current value on
+        // subscription, so an already-stopped server resolves immediately.
+        pendingQuitCancellable = viewModel.$isServerRunning
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] running in
+                guard let self, !running else { return }
+                self.finishPendingQuit()
+            }
+
+        // Hard timeout aligned with the VM's internal 20 s force-stop fallback. If the
+        // server still hasn't stopped, we let termination proceed anyway —
+        // applicationWillTerminate's force-cleanup is the last-resort backstop.
+        let timeout = DispatchWorkItem { [weak self] in
+            self?.finishPendingQuit()
+        }
+        pendingQuitTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 25, execute: timeout)
+    }
+
+    /// Replies to the deferred termination request exactly once, then lets the normal
+    /// termination sequence (applicationWillTerminate) run.
+    private func finishPendingQuit() {
+        guard !hasRepliedToPendingQuit else { return }
+        hasRepliedToPendingQuit = true
+        pendingQuitTimeout?.cancel()
+        pendingQuitTimeout = nil
+        pendingQuitCancellable = nil
+        NSApplication.shared.reply(toApplicationShouldTerminate: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
