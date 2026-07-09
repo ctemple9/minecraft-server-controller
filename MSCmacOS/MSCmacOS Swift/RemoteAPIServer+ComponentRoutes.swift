@@ -273,6 +273,7 @@ extension RemoteAPIServer {
             switch result.message {
             case "file_not_found": status = 404
             case "directory_not_file", "not_previewable", "no_active_server": status = 409
+            case "read_failed": status = 500  // E2: file exists but couldn't be read (IO/permission)
             default: status = result.success ? 200 : 500
             }
             sendJSON(statusCode: status, reason: result.success ? "OK" : "Error",

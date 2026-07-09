@@ -543,6 +543,7 @@ final class DashboardViewModel: ObservableObject {
         case "file_not_found": return "That file is no longer available."
         case "directory_not_file": return "Choose a file, not a folder."
         case "not_previewable": return "That file type cannot be previewed."
+        case "read_failed": return "That file couldn't be read on the Mac."
         case "no_active_server": return "No active server is selected on the Mac."
         default: return message
         }

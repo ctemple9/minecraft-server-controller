@@ -2125,7 +2125,15 @@ final class AppViewModel: ObservableObject {
                     let attrs = try? fm.attributesOfItem(atPath: url.path)
                     let size = (attrs?[.size] as? NSNumber)?.int64Value
                     let maxBytes = 512 * 1024
-                    let data = (try? Data(contentsOf: url)) ?? Data()
+                    // E2: surface a genuine read failure instead of masking it as an empty
+                    // preview. A previously-existing, previewable file that we can't read
+                    // (permissions, mid-write lock, IO error) is a real error, not "".
+                    let data: Data
+                    do {
+                        data = try Data(contentsOf: url)
+                    } catch {
+                        return RemoteAPIServer.ServerFileReadResponseDTO(success: false, message: "read_failed", path: path, name: url.lastPathComponent)
+                    }
                     let truncated = data.count > maxBytes
                     let slice = truncated ? data.prefix(maxBytes) : data[...]
                     let content = String(data: Data(slice), encoding: .utf8)

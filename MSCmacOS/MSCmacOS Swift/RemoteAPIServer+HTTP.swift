@@ -550,11 +550,24 @@ extension RemoteAPIServer {
             handleGetAddons(clientFD: clientFD)
             return false  // async handler sends its own response
 
+        // Server file browser (S1) — admin-only. The previewable content can include
+        // secrets (rcon.password in server.properties, API keys in plugin YAMLs), so
+        // GETs here must not be readable by guests or named (permission-scoped) tokens.
         case ("GET", "/files"):
+            guard case .admin = requestRole else {
+                sendJSON(statusCode: 403, reason: "Forbidden",
+                         jsonObject: ["error": "forbidden"], clientFD: clientFD)
+                return true
+            }
             handleGetFiles(path: request.query["path"], clientFD: clientFD)
             return false
 
         case ("GET", "/files/read"):
+            guard case .admin = requestRole else {
+                sendJSON(statusCode: 403, reason: "Forbidden",
+                         jsonObject: ["error": "forbidden"], clientFD: clientFD)
+                return true
+            }
             handleReadFile(path: request.query["path"] ?? "", clientFD: clientFD)
             return false
 

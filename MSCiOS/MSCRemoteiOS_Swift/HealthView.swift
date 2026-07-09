@@ -245,19 +245,24 @@ struct HealthView: View {
             MSCSectionHeader(title: "Server Tools")
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
 
-            serverToolRow(
-                title: "Server Files",
-                subtitle: "Browse and preview files from the active server directory.",
-                icon: "folder",
-                action: {
-                    hapticLight()
-                    showServerFiles = true
-                }
-            )
+            // Server Files is admin-only (S1): the server-side GET /files endpoints are
+            // gated to the owner admin token, so only surface the browser to admins —
+            // non-admin roles would just receive 403s.
+            if vm.connectedRole == "admin" {
+                serverToolRow(
+                    title: "Server Files",
+                    subtitle: "Browse and preview files from the active server directory.",
+                    icon: "folder",
+                    action: {
+                        hapticLight()
+                        showServerFiles = true
+                    }
+                )
 
-            Divider()
-                .background(MSCRemoteStyle.borderSubtle)
-                .padding(.vertical, MSCRemoteStyle.spaceSM)
+                Divider()
+                    .background(MSCRemoteStyle.borderSubtle)
+                    .padding(.vertical, MSCRemoteStyle.spaceSM)
+            }
 
             serverToolRow(
                 title: "Client Export",
