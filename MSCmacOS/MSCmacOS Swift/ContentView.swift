@@ -780,6 +780,20 @@ struct ContentView: View {
         .onChange(of: isShowingManageServers || isShowingPaperTemplates || isShowingPluginTemplates) { _, anyLocal in
             viewModel.contentViewSheetIsPresented = anyLocal
         }
+
+        // (R3) Corrupt-config recovery alert — on a separate Color.clear anchor per the
+        // one-presentation-per-view rule; never conflicts with errorAlert above.
+        .overlay {
+            Color.clear
+                .frame(width: 0, height: 0)
+                .alert(item: $viewModel.configCorruptAlert) { alert in
+                    Alert(
+                        title: Text(alert.title),
+                        message: Text(alert.message),
+                        dismissButton: .default(Text("OK"))
+                    )
+                }
+        }
     }
 }
 

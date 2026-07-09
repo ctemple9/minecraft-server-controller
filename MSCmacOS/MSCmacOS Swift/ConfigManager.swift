@@ -20,6 +20,21 @@ final class ConfigManager {
     /// Location of the persisted JSON config on disk.
     let configURL: URL
 
+    // MARK: - Failure observability
+
+    /// Set to the path of the `.corrupt-<timestamp>` copy when `init` detects an
+    /// unreadable config and preserves it before overwriting with defaults (R3).
+    /// `AppViewModel` reads this after init and shows a one-time user alert.
+    private(set) var corruptConfigCopyPath: String?
+
+    /// Called exactly once per session when `save()` fails in release builds (M4a).
+    /// Wire this from `AppViewModel.init` — `ConfigManager` must not import AppKit
+    /// or SwiftUI so the callback is the indirection layer.
+    var onSaveError: ((Error) -> Void)?
+
+    /// Guards against repeated save-failure notifications within one session.
+    private var saveErrorFiredThisSession = false
+
     // MARK: - Initialization
 
     private init() {
@@ -94,6 +109,30 @@ final class ConfigManager {
                 save()
 
             } catch {
+                // (R3) Preserve the unreadable file before overwriting with defaults so the
+                // user can recover their data if the corruption was transient (e.g. power loss
+                // during a write). The copy is made while the file still exists on disk.
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyyMMdd-HHmmss"
+                let timestamp = formatter.string(from: Date())
+                let corruptURL = configURL
+                    .deletingLastPathComponent()
+                    .appendingPathComponent(
+                        "server_config_swift.json.corrupt-\(timestamp)",
+                        isDirectory: false
+                    )
+                do {
+                    try fm.copyItem(at: configURL, to: corruptURL)
+                    corruptConfigCopyPath = corruptURL.path
+                } catch {
+                    // Copy failed (rare — e.g. permissions). Set the sentinel ("") so
+                    // AppViewModel still shows a warning, but without a recoverable path.
+                    corruptConfigCopyPath = ""
+                    #if DEBUG
+                    print("ConfigManager: failed to copy corrupt config: \(error)")
+                    #endif
+                }
+
                 #if DEBUG
                 print("ConfigManager: Failed to load config, using defaults \(error)")
                 #endif
@@ -178,6 +217,12 @@ final class ConfigManager {
             #if DEBUG
             print("ConfigManager: save error \(error)")
             #endif
+            // (M4a) Notify the app layer via callback — fires at most once per session
+            // to prevent spam.  AppViewModel wires this in its init.
+            if !saveErrorFiredThisSession {
+                saveErrorFiredThisSession = true
+                onSaveError?(error)
+            }
         }
     }
 

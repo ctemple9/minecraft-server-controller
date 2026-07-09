@@ -33,6 +33,10 @@ final class AppViewModel: ObservableObject {
     @Published var pendingBroadcastAuthPrompt: BroadcastAuthPrompt?
     @Published var firstStartNotice: FirstStartNotice?
     @Published var errorAlert: AppError?
+    /// One-time alert shown when `ConfigManager.init` found an unreadable config and
+    /// replaced it with defaults (R3). Presented on a separate `Color.clear` anchor in
+    /// ContentView to honour the one-presentation-per-view rule.
+    @Published var configCorruptAlert: AppError?
     @Published var pendingSVCTunnelMismatch: SVCTunnelMismatchAlert?
     @Published var pendingSVCPortForwardingPrompt: SVCPortForwardingAlert?
     @Published var pendingBedrockTunnelMissing: BedrockTunnelMissingAlert?
@@ -399,6 +403,37 @@ final class AppViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+
+        // (M4a) Wire save-failure callback before any code that may call save().
+        // Fires at most once per session (guard is in ConfigManager). Routing via
+        // callback keeps ConfigManager free of AppKit/SwiftUI imports.
+        configManager.onSaveError = { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.logAppMessage("[Config] Save failed: \(error.localizedDescription)")
+                // Surface via errorAlert directly — critical data-safety event, must
+                // show regardless of the errorPopupsEnabled preference.
+                self.errorAlert = AppError(
+                    title: "Settings Save Failed",
+                    message: "Your settings couldn't be saved to disk: \(error.localizedDescription)\n\nCheck available disk space and app permissions."
+                )
+            }
+        }
+
+        // (R3) If init detected a corrupt config file, surface a one-time alert.
+        // corruptConfigCopyPath is "" when the copy attempt itself failed (sentinel).
+        if let corruptPath = configManager.corruptConfigCopyPath {
+            let message: String
+            if corruptPath.isEmpty {
+                message = "Your settings file was unreadable and has been replaced with defaults. The original file could not be preserved (check disk permissions)."
+            } else {
+                message = "Your settings file was unreadable and has been replaced with defaults.\n\nA copy of the original was saved to:\n\(corruptPath)"
+            }
+            configCorruptAlert = AppError(
+                title: "Settings File Couldn't Be Read",
+                message: message
+            )
+        }
 
         reloadServersFromConfig()
         logAppMessage("[App] MinecraftServerController started.")
