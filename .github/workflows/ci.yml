@@ -1,0 +1,80 @@
+# CI — MSC build + test
+#
+# Jobs:
+#   macos-test   — builds and runs all 112 unit + integration tests (macOS target)
+#   ios-build    — build-only for the iOS target against an iOS Simulator destination
+#
+# Requirements:
+#   • No secrets or signing certs needed.
+#   • Xcode 26.2 required (ships the iOS 26.2 SDK used by MSCRemoteiOS).
+#     The macos-15 runner images include Xcode 26.x; if the runner only has
+#     Xcode 16.x the iOS job will fail with an SDK error — update the
+#     xcode-select step below to pin the correct versioned path when that
+#     version is confirmed available on the runner.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: macOS — build + test
+  # ---------------------------------------------------------------------------
+  macos-test:
+    name: macOS — build & test
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode & print version
+        run: |
+          # Prefer Xcode 26.2 (required for iOS 26.2 SDK); fall back to the
+          # runner's default if the versioned path doesn't exist yet.
+          if [ -d /Applications/Xcode_26.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Build & test (macOS scheme)
+        run: |
+          xcodebuild test \
+            -project "MSCmacOS/Minecraft_Server_Controller.xcodeproj" \
+            -scheme "MinecraftServerController" \
+            -destination "platform=macOS" \
+            CODE_SIGNING_ALLOWED=NO
+
+  # ---------------------------------------------------------------------------
+  # Job 2: iOS — build only (Simulator destination)
+  # ---------------------------------------------------------------------------
+  ios-build:
+    name: iOS — build (Simulator)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode & print version
+        run: |
+          if [ -d /Applications/Xcode_26.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Build (iOS Simulator)
+        run: |
+          xcodebuild build \
+            -project "MSCiOS/MSCRemoteiOS.xcodeproj" \
+            -scheme "MSCRemoteiOS" \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
