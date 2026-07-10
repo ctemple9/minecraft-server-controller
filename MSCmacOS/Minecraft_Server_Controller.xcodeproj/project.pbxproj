@@ -247,6 +247,9 @@
 		D1E900520000000000000061 /* ComponentVersionParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000060 /* ComponentVersionParsingTests.swift */; };
 		D1E900520000000000000071 /* NetworkSafetyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000070 /* NetworkSafetyTests.swift */; };
 		D1E900520000000000000081 /* RemoteAPIIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000080 /* RemoteAPIIntegrationTests.swift */; };
+		D1E900520000000000000091 /* iOSModelMirrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000090 /* iOSModelMirrors.swift */; };
+		D1E9005200000000000000A1 /* DTOContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000A0 /* DTOContractTests.swift */; };
+		D1E9005200000000000000B1 /* AppConfigRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -493,6 +496,9 @@
 		D1E900520000000000000060 /* ComponentVersionParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentVersionParsingTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000070 /* NetworkSafetyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSafetyTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000080 /* RemoteAPIIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIIntegrationTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000090 /* iOSModelMirrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSModelMirrors.swift; sourceTree = "<group>"; };
+		D1E9005200000000000000A0 /* DTOContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOContractTests.swift; sourceTree = "<group>"; };
+		D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigRoundTripTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -771,6 +777,9 @@
 				D1E900520000000000000060 /* ComponentVersionParsingTests.swift */,
 				D1E900520000000000000070 /* NetworkSafetyTests.swift */,
 				D1E900520000000000000080 /* RemoteAPIIntegrationTests.swift */,
+				D1E900520000000000000090 /* iOSModelMirrors.swift */,
+				D1E9005200000000000000A0 /* DTOContractTests.swift */,
+				D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1145,6 +1154,9 @@
 				D1E900520000000000000061 /* ComponentVersionParsingTests.swift in Sources */,
 				D1E900520000000000000071 /* NetworkSafetyTests.swift in Sources */,
 				D1E900520000000000000081 /* RemoteAPIIntegrationTests.swift in Sources */,
+				D1E900520000000000000091 /* iOSModelMirrors.swift in Sources */,
+				D1E9005200000000000000A1 /* DTOContractTests.swift in Sources */,
+				D1E9005200000000000000B1 /* AppConfigRoundTripTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
