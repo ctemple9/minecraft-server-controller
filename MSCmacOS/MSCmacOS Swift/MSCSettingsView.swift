@@ -31,6 +31,12 @@ struct MSCSettingsView: View {
     @State private var showCopiedAlert: Bool = false
     @State private var copiedMessage: String = ""
     @State private var showRegenerateTokenConfirm: Bool = false
+    // Pairing LAN-enable interrupt (U1)
+    @State private var showPairingLANConfirm: Bool = false
+    @State private var pendingPairingToken: String = ""
+    @State private var pendingPairingIsQR: Bool = false
+    // Pairing host error (U1)
+    @State private var showPairingHostError: Bool = false
     @AppStorage(MSCSuppressQuitWarningKey) private var suppressQuitWarning: Bool = false
     @State private var bannerColorDraft: Color = Color(red: 30/255, green: 30/255, blue: 30/255)
     @State private var showResetStepOne: Bool = false
@@ -117,8 +123,8 @@ struct MSCSettingsView: View {
             ),
             helpStep(
                 id: "preferences.remote.url",
-                title: "The URL box is a preview, not the saved pairing state",
-                body: "This box helps you see the local URL and the best pairing host for the draft state on screen. Press Save first after changing the toggle or preferred host — Copy Pairing Link and QR use the saved settings.",
+                title: "The URL box shows your current pairing address",
+                body: "This box shows the LAN/VPN address and port the iOS app will connect to. When you generate a QR or copy a pairing link, MSC saves the preferred-host field automatically so what's shared always matches what you see here.",
                 anchorID: remoteAccessURLBoxAnchorID
             ),
             helpStep(
@@ -333,6 +339,31 @@ struct MSCSettingsView: View {
             Text(resetFailureMessage)
         }
         .contextualHelpHost(guideIDs: contextualHelpGuideIDs)
+        // (U1) LAN-enable confirmation — separate Color.clear anchor per one-presentation-per-view rule
+        .overlay {
+            Color.clear
+                .frame(width: 0, height: 0)
+                .alert("Enable LAN access?", isPresented: $showPairingLANConfirm) {
+                    Button("Cancel", role: .cancel) {
+                        pendingPairingToken = ""
+                    }
+                    Button("Enable & Continue") {
+                        enableLANAndContinuePairing()
+                    }
+                } message: {
+                    Text("The Remote API is currently Mac-only, so your phone can\u{2019}t reach it. Turn on LAN/VPN access and save?")
+                }
+        }
+        // (U1) Host-not-found error — separate Color.clear anchor
+        .overlay {
+            Color.clear
+                .frame(width: 0, height: 0)
+                .alert("No network address found", isPresented: $showPairingHostError) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("LAN access is enabled but no suitable IP address was found. Check that your Mac is connected to a network and try again.")
+                }
+        }
     }
 
     // MARK: - Tab bar
@@ -420,8 +451,6 @@ struct MSCSettingsView: View {
             preferredPairingHostInput: $preferredPairingHostInput,
             newSharedAccessLabel: $newSharedAccessLabel,
             newSharedAccessRole: $newSharedAccessRole,
-            showPairingQR: $showPairingQR,
-            pairingLinkForQR: $pairingLinkForQR,
             showCopiedAlert: $showCopiedAlert,
             copiedMessage: $copiedMessage,
             showRegenerateTokenConfirm: $showRegenerateTokenConfirm,
@@ -435,7 +464,8 @@ struct MSCSettingsView: View {
             preferredHostAnchorID: remoteAccessPreferredHostAnchorID,
             actionsAnchorID: remoteAccessActionsAnchorID,
             onCopyToClipboard: copyToClipboard,
-            onBuildPairingLink: buildPairingLink,
+            onCopyPairingLink: { token in requestPairingArtifact(token: token, isQR: false) },
+            onShowPairingQR:   { token in requestPairingArtifact(token: token, isQR: true)  },
             onAddSharedAccessEntry: addSharedAccessEntry,
             onRevokeSharedAccessEntry: revokeSharedAccessEntry,
             onSetSharedAccessEntryRole: setSharedAccessEntryRole,
@@ -545,10 +575,13 @@ struct MSCSettingsView: View {
 
     // MARK: - Remote API logic
 
-    private func buildPairingLink(token: String) -> String {
+    /// Builds the mscremote://pair URL using the currently saved preferred host.
+    /// Returns nil if no non-loopback address is available — callers must never
+    /// fall through to 127.0.0.1 (U1).
+    private func buildPairingLink(token: String) -> String? {
         let cfg = viewModel.configManager.config
         let port = cfg.remoteAPIPort
-        let baseHost = preferredPairingHost(exposeOnLAN: cfg.remoteAPIExposeOnLAN) ?? "127.0.0.1"
+        guard let baseHost = preferredPairingHost(exposeOnLAN: true) else { return nil }
         let baseURL = "http://\(baseHost):\(port)"
         var comps = URLComponents()
         comps.scheme = "mscremote"
@@ -557,7 +590,57 @@ struct MSCSettingsView: View {
             URLQueryItem(name: "base", value: baseURL),
             URLQueryItem(name: "token", value: token)
         ]
-        return comps.url?.absoluteString ?? "mscremote://pair"
+        return comps.url?.absoluteString
+    }
+
+    /// Entry point for every "Copy Pairing Link" / "Show Pairing QR" action (U1).
+    /// Checks saved config — if LAN is off, interrupts with an enable-and-save offer.
+    private func requestPairingArtifact(token: String, isQR: Bool) {
+        let savedCfg = viewModel.configManager.config
+        guard savedCfg.remoteAPIExposeOnLAN else {
+            // LAN is off in saved config → store the pending action and show confirmation
+            pendingPairingToken = token
+            pendingPairingIsQR  = isQR
+            showPairingLANConfirm = true
+            return
+        }
+        emitPairingArtifact(token: token, isQR: isQR)
+    }
+
+    /// Emits the pairing link or QR after confirming LAN is on (U1).
+    /// Persists the preferred-host draft first to close the draft-vs-saved gap.
+    private func emitPairingArtifact(token: String, isQR: Bool) {
+        // Save the preferred-host draft so the link reflects what's shown on screen
+        persistPreferredPairingHost()
+
+        guard let link = buildPairingLink(token: token) else {
+            // LAN is on but no usable IP was found (no network?)
+            showPairingHostError = true
+            return
+        }
+
+        if isQR {
+            pairingLinkForQR = link
+            showPairingQR = true
+        } else {
+            copyToClipboard(link)
+            copiedMessage = "Pairing link copied."
+            showCopiedAlert = true
+        }
+    }
+
+    /// Called by the "Enable & Continue" button in the LAN confirm alert (U1).
+    private func enableLANAndContinuePairing() {
+        // Update draft state so the UI reflects the change
+        remoteAPIExposeOnLAN = true
+        // Persist + live-rebind the API server
+        viewModel.updatePreferences(
+            javaPath: javaPath,
+            extraFlags: extraFlags,
+            remoteAPIExposeOnLAN: true
+        )
+        // Emit the artifact now that LAN is on
+        emitPairingArtifact(token: pendingPairingToken, isQR: pendingPairingIsQR)
     }
 
     private func preferredPairingHost(exposeOnLAN: Bool) -> String? {

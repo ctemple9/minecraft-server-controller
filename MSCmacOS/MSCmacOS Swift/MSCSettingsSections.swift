@@ -173,8 +173,6 @@ struct PreferencesRemoteAPISection: View {
     @Binding var preferredPairingHostInput: String
     @Binding var newSharedAccessLabel: String
     @Binding var newSharedAccessRole: String
-    @Binding var showPairingQR: Bool
-    @Binding var pairingLinkForQR: String
     @Binding var showCopiedAlert: Bool
     @Binding var copiedMessage: String
     @Binding var showRegenerateTokenConfirm: Bool
@@ -189,7 +187,10 @@ struct PreferencesRemoteAPISection: View {
     let preferredHostAnchorID: String
     let actionsAnchorID: String
     let onCopyToClipboard: (String) -> Void
-    let onBuildPairingLink: (String) -> String
+    /// Called when the user taps "Copy Pairing Link" — parent handles LAN check + clipboard (U1).
+    let onCopyPairingLink: (String) -> Void
+    /// Called when the user taps "Show Pairing QR" — parent handles LAN check + sheet (U1).
+    let onShowPairingQR: (String) -> Void
     let onAddSharedAccessEntry: (String) -> Void
     let onRevokeSharedAccessEntry: (String) -> Void
     let onSetSharedAccessEntryRole: (String, String) -> Void
@@ -239,14 +240,13 @@ struct PreferencesRemoteAPISection: View {
 
             VStack(alignment: .leading, spacing: MSC.Spacing.md) {
                 PreferencesPairingActionsRow(
-                    showPairingQR: $showPairingQR,
-                    pairingLinkForQR: $pairingLinkForQR,
                     showCopiedAlert: $showCopiedAlert,
                     copiedMessage: $copiedMessage,
                     showRegenerateTokenConfirm: $showRegenerateTokenConfirm,
                     token: config.remoteAPIToken,
                     onCopyToClipboard: onCopyToClipboard,
-                    onBuildPairingLink: onBuildPairingLink,
+                    onCopyPairingLink: onCopyPairingLink,
+                    onShowPairingQR: onShowPairingQR,
                     onRegenerateToken: onRegenerateToken
                 )
 
@@ -255,13 +255,9 @@ struct PreferencesRemoteAPISection: View {
                 PreferencesSharedAccessSection(
                     newSharedAccessLabel: $newSharedAccessLabel,
                     newSharedAccessRole: $newSharedAccessRole,
-                    showPairingQR: $showPairingQR,
-                    pairingLinkForQR: $pairingLinkForQR,
-                    showCopiedAlert: $showCopiedAlert,
-                    copiedMessage: $copiedMessage,
                     sharedAccess: config.remoteAPISharedAccess,
-                    onCopyToClipboard: onCopyToClipboard,
-                    onBuildPairingLink: onBuildPairingLink,
+                    onCopyPairingLink: onCopyPairingLink,
+                    onShowPairingQR: onShowPairingQR,
                     onAddSharedAccessEntry: onAddSharedAccessEntry,
                     onRevokeSharedAccessEntry: onRevokeSharedAccessEntry,
                     onSetRole: onSetSharedAccessEntryRole
@@ -361,15 +357,16 @@ private struct PreferencesRemoteAPIURLBox: View {
 }
 
 private struct PreferencesPairingActionsRow: View {
-    @Binding var showPairingQR: Bool
-    @Binding var pairingLinkForQR: String
     @Binding var showCopiedAlert: Bool
     @Binding var copiedMessage: String
     @Binding var showRegenerateTokenConfirm: Bool
 
     let token: String
     let onCopyToClipboard: (String) -> Void
-    let onBuildPairingLink: (String) -> String
+    /// Triggers the full pairing-link flow (LAN check + clipboard) in the parent (U1).
+    let onCopyPairingLink: (String) -> Void
+    /// Triggers the full pairing-QR flow (LAN check + sheet) in the parent (U1).
+    let onShowPairingQR: (String) -> Void
     let onRegenerateToken: () -> Void
 
     var body: some View {
@@ -382,16 +379,12 @@ private struct PreferencesPairingActionsRow: View {
             .buttonStyle(MSCSecondaryButtonStyle())
 
             Button("Copy Pairing Link") {
-                let link = onBuildPairingLink(token)
-                onCopyToClipboard(link)
-                copiedMessage = "Pairing link copied."
-                showCopiedAlert = true
+                onCopyPairingLink(token)
             }
             .buttonStyle(MSCSecondaryButtonStyle())
 
             Button("Show Pairing QR") {
-                pairingLinkForQR = onBuildPairingLink(token)
-                showPairingQR = true
+                onShowPairingQR(token)
             }
             .buttonStyle(MSCSecondaryButtonStyle())
 
@@ -415,14 +408,12 @@ private struct PreferencesPairingActionsRow: View {
 private struct PreferencesSharedAccessSection: View {
     @Binding var newSharedAccessLabel: String
     @Binding var newSharedAccessRole: String
-    @Binding var showPairingQR: Bool
-    @Binding var pairingLinkForQR: String
-    @Binding var showCopiedAlert: Bool
-    @Binding var copiedMessage: String
 
     let sharedAccess: [RemoteAPISharedAccessEntry]
-    let onCopyToClipboard: (String) -> Void
-    let onBuildPairingLink: (String) -> String
+    /// Triggers the full pairing-link flow (LAN check + clipboard) in the parent (U1).
+    let onCopyPairingLink: (String) -> Void
+    /// Triggers the full pairing-QR flow (LAN check + sheet) in the parent (U1).
+    let onShowPairingQR: (String) -> Void
     let onAddSharedAccessEntry: (String) -> Void
     let onRevokeSharedAccessEntry: (String) -> Void
     let onSetRole: (String, String) -> Void
@@ -487,12 +478,8 @@ private struct PreferencesSharedAccessSection: View {
                         }
                         PreferencesSharedAccessRow(
                             entry: entry,
-                            showPairingQR: $showPairingQR,
-                            pairingLinkForQR: $pairingLinkForQR,
-                            showCopiedAlert: $showCopiedAlert,
-                            copiedMessage: $copiedMessage,
-                            onCopyToClipboard: onCopyToClipboard,
-                            onBuildPairingLink: onBuildPairingLink,
+                            onCopyPairingLink: onCopyPairingLink,
+                            onShowPairingQR: onShowPairingQR,
                             onRevokeSharedAccessEntry: onRevokeSharedAccessEntry,
                             onSetRole: onSetRole
                         )
@@ -509,13 +496,10 @@ private struct PreferencesSharedAccessSection: View {
 
 private struct PreferencesSharedAccessRow: View {
     let entry: RemoteAPISharedAccessEntry
-    @Binding var showPairingQR: Bool
-    @Binding var pairingLinkForQR: String
-    @Binding var showCopiedAlert: Bool
-    @Binding var copiedMessage: String
-
-    let onCopyToClipboard: (String) -> Void
-    let onBuildPairingLink: (String) -> String
+    /// Triggers the full pairing-link flow (LAN check + clipboard) in the parent (U1).
+    let onCopyPairingLink: (String) -> Void
+    /// Triggers the full pairing-QR flow (LAN check + sheet) in the parent (U1).
+    let onShowPairingQR: (String) -> Void
     let onRevokeSharedAccessEntry: (String) -> Void
     let onSetRole: (String, String) -> Void
 
@@ -523,22 +507,14 @@ private struct PreferencesSharedAccessRow: View {
 
     init(
         entry: RemoteAPISharedAccessEntry,
-        showPairingQR: Binding<Bool>,
-        pairingLinkForQR: Binding<String>,
-        showCopiedAlert: Binding<Bool>,
-        copiedMessage: Binding<String>,
-        onCopyToClipboard: @escaping (String) -> Void,
-        onBuildPairingLink: @escaping (String) -> String,
+        onCopyPairingLink: @escaping (String) -> Void,
+        onShowPairingQR: @escaping (String) -> Void,
         onRevokeSharedAccessEntry: @escaping (String) -> Void,
         onSetRole: @escaping (String, String) -> Void
     ) {
         self.entry = entry
-        self._showPairingQR = showPairingQR
-        self._pairingLinkForQR = pairingLinkForQR
-        self._showCopiedAlert = showCopiedAlert
-        self._copiedMessage = copiedMessage
-        self.onCopyToClipboard = onCopyToClipboard
-        self.onBuildPairingLink = onBuildPairingLink
+        self.onCopyPairingLink = onCopyPairingLink
+        self.onShowPairingQR = onShowPairingQR
         self.onRevokeSharedAccessEntry = onRevokeSharedAccessEntry
         self.onSetRole = onSetRole
         self._roleDraft = State(initialValue: entry.role)
@@ -569,16 +545,12 @@ private struct PreferencesSharedAccessRow: View {
                 }
 
                 Button("Copy Link") {
-                    let link = onBuildPairingLink(entry.token)
-                    onCopyToClipboard(link)
-                    copiedMessage = "Pairing link copied for \(entry.label.isEmpty ? "shared entry" : entry.label)."
-                    showCopiedAlert = true
+                    onCopyPairingLink(entry.token)
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
 
                 Button("QR") {
-                    pairingLinkForQR = onBuildPairingLink(entry.token)
-                    showPairingQR = true
+                    onShowPairingQR(entry.token)
                 }
                 .buttonStyle(MSCSecondaryButtonStyle())
 
