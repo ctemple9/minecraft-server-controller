@@ -239,6 +239,13 @@
 		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
 		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
 		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
+		D1E900520000000000000011 /* RemoteAPITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000010 /* RemoteAPITestSupport.swift */; };
+		D1E900520000000000000021 /* HTTPParseRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000020 /* HTTPParseRequestTests.swift */; };
+		D1E900520000000000000031 /* ServerSettingsSchemaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000030 /* ServerSettingsSchemaTests.swift */; };
+		D1E900520000000000000041 /* ServerPropertiesModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000040 /* ServerPropertiesModelTests.swift */; };
+		D1E900520000000000000051 /* StartupCrashAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000050 /* StartupCrashAnalyzerTests.swift */; };
+		D1E900520000000000000061 /* ComponentVersionParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000060 /* ComponentVersionParsingTests.swift */; };
+		D1E900520000000000000071 /* NetworkSafetyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000070 /* NetworkSafetyTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -476,10 +483,25 @@
 		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkerManager.swift; sourceTree = "<group>"; };
 		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
 		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldConversionWizardView.swift; sourceTree = "<group>"; };
+		D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Minecraft_Server_ControllerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1E900520000000000000010 /* RemoteAPITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPITestSupport.swift; sourceTree = "<group>"; };
+		D1E900520000000000000020 /* HTTPParseRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPParseRequestTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000030 /* ServerSettingsSchemaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsSchemaTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000040 /* ServerPropertiesModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerPropertiesModelTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000050 /* StartupCrashAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupCrashAnalyzerTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000060 /* ComponentVersionParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentVersionParsingTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000070 /* NetworkSafetyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkSafetyTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		9AC210692EDE501200E7D326 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1E900512F6A100000000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -736,10 +758,25 @@
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
+		D1E900512F6A10000000000B /* MSCmacOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				D1E900520000000000000010 /* RemoteAPITestSupport.swift */,
+				D1E900520000000000000020 /* HTTPParseRequestTests.swift */,
+				D1E900520000000000000030 /* ServerSettingsSchemaTests.swift */,
+				D1E900520000000000000040 /* ServerPropertiesModelTests.swift */,
+				D1E900520000000000000050 /* StartupCrashAnalyzerTests.swift */,
+				D1E900520000000000000060 /* ComponentVersionParsingTests.swift */,
+				D1E900520000000000000070 /* NetworkSafetyTests.swift */,
+			);
+			path = MSCmacOSTests;
+			sourceTree = "<group>";
+		};
 		9AC210632EDE501200E7D326 = {
 			isa = PBXGroup;
 			children = (
 				9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */,
+				D1E900512F6A10000000000B /* MSCmacOSTests */,
 				9AC2106D2EDE501200E7D326 /* Products */,
 				9AAF274E2F6A003200F752CA /* Recovered References */,
 			);
@@ -749,6 +786,7 @@
 			isa = PBXGroup;
 			children = (
 				9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */,
+				D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -775,6 +813,26 @@
 			productReference = 9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D1E900512F6A100000000001 /* Minecraft_Server_ControllerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1E900512F6A100000000008 /* Build configuration list for PBXNativeTarget "Minecraft_Server_ControllerTests" */;
+			buildPhases = (
+				D1E900512F6A100000000003 /* Sources */,
+				D1E900512F6A100000000004 /* Frameworks */,
+				D1E900512F6A100000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1E900512F6A100000000006 /* PBXTargetDependency */,
+			);
+			name = Minecraft_Server_ControllerTests;
+			packageProductDependencies = (
+			);
+			productName = Minecraft_Server_ControllerTests;
+			productReference = D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -788,6 +846,10 @@
 					9AC2106B2EDE501200E7D326 = {
 						CreatedOnToolsVersion = 26.1.1;
 						LastSwiftMigration = 2620;
+					};
+					D1E900512F6A100000000001 = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 9AC2106B2EDE501200E7D326;
 					};
 				};
 			};
@@ -806,6 +868,7 @@
 			projectRoot = "";
 			targets = (
 				9AC2106B2EDE501200E7D326 /* Minecraft_Server_Controller */,
+				D1E900512F6A100000000001 /* Minecraft_Server_ControllerTests */,
 			);
 		};
 /* End PBXProject section */
@@ -819,6 +882,13 @@
 				9AFE02180000000000000002 /* VMAppliance/vmlinuz-kata in Resources */,
 				9AFE02190000000000000002 /* VMAppliance/appliance-initramfs.gz in Resources */,
 				9A5633062F65AD6D00FB8246 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1E900512F6A100000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1060,7 +1130,39 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1E900512F6A100000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1E900520000000000000011 /* RemoteAPITestSupport.swift in Sources */,
+				D1E900520000000000000021 /* HTTPParseRequestTests.swift in Sources */,
+				D1E900520000000000000031 /* ServerSettingsSchemaTests.swift in Sources */,
+				D1E900520000000000000041 /* ServerPropertiesModelTests.swift in Sources */,
+				D1E900520000000000000051 /* StartupCrashAnalyzerTests.swift in Sources */,
+				D1E900520000000000000061 /* ComponentVersionParsingTests.swift in Sources */,
+				D1E900520000000000000071 /* NetworkSafetyTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1E900512F6A100000000006 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9AC2106B2EDE501200E7D326 /* Minecraft_Server_Controller */;
+			targetProxy = D1E900512F6A100000000007 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		D1E900512F6A100000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9AC210642EDE501200E7D326 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9AC2106B2EDE501200E7D326;
+			remoteInfo = Minecraft_Server_Controller;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		9AC210752EDE501500E7D326 /* Debug */ = {
@@ -1260,6 +1362,47 @@
 			};
 			name = Release;
 		};
+		D1E900512F6A100000000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerControllerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Minecraft Server Controller.app/Contents/MacOS/Minecraft Server Controller";
+			};
+			name = Debug;
+		};
+		D1E900512F6A10000000000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6898622Y3Y;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerControllerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Minecraft Server Controller.app/Contents/MacOS/Minecraft Server Controller";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1277,6 +1420,15 @@
 			buildConfigurations = (
 				9AC210782EDE501500E7D326 /* Debug */,
 				9AC210792EDE501500E7D326 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D1E900512F6A100000000008 /* Build configuration list for PBXNativeTarget "Minecraft_Server_ControllerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1E900512F6A100000000009 /* Debug */,
+				D1E900512F6A10000000000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
