@@ -2,3 +2,6 @@
 .CLAUDE.md
 MSCiOS/.DS_Store
 MSCmacOS/.DS_Store
+
+# Release build output (produced by scripts/release-macos.sh)
+dist/

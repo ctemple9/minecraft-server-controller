@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Export a Developer ID-signed build for distribution OUTSIDE the Mac App Store.
+	     The archive is produced with the project's normal "Apple Development" automatic
+	     signing; -exportArchive re-signs the app bundle with the Developer ID Application
+	     certificate here. This keeps the pbxproj signing config untouched (Debug and CI
+	     builds are unaffected) — the release identity lives only in this file. -->
+	<key>method</key>
+	<string>developer-id</string>
+
+	<key>teamID</key>
+	<string>6898622Y3Y</string>
+
+	<!-- Manual signing with the Developer ID cert already in the login keychain.
+	     The app's only entitlement (com.apple.security.virtualization) does not require
+	     a provisioning profile for Developer ID distribution, so none is listed and the
+	     export runs offline against the local certificate. -->
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Developer ID Application</string>
+
+	<!-- Keep the hardened runtime (already enabled in the target) so the build is
+	     eligible for notarization. Do not strip symbols we might want in crash reports. -->
+	<key>stripSwiftSymbols</key>
+	<false/>
+</dict>
+</plist>
