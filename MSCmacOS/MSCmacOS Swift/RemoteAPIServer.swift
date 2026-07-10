@@ -455,6 +455,13 @@ final class RemoteAPIServer {
     }
 
     private func startInternal() {
+#if DEBUG
+        // Validate all four route-registry invariants on first start (pure Set checks,
+        // no provider calls).  A failed assertion here means a POST path was added to one
+        // registry but not the others — the fix is in RemoteAPIServer.swift /
+        // RemoteAPIServer+HTTP.swift, not in the assertion.
+        assertRegistryConsistency()
+#endif
         if listenFD != -1 {
             let bindHost = listenOnAllInterfaces ? "0.0.0.0" : "127.0.0.1"
             let scope = listenOnAllInterfaces ? "LAN/VPN" : "localhost only"

@@ -160,6 +160,205 @@ extension RemoteAPIServer {
         "/templates": "fleet",
     ]
 
+    // Canonical set of every path the router knows about, used in the default: case to
+    // distinguish 405 Method Not Allowed (known path, wrong method) from 404 Not Found.
+    // Also referenced by the DEBUG registry assertions below.
+    // KEEP IN SYNC with every case in respond(to:clientFD:) and allRouterHandledPaths.
+    static let knownPathsCanonical: Set<String> = [
+        "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates",
+        "/status", "/performance",
+        "/players", "/players/skin-override", "/players/hidden", "/players/profiles",
+        "/allowlist", "/session-log",
+        "/active-server", "/start", "/stop", "/command",
+        "/console/tail", "/console/stream",
+        "/components", "/components/update", "/components/remove", "/components/install",
+        "/components/version", "/addons", "/components/client-export",
+        "/files", "/files/read",
+        "/catalog/search", "/versions",
+        "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart",
+        "/broadcast/credentials", "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
+        "/broadcast/autostart", "/me",
+        "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
+        "/worlds", "/worlds/activate", "/worlds/create", "/worlds/rename",
+        "/worlds/replace", "/worlds/repair",
+        "/backups", "/backups/now", "/backups/restore", "/backups/config",
+        "/settings",
+        "/resourcepacks", "/resourcepacks/activate", "/resourcepacks/seturl",
+        "/resourcepacks/toggle", "/resourcepacks/remove",
+        "/health", "/health/problems", "/health/repair",
+        "/connectivity",
+        "/playit", "/playit/start", "/playit/stop",
+        "/duckdns", "/config/geyser",
+        "/users", "/users/revoke", "/users/update",
+    ]
+
+    // MARK: - DEBUG Registry Integrity Assertions
+
+#if DEBUG
+    // Canonical list of every path the respond(to:clientFD:) switch handles.
+    // Parameterised pre-switch routes (e.g. GET /players/<id>/skin) are excluded because
+    // their paths can't be represented as fixed strings.
+    // Keep this in sync with every case arm in respond(to:clientFD:).
+    private static let allRouterHandledPaths: Set<String> = [
+        // fleet
+        "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates",
+        // status & performance
+        "/status", "/performance",
+        // server lifecycle
+        "/active-server", "/start", "/stop", "/command",
+        // players
+        "/players", "/players/skin-override", "/players/hidden", "/players/profiles",
+        // allowlist
+        "/allowlist",
+        // session log
+        "/session-log",
+        // console
+        "/console/tail",
+        // components & add-ons
+        "/components", "/components/update", "/components/remove", "/components/install",
+        "/components/version", "/addons", "/components/client-export",
+        // files
+        "/files", "/files/read",
+        // catalog & versions
+        "/catalog/search", "/versions",
+        // resource packs
+        "/resourcepacks", "/resourcepacks/activate", "/resourcepacks/seturl",
+        "/resourcepacks/toggle", "/resourcepacks/remove",
+        // settings
+        "/settings",
+        // broadcast
+        "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart",
+        "/broadcast/credentials", "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
+        "/broadcast/autostart",
+        // token identity
+        "/me",
+        // worlds
+        "/worlds", "/worlds/activate", "/worlds/create", "/worlds/rename",
+        "/worlds/replace", "/worlds/repair",
+        // connectivity
+        "/connectivity",
+        // playit
+        "/playit", "/playit/start", "/playit/stop",
+        // DuckDNS & Geyser
+        "/duckdns", "/config/geyser",
+        // health / diagnostics
+        "/health", "/health/problems", "/health/repair",
+        // backups
+        "/backups", "/backups/now", "/backups/restore", "/backups/config",
+        // named users
+        "/users", "/users/revoke", "/users/update",
+        // watchdog
+        "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
+    ]
+
+    // Paths handled before the switch (WebSocket upgrade block) — present in
+    // knownPathsCanonical but not in allRouterHandledPaths.
+    private static let preRouterHandledPaths: Set<String> = ["/console/stream"]
+
+    /// Validates all four route-registry invariants at server startup (DEBUG only).
+    /// Called from startInternal() on the server queue — pure Set operations, no provider
+    /// calls, no main-thread hops, no I/O.
+    func assertRegistryConsistency() {
+
+        // ── Assertion 1 ──────────────────────────────────────────────────────────
+        // Every pathPermissions key should be in adminOnlyPOSTPaths.
+        //
+        // KNOWN EXCEPTIONS (by design, not oversight):
+        //   /start, /stop — "guest-accessible, named-token-restricted" paths.
+        //   Guests may start/stop the server without restriction; named tokens require
+        //   the "serverControl" permission.  They are intentionally absent from
+        //   adminOnlyPOSTPaths so guest tokens aren't blocked, yet appear in
+        //   pathPermissions to gate named-token access.
+        let permissionExemptFromAdminOnly: Set<String> = ["/start", "/stop"]
+        for path in Self.pathPermissions.keys {
+            if permissionExemptFromAdminOnly.contains(path) { continue }
+            assert(
+                Self.adminOnlyPOSTPaths.contains(path),
+                "M2 assertion 1: '\(path)' is in pathPermissions but not in adminOnlyPOSTPaths — " +
+                "add it to adminOnlyPOSTPaths or document the exemption in permissionExemptFromAdminOnly."
+            )
+        }
+
+        // ── Assertion 2 ──────────────────────────────────────────────────────────
+        // Every adminOnlyPOSTPaths entry should be in rateLimitedPOSTPaths.
+        //
+        // SUSPECT EXEMPTIONS — present in adminOnlyPOSTPaths but absent from
+        // rateLimitedPOSTPaths.  These were most likely omitted by oversight rather
+        // than by deliberate design; they are listed here so the assertion doesn't
+        // fire spuriously while the omission is being evaluated.
+        // Consider adding them to rateLimitedPOSTPaths in RemoteAPIServer.swift:
+        //   - /broadcast/* : mutate external Xbox/LAN broadcast state
+        //   - /worlds/activate : destructive slot switch (requires stopped server)
+        //   - /backups/now, /backups/restore : slow and destructive — most in need of limiting
+        let adminNotRateLimitedExemptions: Set<String> = [
+            "/broadcast/credentials", "/broadcast/start", "/broadcast/stop",
+            "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss",
+            "/worlds/activate",
+            "/backups/now", "/backups/restore",
+        ]
+        for path in Self.adminOnlyPOSTPaths {
+            if adminNotRateLimitedExemptions.contains(path) { continue }
+            assert(
+                Self.rateLimitedPOSTPaths.contains(path),
+                "M2 assertion 2: '\(path)' is in adminOnlyPOSTPaths but not in rateLimitedPOSTPaths — " +
+                "add it to rateLimitedPOSTPaths or document the exemption in adminNotRateLimitedExemptions."
+            )
+        }
+
+        // ── Assertion 3 ──────────────────────────────────────────────────────────
+        // Every path in all three registries must appear in knownPathsCanonical.
+        let known = Self.knownPathsCanonical
+        for path in Self.adminOnlyPOSTPaths {
+            assert(known.contains(path),
+                   "M2 assertion 3: adminOnlyPOSTPaths '\(path)' is missing from knownPathsCanonical.")
+        }
+        for path in Self.pathPermissions.keys {
+            assert(known.contains(path),
+                   "M2 assertion 3: pathPermissions '\(path)' is missing from knownPathsCanonical.")
+        }
+        for path in Self.rateLimitedPOSTPaths {
+            assert(known.contains(path),
+                   "M2 assertion 3: rateLimitedPOSTPaths '\(path)' is missing from knownPathsCanonical.")
+        }
+
+        // ── Assertion 4 ──────────────────────────────────────────────────────────
+        // Every router-handled path must be in knownPathsCanonical, and every
+        // knownPathsCanonical entry must be handled somewhere (switch or pre-switch).
+        let allHandled = Self.allRouterHandledPaths.union(Self.preRouterHandledPaths)
+        for path in Self.allRouterHandledPaths {
+            assert(known.contains(path),
+                   "M2 assertion 4: router-handled path '\(path)' is missing from knownPathsCanonical — add it.")
+        }
+        for path in known {
+            assert(allHandled.contains(path),
+                   "M2 assertion 4: knownPathsCanonical '\(path)' is not handled by the router switch " +
+                   "or pre-switch handler — add a case or remove it from knownPathsCanonical.")
+        }
+    }
+
+    /// Spot-checks that additive provider closures have been replaced from their factory
+    /// defaults.  Call from AppViewModel.init (both wiring branches) immediately BEFORE
+    /// start(), on the main thread — providers use the Thread.isMainThread fast-path and
+    /// avoid the DispatchQueue.main.sync hop (no deadlock risk during AppViewModel.init).
+    func assertProviderWiringComplete() {
+        // backupConfigProvider: factory default returns note:"not_available".
+        // After wiring, the real closure returns nil or "no_active_server" — never "not_available".
+        let backup = backupConfigProvider()
+        assert(
+            backup.note != "not_available",
+            "M2 wiring: backupConfigProvider still has its factory default — " +
+            "ensure ALL additive providers are assigned in both wiring branches of AppViewModel.init."
+        )
+        // settingsProvider: same sentinel pattern.
+        let settings = settingsProvider()
+        assert(
+            settings.note != "not_available",
+            "M2 wiring: settingsProvider still has its factory default — " +
+            "ensure ALL additive providers are assigned in both wiring branches of AppViewModel.init."
+        )
+    }
+#endif
+
     func respond(to request: Request, clientFD: Int32) -> Bool {
         let tokenMap = tokenProvider()
         let normalizedMap: [String: TokenRole] = Dictionary(
@@ -923,29 +1122,7 @@ extension RemoteAPIServer {
             return true
 
         default:
-            let knownPaths: Set<String> = [
-                "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/status", "/performance", "/players", "/players/skin-override", "/players/hidden", "/allowlist", "/session-log",
-                "/active-server", "/start", "/stop", "/command",
-                "/console/tail", "/console/stream",
-                "/components", "/components/update", "/components/remove", "/components/install", "/components/version", "/addons",
-                "/components/client-export", "/files", "/files/read",
-                "/catalog/search", "/versions",
-                "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart", "/broadcast/credentials",
-                "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
-                "/broadcast/autostart", "/me",
-                "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
-                "/players/profiles",
-                "/worlds", "/worlds/activate", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair",
-                "/backups", "/backups/now", "/backups/restore", "/backups/config",
-                "/settings",
-                "/resourcepacks", "/resourcepacks/activate", "/resourcepacks/seturl",
-                "/resourcepacks/toggle", "/resourcepacks/remove",
-                "/health", "/health/problems", "/health/repair",
-                "/connectivity",
-                "/playit", "/playit/start", "/playit/stop",
-                "/duckdns", "/config/geyser",
-                "/users", "/users/revoke", "/users/update"
-            ]
+            let knownPaths = Self.knownPathsCanonical
             if knownPaths.contains(path) {
                 sendJSON(
                     statusCode: 405,

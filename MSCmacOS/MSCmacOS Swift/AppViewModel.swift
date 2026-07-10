@@ -3105,6 +3105,11 @@ final class AppViewModel: ObservableObject {
                 shared.createUserProvider = createUserProvider
                 shared.revokeUserProvider = revokeUserProvider
                 shared.updateUserProvider = updateUserProvider
+#if DEBUG
+                // M2: Verify additive providers were wired in this branch before starting.
+                // Called on the main thread so providers use the Thread.isMainThread fast-path.
+                shared.assertProviderWiringComplete()
+#endif
                 shared.start()
                 return
             }
@@ -3374,6 +3379,11 @@ final class AppViewModel: ObservableObject {
             api.createUserProvider = createUserProvider
             api.revokeUserProvider = revokeUserProvider
             api.updateUserProvider = updateUserProvider
+#if DEBUG
+            // M2: Verify additive providers were wired in this branch before starting.
+            // Called on the main thread so providers use the Thread.isMainThread fast-path.
+            api.assertProviderWiringComplete()
+#endif
             api.start()
         }
 
