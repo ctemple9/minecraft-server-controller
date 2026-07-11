@@ -25,6 +25,8 @@ struct ServerEditorData {
     // Bug 1 fix: preserve serverType so Bedrock servers are not silently reset to .java on save.
     var serverType: ServerType
 
+    var autoRestartOnCrash: Bool
+
     /// Default empty form for "Add Server".
     static func empty() -> ServerEditorData {
         ServerEditorData(
@@ -35,7 +37,8 @@ struct ServerEditorData {
             minRamGB: "2",
             maxRamGB: "4",
             notes: "",
-            serverType: .java
+            serverType: .java,
+            autoRestartOnCrash: false
         )
     }
 
@@ -46,7 +49,8 @@ struct ServerEditorData {
          minRamGB: String,
          maxRamGB: String,
          notes: String,
-         serverType: ServerType = .java) {
+         serverType: ServerType = .java,
+         autoRestartOnCrash: Bool = false) {
         self.id = id
         self.displayName = displayName
         self.serverDir = serverDir
@@ -55,6 +59,7 @@ struct ServerEditorData {
         self.maxRamGB = maxRamGB
         self.notes = notes
         self.serverType = serverType
+        self.autoRestartOnCrash = autoRestartOnCrash
     }
 
     /// Build editor data from a ConfigServer.
@@ -66,8 +71,8 @@ struct ServerEditorData {
         self.minRamGB = "\(server.minRam)"
         self.maxRamGB = "\(server.maxRam)"
         self.notes = server.notes
-        // Bug 1 fix: copy serverType from the source ConfigServer.
         self.serverType = server.serverType
+        self.autoRestartOnCrash = server.autoRestartOnCrash
     }
 
     /// Convert form data back into a ConfigServer for saving.
@@ -75,7 +80,6 @@ struct ServerEditorData {
         let min = Int(minRamGB) ?? 2
         let max = Int(maxRamGB) ?? Swift.max(min, 4)
 
-        // Bug 1 fix: pass serverType through so a Bedrock server stays Bedrock after editing.
         var result = ConfigServer(
             id: id,
             displayName: displayName,
@@ -86,6 +90,7 @@ struct ServerEditorData {
             notes: notes
         )
         result.serverType = serverType
+        result.autoRestartOnCrash = autoRestartOnCrash
         return result
     }
 }

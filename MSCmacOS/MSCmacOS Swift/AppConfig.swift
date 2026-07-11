@@ -222,6 +222,12 @@ struct ConfigServer: Codable, Identifiable {
     /// voice chat port (24454). Requires playitEnabled to be true.
     var playitVoiceChatEnabled: Bool = false
 
+    // MARK: - Crash auto-restart
+
+    /// When true, MSC will automatically restart this server after an unclean termination
+    /// (crash or unexpected stop). A crash-loop guard limits restarts to 3 per 10 minutes.
+    var autoRestartOnCrash: Bool = false
+
     // MARK: - Simple Voice Chat prompt preferences (per-server)
 
     /// Flow 1: user chose "Don't ask again" for the playit.gg voice tunnel mismatch prompt.
@@ -281,6 +287,7 @@ struct ConfigServer: Codable, Identifiable {
         case playitVoiceChatEnabled     = "playit_voice_chat_enabled"
         case svcTunnelPromptDismissed   = "svc_tunnel_prompt_dismissed"
         case svcPortForwardingConfirmed = "svc_port_forwarding_confirmed"
+        case autoRestartOnCrash         = "auto_restart_on_crash"
             }
         }
 
@@ -350,6 +357,7 @@ extension ConfigServer {
         playitVoiceChatEnabled     = try c.decodeIfPresent(Bool.self, forKey: .playitVoiceChatEnabled)     ?? false
         svcTunnelPromptDismissed   = try c.decodeIfPresent(Bool.self, forKey: .svcTunnelPromptDismissed)   ?? false
         svcPortForwardingConfirmed = try c.decodeIfPresent(Bool.self, forKey: .svcPortForwardingConfirmed) ?? false
+        autoRestartOnCrash         = try c.decodeIfPresent(Bool.self, forKey: .autoRestartOnCrash)         ?? false
             }
 
     func encode(to encoder: Encoder) throws {
@@ -403,6 +411,7 @@ extension ConfigServer {
         try c.encode(playitVoiceChatEnabled,     forKey: .playitVoiceChatEnabled)
         try c.encode(svcTunnelPromptDismissed,   forKey: .svcTunnelPromptDismissed)
         try c.encode(svcPortForwardingConfirmed, forKey: .svcPortForwardingConfirmed)
+        try c.encode(autoRestartOnCrash,         forKey: .autoRestartOnCrash)
             }
 }
 

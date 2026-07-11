@@ -766,6 +766,71 @@ extension AppViewModel {
         configManager.save()
         logAppMessage("[Backup] Auto backup max count set to \(count) for \(configManager.config.servers[idx].displayName).")
     }
+
+    // MARK: - Crash auto-restart
+
+    /// Schedules a server restart after an unclean termination if the per-server toggle is
+    /// enabled. Guards against crash loops (max 3 restarts in a rolling 10-minute window)
+    /// and skips restart when the startup-crash analyzer attributed the failure to add-on
+    /// problems (restarting into the same mod crash is noise; the repair UI handles it).
+    ///
+    /// Call only from within a `!wasUserRequestedStop` and `!isInitiationPass` context.
+    func scheduleAutoRestartIfNeeded(for cfg: ConfigServer) {
+        guard cfg.autoRestartOnCrash else { return }
+
+        let serverId = cfg.id
+        let serverName = cfg.displayName
+        let serverDir = cfg.serverDir
+
+        // Rolling 10-minute window — trim stale entries first.
+        let cutoff = Date().addingTimeInterval(-600)
+        var timestamps = crashRestartTimestamps[serverId, default: []]
+        timestamps = timestamps.filter { $0 > cutoff }
+
+        if timestamps.count >= 3 {
+            logAppMessage("[AutoRestart] Stopped auto-restarting \(serverName) — crashed 3 times in the last 10 minutes.")
+            let card = HealthCardResult(
+                id: "autoRestartLoop",
+                status: .red,
+                detectedValue: "MSC stopped auto-restarting \(serverName) after 3 crashes in 10 minutes. Check the console log for error details.",
+                actionLabel: "View Console Log",
+                actionType: .openConsoleLog
+            )
+            healthCards.append(card)
+            crashRestartTimestamps[serverId] = timestamps
+            return
+        }
+
+        timestamps.append(Date())
+        crashRestartTimestamps[serverId] = timestamps
+
+        let attempt = timestamps.count
+        logAppMessage("[AutoRestart] \(serverName) stopped unexpectedly. Restarting in 10 seconds (attempt \(attempt)/3).")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self else { return }
+            // Guard: same server still selected and not already running.
+            guard self.selectedServer.flatMap({ self.configServer(for: $0) })?.id == serverId else {
+                self.logAppMessage("[AutoRestart] Skipping restart for \(serverName) — server selection changed.")
+                return
+            }
+            guard self.activeBackend?.isRunning != true, !self.isServerRunning else {
+                self.logAppMessage("[AutoRestart] Skipping restart for \(serverName) — server already running.")
+                return
+            }
+            // Skip if the crash analyzer found mod-attributed problems. The file is written
+            // by diagnoseUnexpectedStop (a Task.detached) so it should be ready by now.
+            let resultPath = (serverDir as NSString).appendingPathComponent("last_startup_result.json")
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: resultPath)),
+               let result = try? JSONDecoder().decode(LastStartupResult.self, from: data),
+               let problems = result.problems, !problems.isEmpty {
+                self.logAppMessage("[AutoRestart] Skipping restart for \(serverName) — startup add-on problems detected. Review the Health tab.")
+                return
+            }
+            self.logAppMessage("[AutoRestart] Auto-restarting \(serverName)…")
+            self.startServer()
+        }
+    }
 }
 
 // MARK: - First-Time Initiation Orchestration (two-pass)

@@ -390,6 +390,11 @@ final class AppViewModel: ObservableObject {
     var autoBackupTimer: Timer?
     let logicalCoreCount: Int = ProcessInfo.processInfo.activeProcessorCount
 
+    /// Per-server timestamps of auto-restart attempts. Used by the crash-loop guard to
+    /// count how many times a server has been restarted in the rolling 10-minute window.
+    /// Cleared on app launch; not persisted (the guard only matters within a session).
+    var crashRestartTimestamps: [String: [Date]] = [:]
+
     var shouldStartOnboardingAfterConceptGuide: Bool = false
     var shouldStartOnboardingAfterHandbook: Bool = false
     var shouldLaunchFirstRunEducationAfterInitialSetupDismiss: Bool = false
@@ -3445,6 +3450,12 @@ final class AppViewModel: ObservableObject {
                     // Diagnose: present the mod-problems sheet (modded hard fail) or a
                     // generic alert; also writes last_startup_result + refreshes cards.
                     self.diagnoseUnexpectedStop(reachedReadyState: reachedReadyState)
+                    // Auto-restart (opt-in, crash-loop guarded). Skip during initiation passes —
+                    // pass1ServerId != nil means any initiation (even one that crashed early).
+                    let isInitiationPass = initiation.pass1ServerId != nil || initiation.pass2JustEnded
+                    if !isInitiationPass, let server = self.selectedServer, let cfg = self.configServer(for: server) {
+                        self.scheduleAutoRestartIfNeeded(for: cfg)
+                    }
                 } else {
                     if !reachedReadyState, let server = self.selectedServer, let cfg = self.configServer(for: server) {
                         self.writeLastStartupResult(for: cfg, wasClean: false, fatalErrors: ["Server stopped before reaching ready state."], warnings: [])
@@ -3504,6 +3515,11 @@ final class AppViewModel: ObservableObject {
                                         ? "The Bedrock container stopped unexpectedly with no error output in the log."
                                         : recentErrors.joined(separator: "\n")
                                     self.showError(title: "Server Stopped Unexpectedly", message: detail)
+                                    // Auto-restart (opt-in, crash-loop guarded).
+                                    let isInitiationPass = initiation.pass1ServerId != nil || initiation.pass2JustEnded
+                                    if !isInitiationPass, let server = self.selectedServer, let cfg = self.configServer(for: server) {
+                                        self.scheduleAutoRestartIfNeeded(for: cfg)
+                                    }
                                 }
                                 self.logAppMessage("[App] Bedrock container stopped.")
                                 if let server = self.selectedServer, let cfg = self.configServer(for: server) {

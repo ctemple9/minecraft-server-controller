@@ -96,6 +96,21 @@ var generalTab: some View {
             }
         }
 
+        // ── Automation ────────────────────────────────────────────────
+        SEBlockHeader(title: "Automation")
+        SEBlock {
+            SERow(label: "Auto-restart after crash", hint: "Restart if the server stops unexpectedly") {
+                Toggle("", isOn: $data.autoRestartOnCrash)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+        }
+        SECallout(
+            icon: "arrow.clockwise",
+            color: .blue,
+            text: "When on, MSC restarts the server automatically after an unexpected stop. Stops trying after 3 crashes in 10 minutes and shows a health alert."
+        )
+
         // ── Notes ─────────────────────────────────────────────────────
         SEBlockHeader(title: "Notes")
         SEBlock {

@@ -34,6 +34,7 @@ extension AppViewModel {
             merged.minRam = configServer.minRam
             merged.maxRam = configServer.maxRam
             merged.notes = configServer.notes
+            merged.autoRestartOnCrash = configServer.autoRestartOnCrash
             appConfig.servers[idx] = merged
         } else {
             appConfig.servers.append(configServer)
