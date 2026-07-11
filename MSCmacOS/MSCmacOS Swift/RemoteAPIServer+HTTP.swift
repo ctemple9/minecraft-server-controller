@@ -381,12 +381,21 @@ extension RemoteAPIServer {
 
         guard let presentedToken, !presentedToken.isEmpty,
               let requestRole = normalizedMap[presentedToken] else {
-            sendJSON(
-                statusCode: 401,
-                reason: "Unauthorized",
-                jsonObject: ["error": "unauthorized"],
-                clientFD: clientFD
-            )
+            let clientIP = clientIPs[clientFD] ?? "unknown"
+            let tokenLabel: String = (presentedToken.flatMap { $0.isEmpty ? nil : $0 } != nil) ? "unknown" : "anonymous"
+            if checkAndRecordAuthFail(from: clientIP) {
+                auditLogger?.log(AuditLogger.Entry(
+                    timestamp: Date(), clientIP: clientIP, tokenLabel: tokenLabel,
+                    method: request.method, path: request.path, statusCode: 429))
+                sendJSON(statusCode: 429, reason: "Too Many Requests",
+                         jsonObject: ["error": "rate_limited"], clientFD: clientFD)
+            } else {
+                auditLogger?.log(AuditLogger.Entry(
+                    timestamp: Date(), clientIP: clientIP, tokenLabel: tokenLabel,
+                    method: request.method, path: request.path, statusCode: 401))
+                sendJSON(statusCode: 401, reason: "Unauthorized",
+                         jsonObject: ["error": "unauthorized"], clientFD: clientFD)
+            }
             return true
         }
 
@@ -395,6 +404,9 @@ extension RemoteAPIServer {
             let method = request.method.uppercased()
             let path = request.path
             if method == "POST", Self.adminOnlyPOSTPaths.contains(path) {
+                auditLogger?.log(AuditLogger.Entry(
+                    timestamp: Date(), clientIP: clientIPs[clientFD] ?? "unknown",
+                    tokenLabel: requestRole.auditLabel, method: method, path: path, statusCode: 403))
                 sendJSON(
                     statusCode: 403,
                     reason: "Forbidden",
@@ -414,11 +426,17 @@ extension RemoteAPIServer {
             if method == "POST" {
                 if Self.adminOnlyPOSTPaths.contains(path), !Self.pathPermissions.keys.contains(path) {
                     // Path is admin-only but has no permission category (e.g., /users/*) — deny.
+                    auditLogger?.log(AuditLogger.Entry(
+                        timestamp: Date(), clientIP: clientIPs[clientFD] ?? "unknown",
+                        tokenLabel: requestRole.auditLabel, method: method, path: path, statusCode: 403))
                     sendJSON(statusCode: 403, reason: "Forbidden",
                              jsonObject: ["error": "forbidden"], clientFD: clientFD)
                     return true
                 }
                 if let required = Self.pathPermissions[path], !permissions.contains(required) {
+                    auditLogger?.log(AuditLogger.Entry(
+                        timestamp: Date(), clientIP: clientIPs[clientFD] ?? "unknown",
+                        tokenLabel: requestRole.auditLabel, method: method, path: path, statusCode: 403))
                     sendJSON(statusCode: 403, reason: "Forbidden",
                              jsonObject: ["error": "forbidden"], clientFD: clientFD)
                     return true
@@ -428,6 +446,21 @@ extension RemoteAPIServer {
 
         let method = request.method.uppercased()
         let path = request.path
+
+        // Register a pending audit context for every POST that passes auth.
+        // sendRawJSON will flush it with the actual response status code.
+        if method == "POST" {
+            let ctx = PendingAuditContext(
+                timestamp: Date(),
+                clientIP: clientIPs[clientFD] ?? "unknown",
+                tokenLabel: requestRole.auditLabel,
+                method: method,
+                path: path
+            )
+            auditContextLock.lock()
+            pendingAuditByFD[clientFD] = ctx
+            auditContextLock.unlock()
+        }
 
         // Hardening: simple per-client rate limit on sensitive POST endpoints.
         if method == "POST", Self.rateLimitedPOSTPaths.contains(path) {
@@ -1212,6 +1245,21 @@ extension RemoteAPIServer {
                 remaining -= written
                 ptr = ptr.advanced(by: written)
             }
+        }
+
+        // Flush pending POST audit entry with the actual response status.
+        auditContextLock.lock()
+        let pending = pendingAuditByFD.removeValue(forKey: clientFD)
+        auditContextLock.unlock()
+        if let pending {
+            auditLogger?.log(AuditLogger.Entry(
+                timestamp: pending.timestamp,
+                clientIP: pending.clientIP,
+                tokenLabel: pending.tokenLabel,
+                method: pending.method,
+                path: pending.path,
+                statusCode: statusCode
+            ))
         }
     }
 

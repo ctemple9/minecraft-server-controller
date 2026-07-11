@@ -63,8 +63,8 @@ class RemoteAPIIntegrationTestCase: XCTestCase {
 
     static var tokenMap: [String: RemoteAPIServer.TokenRole] {
         [
-            adminToken: .admin,
-            guestToken: .guest,
+            adminToken: .admin(label: "owner-admin"),
+            guestToken: .guest(label: "shared"),
             scToken:    .named(label: "sc",    permissions: ["serverControl"]),
             emptyToken: .named(label: "empty", permissions: [])
         ]
@@ -302,6 +302,64 @@ final class RemoteAPIWebSocketTests: RemoteAPIIntegrationTestCase {
                        "server should not close the connection on an inbound text frame")
         XCTAssertEqual(counters.commandCount, 0,
                        "inbound WebSocket text must never be executed as a command")
+    }
+}
+
+// MARK: - 5. AUTH FAIL RATE LIMITER (S3)
+
+final class RemoteAPIAuthFailRateLimiterTests: RemoteAPIIntegrationTestCase {
+
+    // After 10 total auth failures in 60s the IP is locked out (429).
+    // setUp polls with nil token to detect liveness, consuming 1–2 credits before
+    // the test body runs. Send 12 requests to guarantee hitting the limit regardless.
+    func testAuthFailureRateLimitTripsAfterTenBadTokens() async {
+        var codes: [Int] = []
+        for _ in 0..<12 {
+            codes.append(await status("GET", "/status", token: "bad-token-not-in-map"))
+        }
+
+        // All responses before the first 429 must be 401.
+        guard let first429 = codes.firstIndex(of: 429) else {
+            XCTFail("expected a 429 after repeated bad-token failures, got \(codes)")
+            return
+        }
+        let before429 = Array(codes[..<first429])
+        XCTAssertTrue(before429.allSatisfy { $0 == 401 },
+                      "every response before the first 429 should be 401, got \(before429)")
+        // Verify the limit is approximately right: at most 10+setUp credits before lockout.
+        XCTAssertLessThanOrEqual(before429.count, 10,
+                      "lockout should happen by the 11th failure (setUp may use 1 credit), got \(before429.count) before first 429")
+    }
+}
+
+// MARK: - 6. AUDIT LOG (S2)
+
+final class RemoteAPIAuditLogTests: RemoteAPIIntegrationTestCase {
+
+    // A POST that passes auth should produce an audit entry with the correct fields.
+    func testAuditEntryWrittenForPost() async throws {
+        let expectation = XCTestExpectation(description: "audit entry written for POST /start")
+        var captured: AuditLogger.Entry?
+
+        let al = AuditLogger(logger: { _ in })
+        al.testObserver = { entry in
+            if entry.method == "POST" && entry.path == "/start" {
+                captured = entry
+                expectation.fulfill()
+            }
+        }
+        server.auditLogger = al
+
+        await status("POST", "/start", token: Self.adminToken)
+
+        await fulfillment(of: [expectation], timeout: 3)
+
+        let entry = try XCTUnwrap(captured, "no audit entry recorded for POST /start")
+        XCTAssertEqual(entry.method, "POST")
+        XCTAssertEqual(entry.path, "/start")
+        XCTAssertEqual(entry.tokenLabel, "owner-admin")
+        XCTAssertEqual(entry.statusCode, 200)
+        XCTAssertEqual(entry.clientIP, "127.0.0.1")
     }
 }
 

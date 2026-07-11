@@ -395,6 +395,8 @@ final class AppViewModel: ObservableObject {
     /// Cleared on app launch; not persisted (the guard only matters within a session).
     var crashRestartTimestamps: [String: [Date]] = [:]
 
+    private var auditLogger: AuditLogger?
+
     var shouldStartOnboardingAfterConceptGuide: Bool = false
     var shouldStartOnboardingAfterHandbook: Bool = false
     var shouldLaunchFirstRunEducationAfterInitialSetupDismiss: Bool = false
@@ -465,7 +467,7 @@ final class AppViewModel: ObservableObject {
                 var map: [String: RemoteAPIServer.TokenRole] = [:]
                 if let ownerToken = KeychainManager.shared.readRemoteAPIToken() {
                     let t = ownerToken.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !t.isEmpty { map[t] = .admin }
+                    if !t.isEmpty { map[t] = .admin(label: "owner-admin") }
                 }
                 for entry in cfg2.remoteAPISharedAccess {
                     guard !entry.isExpired else { continue }
@@ -474,7 +476,7 @@ final class AppViewModel: ObservableObject {
                     if let perms = entry.permissions {
                         map[t] = .named(label: entry.label, permissions: perms)
                     } else {
-                        map[t] = (entry.role == "guest") ? .guest : .admin
+                        map[t] = (entry.role == "guest") ? .guest(label: entry.label) : .admin(label: entry.label)
                     }
                 }
                 return map
@@ -2845,6 +2847,14 @@ final class AppViewModel: ObservableObject {
                 return RemoteAPIServer.HealthRepairResultDTO(success: true, message: outcome.message, updated: updated)
             }
 
+            // Create the audit logger once; both API branches share it.
+            if self.auditLogger == nil {
+                let al = AuditLogger(logger: { [weak self] msg in
+                    Task { @MainActor [weak self] in self?.logAppMessage(msg) }
+                })
+                self.auditLogger = al
+            }
+
             if let shared = AppViewModel.sharedRemoteAPIServer {
                 shared.updateProviders(
                     tokenProvider: tokenProvider,
@@ -3110,6 +3120,7 @@ final class AppViewModel: ObservableObject {
                 shared.createUserProvider = createUserProvider
                 shared.revokeUserProvider = revokeUserProvider
                 shared.updateUserProvider = updateUserProvider
+                shared.auditLogger = self.auditLogger
 #if DEBUG
                 // M2: Verify additive providers were wired in this branch before starting.
                 // Called on the main thread so providers use the Thread.isMainThread fast-path.
@@ -3384,6 +3395,7 @@ final class AppViewModel: ObservableObject {
             api.createUserProvider = createUserProvider
             api.revokeUserProvider = revokeUserProvider
             api.updateUserProvider = updateUserProvider
+            api.auditLogger = self.auditLogger
 #if DEBUG
             // M2: Verify additive providers were wired in this branch before starting.
             // Called on the main thread so providers use the Thread.isMainThread fast-path.

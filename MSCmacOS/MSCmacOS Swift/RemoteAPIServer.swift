@@ -60,6 +60,25 @@ final class RemoteAPIServer {
 
     static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install", "/components/version", "/allowlist", "/settings", "/backups/config", "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair", "/health/repair", "/playit/start", "/playit/stop", "/duckdns", "/config/geyser", "/users", "/users/revoke", "/users/update"]
 
+    // Auth failure rate limiting (kept on `queue`)
+    private var authFailCountByIP: [String: FixedWindowCounter] = [:]
+    private let authFailRateLimitMax: Int = 10
+    private let authFailRateLimitWindowSeconds: TimeInterval = 60.0
+
+    // Audit logging
+    var auditLogger: AuditLogger?
+
+    // Pending POST audit contexts — set on `queue`, consumed from any thread via the lock.
+    struct PendingAuditContext {
+        let timestamp: Date
+        let clientIP: String
+        let tokenLabel: String
+        let method: String
+        let path: String
+    }
+    let auditContextLock = NSLock()
+    var pendingAuditByFD: [Int32: PendingAuditContext] = [:]
+
     // Console ring buffer (kept on `queue`)
     var consoleBuffer: [ConsoleLineDTO] = []
     private let consoleBufferLimit: Int = 5000
@@ -70,10 +89,18 @@ final class RemoteAPIServer {
     // MARK: - Token roles
 
     enum TokenRole {
-        case admin
-        case guest
+        case admin(label: String)
+        case guest(label: String)
         /// Permission-scoped named token. Only the listed permission categories are granted.
         case named(label: String, permissions: [String])
+
+        var auditLabel: String {
+            switch self {
+            case .admin(let label): return label
+            case .guest(let label): return label
+            case .named(let label, _): return label
+            }
+        }
     }
 
     // Providers can change (Preferences updates), so these must be mutable.
@@ -455,6 +482,7 @@ final class RemoteAPIServer {
     }
 
     private func startInternal() {
+        auditLogger?.pruneOldFilesAsync()
 #if DEBUG
         // Validate all four route-registry invariants on first start (pure Set checks,
         // no provider calls).  A failed assertion here means a POST path was added to one
@@ -602,6 +630,10 @@ final class RemoteAPIServer {
         clientModes.removeValue(forKey: clientFD)
         clientIPs.removeValue(forKey: clientFD)
 
+        auditContextLock.lock()
+        pendingAuditByFD.removeValue(forKey: clientFD)
+        auditContextLock.unlock()
+
         _ = close(clientFD)
     }
 
@@ -724,6 +756,27 @@ final class RemoteAPIServer {
         } else {
             postRateLimitByIP[clientIP] = FixedWindowCounter(windowStart: now, count: 1)
             return true
+        }
+    }
+
+    // Returns true when the IP is already locked out (should receive 429 instead of 401/403).
+    // Always called on `queue`. Failures 1–10 return false; failure 11+ returns true.
+    func checkAndRecordAuthFail(from ip: String) -> Bool {
+        let now = Date().timeIntervalSince1970
+        if var existing = authFailCountByIP[ip] {
+            if (now - existing.windowStart) >= authFailRateLimitWindowSeconds {
+                authFailCountByIP[ip] = FixedWindowCounter(windowStart: now, count: 1)
+                return false
+            }
+            if existing.count >= authFailRateLimitMax {
+                return true
+            }
+            existing.count += 1
+            authFailCountByIP[ip] = existing
+            return false
+        } else {
+            authFailCountByIP[ip] = FixedWindowCounter(windowStart: now, count: 1)
+            return false
         }
     }
 

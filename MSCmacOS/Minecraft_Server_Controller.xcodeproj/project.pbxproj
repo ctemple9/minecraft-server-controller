@@ -218,6 +218,7 @@
 		9AFE021B0000000000000002 /* PurpurConfigManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021B0000000000000001 /* PurpurConfigManager.swift */; };
 		9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */; };
 		9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */; };
+		9AFE021E0000000000000002 /* AuditLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE021E0000000000000001 /* AuditLogger.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -467,6 +468,7 @@
 		9AFE021B0000000000000001 /* PurpurConfigManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurpurConfigManager.swift; sourceTree = "<group>"; };
 		9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+Settings.swift"; sourceTree = "<group>"; };
 		9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RemoteAPIServer+UserRoutes.swift"; sourceTree = "<group>"; };
+		9AFE021E0000000000000001 /* AuditLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogger.swift; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -648,6 +650,7 @@
 				9AFE02060000000000000001 /* PlayerSkinRenderer.swift */,
 				9AFE021C0000000000000001 /* RemoteAPIServer+Settings.swift */,
 				9AFE021D0000000000000001 /* RemoteAPIServer+UserRoutes.swift */,
+				9AFE021E0000000000000001 /* AuditLogger.swift */,
 				9AFE021A0000000000000001 /* BedrockProvisioner.swift */,
 				9AFE021B0000000000000001 /* PurpurConfigManager.swift */,
 				9AFE02160000000000000001 /* VMBedrockServerBackend.swift */,
@@ -1085,6 +1088,7 @@
 				9AFE02060000000000000002 /* PlayerSkinRenderer.swift in Sources */,
 				9AFE021C0000000000000002 /* RemoteAPIServer+Settings.swift in Sources */,
 				9AFE021D0000000000000002 /* RemoteAPIServer+UserRoutes.swift in Sources */,
+				9AFE021E0000000000000002 /* AuditLogger.swift in Sources */,
 				9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */,
 				9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */,
 				9AFE02170000000000000002 /* UDPRelay.swift in Sources */,
