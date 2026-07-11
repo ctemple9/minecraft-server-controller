@@ -37,7 +37,7 @@ This app is especially for you if:
 ## Quick Start
 
 ### Before you begin
-- **macOS 13+**
+- **macOS 15.6+**
 - **Java** is required for **Java Edition** servers
 - **Bedrock** servers run in a built-in VM — no extra install needed
 - To let other people join your server, MSC gives you **two ways** to handle connection setup:
@@ -120,10 +120,10 @@ Control your server from your iPhone over LAN or Tailscale VPN.
 
 | App | Requirement |
 |-----|-------------|
-| MSC (macOS) | macOS 13 or later |
-| MSC Remote (iOS) | iOS 16 or later |
+| MSC (macOS) | macOS 15.6 or later |
+| MSC Remote (iOS) | iOS 17.5 or later |
 | Java servers | [Adoptium Temurin](https://adoptium.net) |
-| Bedrock servers | Built in — macOS 13+ required (uses Apple Virtualization.framework) |
+| Bedrock servers | Built in — macOS 15.6+ required (uses Apple Virtualization.framework) |
 
 ---
 

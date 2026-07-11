@@ -50,11 +50,9 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
-    <!-- THIS is the missing piece that affects the “scaled/cropped / smaller-phone” look -->
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
 
-    <!-- Your URL scheme -->
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -73,9 +71,15 @@
     <key>NSCameraUsageDescription</key>
     <string>Scan a pairing QR code to connect to your Minecraft Server Controller on Mac.</string>
 
-    <!-- ATS exception for your Tailscale domain -->
+    <!-- Required to discover MSC on the local network (LAN pairing) -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>MSC Remote needs access to the local network to connect to Minecraft Server Controller on your Mac.</string>
+
+    <!-- ATS: allow plain-HTTP connections to LAN IPs (used when pairing over local network) -->
     <key>NSAppTransportSecurity</key>
     <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
         <key>NSExceptionDomains</key>
         <dict>
             <key>ts.net</key>
