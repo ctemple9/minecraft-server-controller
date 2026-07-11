@@ -132,18 +132,47 @@ the export runs offline against the local certificate.
 
 ## Tagging & GitHub Release convention
 
-- Tag each release `vX.Y` (matching `MARKETING_VERSION`) on the release commit:
+Tag each release `vX.Y` (matching `MARKETING_VERSION`) on the release commit:
 
-  ```sh
-  git tag v1.13
-  git push origin v1.13
-  ```
+```sh
+git tag v1.13
+git push origin v1.13
+```
 
-- Create a **GitHub Release** for that tag and attach
-  `dist/MinecraftServerController-<version>.zip`.
-- The current history has only `v1.0` tagged against a marketing version of `1.13` — the
-  first modern release should back-tag or cut `v1.13` so the (planned) in-app
-  "Check for Updates…" has something newer than `v1.0` to find.
+Then create a **GitHub Release** for that tag and attach
+`dist/MinecraftServerController-<version>.zip`.
 
-> Version-bump checklist: `MARKETING_VERSION` → run `scripts/release-macos.sh` → tag
-> `vX.Y` → GitHub Release with the notarized zip + notes.
+> **Current state (2026-07-10):** the repo has one annotated tag (`v1.0`) against a
+> marketing version of `1.13`. The in-app "Check for Updates…" (T3) compares
+> `CFBundleShortVersionString` against the latest *GitHub Release* (not just the tag).
+> Until you publish a release for `v1.13` or later, the endpoint returns 404 and the
+> in-app check reports "Update check failed." **Back-tag the current HEAD as `v1.13`
+> and publish a GitHub Release for it so the check works:**
+>
+> ```sh
+> git tag v1.13          # tag HEAD as the current shipping version
+> git push origin v1.13
+> # Then on GitHub: create Release for v1.13, attach dist/*.zip, publish
+> ```
+
+---
+
+## Version-bump checklist
+
+Follow this checklist every time you ship a new version:
+
+1. **Bump `MARKETING_VERSION`** in the macOS target build settings (e.g. `1.14`).
+2. **Run the pipeline:** `scripts/release-macos.sh` → produces `dist/MinecraftServerController-<version>.zip`.
+3. **Tag and push:** `git tag v1.14 && git push origin v1.14`.
+4. **Create a GitHub Release** for the new tag, attach the notarized `.zip`, and write release notes.
+5. **Verify the in-app update check:** launch the *previous* version and trigger "Check for Updates…" (app menu or About view) — it should find the new release and offer a "View Release" button.
+
+---
+
+## In-app "Check for Updates…" (T3)
+
+`AppUpdateChecker.swift` fetches `https://api.github.com/repos/ctemple9/minecraft-server-controller/releases/latest`, strips the leading `v` from the tag name, and compares semantically against `CFBundleShortVersionString`. A local version **equal to or newer than** the latest release tag reads as "up to date."
+
+- The check is **manual-only** — no auto-check on launch (privacy-consistent with O2).
+- Entry points: **app menu → "Check for Updates…"** (shows NSAlert) and the **"Check for Updates…" button** in the About view (shows inline status).
+- "View Release" opens `https://github.com/ctemple9/minecraft-server-controller/releases/tag/<tag>` in the user's default browser — this browser handoff is intentional since it IS the download page.

@@ -225,6 +225,17 @@ struct MinecraftServerControllerApp: App {
                 })
         }
         .defaultSize(width: MSCMainWindowDefaultWidth, height: MSCMainWindowDefaultHeight)
+        .commands {
+            // "Check for Updates…" lives right after "About Minecraft Server Controller"
+            // in the application menu.  Result is shown via NSAlert (the About sheet in
+            // the main window is the other entry point for the same check).
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    AppUpdateChecker.checkForUpdatesShowingAlert()
+                }
+                Divider()
+            }
+        }
     }
 }
 

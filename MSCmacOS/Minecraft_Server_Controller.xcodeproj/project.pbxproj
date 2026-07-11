@@ -161,6 +161,7 @@
 		9A5633A52F65AD6D00FB8246 /* RemoteAPIServerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */; };
 		9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */; };
 		9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */; };
+		9A5634062F65AD6D00FB8246 /* AppUpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A5634052F65AD6C00FB8246 /* AppUpdateChecker.swift */; };
 		9A56A0012F65AD6D00FB8246 /* MSCSettingsSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */; };
 		9A56A0032F65AD6D00FB8246 /* RunnerScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */; };
 		9A8A01592F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */; };
@@ -407,6 +408,7 @@
 		9A5633A42F65AD6C00FB8246 /* RemoteAPIServerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPIServerSupport.swift; sourceTree = "<group>"; };
 		9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideView.swift; sourceTree = "<group>"; };
 		9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConceptGuideDiagrams.swift; sourceTree = "<group>"; };
+		9A5634052F65AD6C00FB8246 /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateChecker.swift; sourceTree = "<group>"; };
 		9A56A0002F65AD6C00FB8246 /* MSCSettingsSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MSCSettingsSections.swift; sourceTree = "<group>"; };
 		9A56A0022F65AD6C00FB8246 /* RunnerScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerScene.swift; sourceTree = "<group>"; };
 		9A8A01582F69EAAE00D62CB3 /* RouterPortForwardGuidesFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterPortForwardGuidesFoundation.swift; sourceTree = "<group>"; };
@@ -743,6 +745,7 @@
 				9A56326B2F65AD6C00FB8246 /* TemplateView.swift */,
 				9A5634012F65AD6C00FB8246 /* ConceptGuideView.swift */,
 				9A5634032F65AD6C00FB8246 /* ConceptGuideDiagrams.swift */,
+				9A5634052F65AD6C00FB8246 /* AppUpdateChecker.swift */,
 				9A56326C2F65AD6C00FB8246 /* ServerHandbookComponents.swift */,
 				9A56326D2F65AD6C00FB8246 /* ServerHandbookTopics.swift */,
 				9A56326E2F65AD6C00FB8246 /* ServerHandbookView.swift */,
@@ -1110,6 +1113,7 @@
 				9A5632F32F65AD6D00FB8246 /* ServerHandbookView.swift in Sources */,
 				9A5634022F65AD6D00FB8246 /* ConceptGuideView.swift in Sources */,
 				9A5634042F65AD6D00FB8246 /* ConceptGuideDiagrams.swift in Sources */,
+				9A5634062F65AD6D00FB8246 /* AppUpdateChecker.swift in Sources */,
 				9A5632F42F65AD6D00FB8246 /* BedrockServerBackend.swift in Sources */,
 				9A5632F52F65AD6D00FB8246 /* DetailsSettingsTabView.swift in Sources */,
 				9A5632F62F65AD6D00FB8246 /* AppViewModel+OutputHandling.swift in Sources */,
