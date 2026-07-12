@@ -35,6 +35,8 @@ extension AppViewModel {
         wireSkinAndFileProviders(into: server)
         wireAllowlistAddonVersionProviders(into: server)
         wirePackSettingsUserProviders(into: server)
+        wireServerManagementProviders(into: server)
+        server.auditLogger = self.auditLogger
     }
 
     // MARK: - Infra (watchdog, connectivity, playit, DuckDNS, Geyser)

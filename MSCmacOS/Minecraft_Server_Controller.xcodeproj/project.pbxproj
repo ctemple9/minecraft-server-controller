@@ -225,6 +225,7 @@
 		9AFE02220000000000000002 /* AppViewModel+APIWiringContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02220000000000000001 /* AppViewModel+APIWiringContent.swift */; };
 		9AFE02230000000000000002 /* AppViewModel+APIWiringAddons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02230000000000000001 /* AppViewModel+APIWiringAddons.swift */; };
 		9AFE02240000000000000002 /* AppViewModel+APIWiringSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02240000000000000001 /* AppViewModel+APIWiringSettings.swift */; };
+		9AFE02250000000000000002 /* AppViewModel+APIWiringServerMgmt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02250000000000000001 /* AppViewModel+APIWiringServerMgmt.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -481,6 +482,7 @@
 		9AFE02220000000000000001 /* AppViewModel+APIWiringContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringContent.swift"; sourceTree = "<group>"; };
 		9AFE02230000000000000001 /* AppViewModel+APIWiringAddons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringAddons.swift"; sourceTree = "<group>"; };
 		9AFE02240000000000000001 /* AppViewModel+APIWiringSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringSettings.swift"; sourceTree = "<group>"; };
+		9AFE02250000000000000001 /* AppViewModel+APIWiringServerMgmt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringServerMgmt.swift"; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -669,6 +671,7 @@
 				9AFE02220000000000000001 /* AppViewModel+APIWiringContent.swift */,
 				9AFE02230000000000000001 /* AppViewModel+APIWiringAddons.swift */,
 				9AFE02240000000000000001 /* AppViewModel+APIWiringSettings.swift */,
+				9AFE02250000000000000001 /* AppViewModel+APIWiringServerMgmt.swift */,
 				9AFE021A0000000000000001 /* BedrockProvisioner.swift */,
 				9AFE021B0000000000000001 /* PurpurConfigManager.swift */,
 				9AFE02160000000000000001 /* VMBedrockServerBackend.swift */,
@@ -1113,6 +1116,7 @@
 				9AFE02220000000000000002 /* AppViewModel+APIWiringContent.swift in Sources */,
 				9AFE02230000000000000002 /* AppViewModel+APIWiringAddons.swift in Sources */,
 				9AFE02240000000000000002 /* AppViewModel+APIWiringSettings.swift in Sources */,
+				9AFE02250000000000000002 /* AppViewModel+APIWiringServerMgmt.swift in Sources */,
 				9AFE021A0000000000000002 /* BedrockProvisioner.swift in Sources */,
 				9AFE02160000000000000002 /* VMBedrockServerBackend.swift in Sources */,
 				9AFE02170000000000000002 /* UDPRelay.swift in Sources */,
