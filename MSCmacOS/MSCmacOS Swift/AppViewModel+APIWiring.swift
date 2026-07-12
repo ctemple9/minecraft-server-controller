@@ -29,6 +29,7 @@ extension AppViewModel {
     /// `isoFmt` is threaded through for the providers that format timestamps.
     func wireProviders(into server: RemoteAPIServer, isoFmt: ISO8601DateFormatter) {
         wireInfraProviders(into: server)
+        wirePlayerAndWorldProviders(into: server, isoFmt: isoFmt)
     }
 
     // MARK: - Infra (watchdog, connectivity, playit, DuckDNS, Geyser)
