@@ -30,6 +30,8 @@ extension AppViewModel {
     func wireProviders(into server: RemoteAPIServer, isoFmt: ISO8601DateFormatter) {
         wireInfraProviders(into: server)
         wirePlayerAndWorldProviders(into: server, isoFmt: isoFmt)
+        wireBackupProviders(into: server, isoFmt: isoFmt)
+        wireHealthProviders(into: server)
     }
 
     // MARK: - Infra (watchdog, connectivity, playit, DuckDNS, Geyser)
