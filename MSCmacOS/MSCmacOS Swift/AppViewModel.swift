@@ -2885,9 +2885,6 @@ final class AppViewModel: ObservableObject {
                 )
                 shared.setListenOnAllInterfaces(cfg.remoteAPIExposeOnLAN)
                 self.remoteAPIServer = shared
-                shared.watchdogStatusProvider  = { [weak self] in self?.watchdogEnabled ?? false }
-                shared.enableWatchdogProvider  = { [weak self] in self?.enableWatchdogSync() }
-                shared.disableWatchdogProvider = { [weak self] in self?.disableWatchdogSync() }
                 shared.playerProfilesProvider = { [weak self, isoFmt] in
                     guard let self else { return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
                     let (profiles, hiddenJava, hiddenBedrock, selectedCfg) = Thread.isMainThread
@@ -2960,113 +2957,6 @@ final class AppViewModel: ObservableObject {
                 shared.healthProvider = healthProvider
                 shared.healthProblemsProvider = healthProblemsProvider
                 shared.repairHealthProblemProvider = repairHealthProblemProvider
-                shared.connectivityProvider = { [weak self] in
-                    await self?.connectivitySnapshot()
-                        ?? RemoteAPIServer.ConnectivityResponseDTO(serverType: "java", status: "unknown", severity: "gray", headline: "Connectivity unavailable", note: "not_available")
-                }
-                shared.playitStatusProvider = { [weak self] in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.PlayitStatusResponseDTO(serverName: "", serverType: "java", playitEnabled: false, isRunning: false, hasSecretKey: false, note: "no_server") }
-                        let cfg = self.selectedServer.flatMap { self.configServer(for: $0) }
-                        return RemoteAPIServer.PlayitStatusResponseDTO(
-                            serverName: cfg?.displayName ?? "",
-                            serverType: cfg?.isBedrock == true ? "bedrock" : "java",
-                            playitEnabled: cfg?.playitEnabled ?? false,
-                            isRunning: self.isPlayitRunning,
-                            hasSecretKey: self.playitSecretKey != nil,
-                            javaAddress: self.configManager.config.playitJavaAddress,
-                            bedrockAddress: self.configManager.config.playitBedrockAddress,
-                            voiceAddress: self.configManager.config.playitVoiceAddress,
-                            voiceChatEnabled: cfg?.playitVoiceChatEnabled ?? false,
-                            note: cfg == nil ? "no_server" : nil
-                        )
-                    }
-                }
-                shared.startPlayitProvider = { [weak self] in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_server") }
-                        guard let server = self.selectedServer, let cfg = self.configServer(for: server) else {
-                            return RemoteAPIServer.PlayitActionResultDTO(result: "no_server")
-                        }
-                        guard cfg.playitEnabled else { return RemoteAPIServer.PlayitActionResultDTO(result: "not_enabled") }
-                        guard self.playitSecretKey != nil else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_secret_key") }
-                        guard !self.isPlayitRunning else { return RemoteAPIServer.PlayitActionResultDTO(result: "already_running") }
-                        self.startPlayitIfNeeded(for: cfg)
-                        return RemoteAPIServer.PlayitActionResultDTO(result: "started")
-                    }
-                }
-                shared.stopPlayitProvider = { [weak self] in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_server") }
-                        guard self.isPlayitRunning || self.playitAgentManager.isRunning else {
-                            return RemoteAPIServer.PlayitActionResultDTO(result: "not_running")
-                        }
-                        self.stopPlayitIfRunning()
-                        return RemoteAPIServer.PlayitActionResultDTO(result: "stopped")
-                    }
-                }
-                // DuckDNS (P13)
-                shared.duckdnsStatusProvider = { [weak self] in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.DuckDNSStatusResponseDTO() }
-                        return RemoteAPIServer.DuckDNSStatusResponseDTO(hostname: self.configManager.config.duckdnsHostname)
-                    }
-                }
-                shared.updateDuckDNSProvider = { [weak self] hostname in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.DuckDNSUpdateResultDTO(success: false, message: "no_server") }
-                        self.duckdnsInput = hostname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                        self.saveDuckDNSHostname()
-                        return RemoteAPIServer.DuckDNSUpdateResultDTO(success: true, hostname: self.configManager.config.duckdnsHostname)
-                    }
-                }
-                // Geyser config (P13)
-                shared.geyserConfigProvider = { [weak self] in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.GeyserConfigResponseDTO(note: "no_server") }
-                        guard let server = self.selectedServer else {
-                            return RemoteAPIServer.GeyserConfigResponseDTO(note: "no_server")
-                        }
-                        let serverURL = URL(fileURLWithPath: server.directory, isDirectory: true)
-                        let isInstalled = GeyserConfigManager().isGeyserInstalled(serverPath: serverURL)
-                        let config = GeyserConfigManager.readConfig(serverDir: server.directory)
-                        let cfgFileExists = FileManager.default.fileExists(atPath: GeyserConfigManager.configURL(for: server.directory).path)
-                        let cfg = self.configServer(for: server)
-                        return RemoteAPIServer.GeyserConfigResponseDTO(
-                            serverName: cfg?.displayName ?? server.name,
-                            serverType: cfg?.isBedrock == true ? "bedrock" : "java",
-                            isGeyserInstalled: isInstalled,
-                            address: config?.address,
-                            port: config?.port,
-                            configFileExists: cfgFileExists
-                        )
-                    }
-                }
-                shared.updateGeyserConfigProvider = { [weak self] address, port in
-                    await MainActor.run { [weak self] in
-                        guard let self else { return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "no_server") }
-                        guard let server = self.selectedServer else {
-                            return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "no_server")
-                        }
-                        let serverURL = URL(fileURLWithPath: server.directory, isDirectory: true)
-                        guard GeyserConfigManager().isGeyserInstalled(serverPath: serverURL) else {
-                            return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "not_installed")
-                        }
-                        self.loadGeyserConfig()
-                        if let addr = address?.trimmingCharacters(in: .whitespacesAndNewlines), !addr.isEmpty {
-                            self.geyserAddress = addr
-                        }
-                        if let p = port { self.geyserPort = String(p) }
-                        self.saveGeyserConfig()
-                        let updated = GeyserConfigManager.readConfig(serverDir: server.directory)
-                        return RemoteAPIServer.GeyserConfigUpdateResultDTO(
-                            success: true,
-                            message: "updated",
-                            address: updated?.address,
-                            port: updated?.port
-                        )
-                    }
-                }
                 shared.backupItemsProvider = { [weak self, isoFmt] in
                     guard let self else { return RemoteAPIServer.BackupsResponseDTO(backups: []) }
                     let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
@@ -3121,6 +3011,7 @@ final class AppViewModel: ObservableObject {
                 shared.revokeUserProvider = revokeUserProvider
                 shared.updateUserProvider = updateUserProvider
                 shared.auditLogger = self.auditLogger
+                self.wireProviders(into: shared, isoFmt: isoFmt)
 #if DEBUG
                 // M2: Verify additive providers were wired in this branch before starting.
                 // Called on the main thread so providers use the Thread.isMainThread fast-path.
@@ -3161,9 +3052,6 @@ final class AppViewModel: ObservableObject {
             )
             AppViewModel.sharedRemoteAPIServer = api
             self.remoteAPIServer = api
-            api.watchdogStatusProvider  = { [weak self] in self?.watchdogEnabled ?? false }
-            api.enableWatchdogProvider  = { [weak self] in self?.enableWatchdogSync() }
-            api.disableWatchdogProvider = { [weak self] in self?.disableWatchdogSync() }
             api.playerProfilesProvider = { [weak self, isoFmt] in
                 guard let self else { return RemoteAPIServer.PlayerProfilesResponseDTO(profiles: [], isLoadingStats: false) }
                 let (profiles, hiddenJava, hiddenBedrock, selectedCfg) = Thread.isMainThread
@@ -3235,113 +3123,6 @@ final class AppViewModel: ObservableObject {
             api.healthProvider = healthProvider
             api.healthProblemsProvider = healthProblemsProvider
             api.repairHealthProblemProvider = repairHealthProblemProvider
-            api.connectivityProvider = { [weak self] in
-                await self?.connectivitySnapshot()
-                    ?? RemoteAPIServer.ConnectivityResponseDTO(serverType: "java", status: "unknown", severity: "gray", headline: "Connectivity unavailable", note: "not_available")
-            }
-            api.playitStatusProvider = { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.PlayitStatusResponseDTO(serverName: "", serverType: "java", playitEnabled: false, isRunning: false, hasSecretKey: false, note: "no_server") }
-                    let cfg = self.selectedServer.flatMap { self.configServer(for: $0) }
-                    return RemoteAPIServer.PlayitStatusResponseDTO(
-                        serverName: cfg?.displayName ?? "",
-                        serverType: cfg?.isBedrock == true ? "bedrock" : "java",
-                        playitEnabled: cfg?.playitEnabled ?? false,
-                        isRunning: self.isPlayitRunning,
-                        hasSecretKey: self.playitSecretKey != nil,
-                        javaAddress: self.configManager.config.playitJavaAddress,
-                        bedrockAddress: self.configManager.config.playitBedrockAddress,
-                        voiceAddress: self.configManager.config.playitVoiceAddress,
-                        voiceChatEnabled: cfg?.playitVoiceChatEnabled ?? false,
-                        note: cfg == nil ? "no_server" : nil
-                    )
-                }
-            }
-            api.startPlayitProvider = { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_server") }
-                    guard let server = self.selectedServer, let cfg = self.configServer(for: server) else {
-                        return RemoteAPIServer.PlayitActionResultDTO(result: "no_server")
-                    }
-                    guard cfg.playitEnabled else { return RemoteAPIServer.PlayitActionResultDTO(result: "not_enabled") }
-                    guard self.playitSecretKey != nil else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_secret_key") }
-                    guard !self.isPlayitRunning else { return RemoteAPIServer.PlayitActionResultDTO(result: "already_running") }
-                    self.startPlayitIfNeeded(for: cfg)
-                    return RemoteAPIServer.PlayitActionResultDTO(result: "started")
-                }
-            }
-            api.stopPlayitProvider = { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.PlayitActionResultDTO(result: "no_server") }
-                    guard self.isPlayitRunning || self.playitAgentManager.isRunning else {
-                        return RemoteAPIServer.PlayitActionResultDTO(result: "not_running")
-                    }
-                    self.stopPlayitIfRunning()
-                    return RemoteAPIServer.PlayitActionResultDTO(result: "stopped")
-                }
-            }
-            // DuckDNS (P13)
-            api.duckdnsStatusProvider = { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.DuckDNSStatusResponseDTO() }
-                    return RemoteAPIServer.DuckDNSStatusResponseDTO(hostname: self.configManager.config.duckdnsHostname)
-                }
-            }
-            api.updateDuckDNSProvider = { [weak self] hostname in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.DuckDNSUpdateResultDTO(success: false, message: "no_server") }
-                    self.duckdnsInput = hostname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    self.saveDuckDNSHostname()
-                    return RemoteAPIServer.DuckDNSUpdateResultDTO(success: true, hostname: self.configManager.config.duckdnsHostname)
-                }
-            }
-            // Geyser config (P13)
-            api.geyserConfigProvider = { [weak self] in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.GeyserConfigResponseDTO(note: "no_server") }
-                    guard let server = self.selectedServer else {
-                        return RemoteAPIServer.GeyserConfigResponseDTO(note: "no_server")
-                    }
-                    let serverURL = URL(fileURLWithPath: server.directory, isDirectory: true)
-                    let isInstalled = GeyserConfigManager().isGeyserInstalled(serverPath: serverURL)
-                    let config = GeyserConfigManager.readConfig(serverDir: server.directory)
-                    let cfgFileExists = FileManager.default.fileExists(atPath: GeyserConfigManager.configURL(for: server.directory).path)
-                    let cfg = self.configServer(for: server)
-                    return RemoteAPIServer.GeyserConfigResponseDTO(
-                        serverName: cfg?.displayName ?? server.name,
-                        serverType: cfg?.isBedrock == true ? "bedrock" : "java",
-                        isGeyserInstalled: isInstalled,
-                        address: config?.address,
-                        port: config?.port,
-                        configFileExists: cfgFileExists
-                    )
-                }
-            }
-            api.updateGeyserConfigProvider = { [weak self] address, port in
-                await MainActor.run { [weak self] in
-                    guard let self else { return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "no_server") }
-                    guard let server = self.selectedServer else {
-                        return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "no_server")
-                    }
-                    let serverURL = URL(fileURLWithPath: server.directory, isDirectory: true)
-                    guard GeyserConfigManager().isGeyserInstalled(serverPath: serverURL) else {
-                        return RemoteAPIServer.GeyserConfigUpdateResultDTO(success: false, message: "not_installed")
-                    }
-                    self.loadGeyserConfig()
-                    if let addr = address?.trimmingCharacters(in: .whitespacesAndNewlines), !addr.isEmpty {
-                        self.geyserAddress = addr
-                    }
-                    if let p = port { self.geyserPort = String(p) }
-                    self.saveGeyserConfig()
-                    let updated = GeyserConfigManager.readConfig(serverDir: server.directory)
-                    return RemoteAPIServer.GeyserConfigUpdateResultDTO(
-                        success: true,
-                        message: "updated",
-                        address: updated?.address,
-                        port: updated?.port
-                    )
-                }
-            }
             api.backupItemsProvider = { [weak self, isoFmt] in
                 guard let self else { return RemoteAPIServer.BackupsResponseDTO(backups: []) }
                 let items = Thread.isMainThread ? self.backupItems : DispatchQueue.main.sync { self.backupItems }
@@ -3396,6 +3177,7 @@ final class AppViewModel: ObservableObject {
             api.revokeUserProvider = revokeUserProvider
             api.updateUserProvider = updateUserProvider
             api.auditLogger = self.auditLogger
+            self.wireProviders(into: api, isoFmt: isoFmt)
 #if DEBUG
             // M2: Verify additive providers were wired in this branch before starting.
             // Called on the main thread so providers use the Thread.isMainThread fast-path.
