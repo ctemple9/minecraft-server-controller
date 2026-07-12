@@ -1,5 +1,28 @@
 import Foundation
 
+// MARK: - Wire-format notes (read before adding an endpoint)
+//
+// - Request bodies are capped at `RemoteAPIServer.maxRequestBodyBytes` (64 KB). This is
+//   architectural, not incidental: endpoints must be designed around
+//   copy-from-existing / reference flows (e.g. "install this catalog entry", "apply
+//   this saved backup"), not raw file uploads. If a future endpoint genuinely needs to
+//   accept an arbitrary file, that's a deliberate decision to raise the cap (with a
+//   matching review of memory/DoS exposure), not something to work around quietly.
+//
+// - `BroadcastCredentialsDTO` (below, under Broadcast) travels as plaintext JSON over
+//   LAN HTTP. That's a deliberate choice, matching this API's overall threat model —
+//   private-network-only by client-side policy, with VPN/Tailscale posture assumed for
+//   remote access — not an oversight. It's the first thing to revisit if the transport
+//   story ever changes (e.g. exposure beyond a private network).
+//
+// - `dockerContainerRunning` / `dockerContainerStatus` on `RemoteAPIStatus` are legacy
+//   field names kept for iOS wire-format compatibility. They no longer necessarily mean
+//   Docker: Bedrock servers run through `VMBedrockServerBackend` (a
+//   Virtualization.framework VM) by default, with the original Docker-backed
+//   `BedrockServerBackend` still selectable via the Settings "Bedrock Runtime" toggle.
+//   Either way, these fields carry the active Bedrock backend's running/status state
+//   under the old names — see the per-field comments below.
+
 /// Minimal status payload for the remote API.
 struct RemoteAPIStatus: Codable {
     let running: Bool
@@ -562,6 +585,8 @@ extension RemoteAPIServer {
         let bedrockBroadcastRunning: Bool
     }
 
+    /// Travels as plaintext JSON over LAN HTTP by design — see the wire-format notes at
+    /// the top of this file for the threat-model reasoning (S4).
     struct BroadcastCredentialsDTO: Codable {
         let email: String
         let password: String

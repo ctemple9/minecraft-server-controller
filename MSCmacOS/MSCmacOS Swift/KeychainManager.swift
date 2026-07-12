@@ -30,7 +30,7 @@ final class KeychainManager {
     /// Keychain service name for per-server Xbox Broadcast alt-account passwords.
     private static let xboxBroadcastPasswordService = "com.camerontemple.minecraftservercontroller.xboxbroadcast.altpassword"
 
-    /// Keychain service name for the playit.gg Docker agent secret key.
+    /// Keychain service name for the playit.gg agent secret key.
     private static let playitSecretKeyService = "com.camerontemple.minecraftservercontroller.playit.secretkey"
 
     /// Fixed account name for the playit secret key (there is only one global key).

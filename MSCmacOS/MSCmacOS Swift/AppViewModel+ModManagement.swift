@@ -326,8 +326,14 @@ extension AppViewModel {
         for folderName in ["overrides", "server-overrides"] {
             let src = tempDir.appendingPathComponent(folderName, isDirectory: true)
             guard fm.fileExists(atPath: src.path) else { continue }
-            mergeDirectory(from: src, into: serverDir, fm: fm)
-            await MainActor.run { logAppMessage("[Modpack] Copied \(folderName)/.") }
+            let mergeFailures = mergeDirectory(from: src, into: serverDir, fm: fm)
+            await MainActor.run {
+                if mergeFailures == 0 {
+                    logAppMessage("[Modpack] Copied \(folderName)/.")
+                } else {
+                    logAppMessage("[Modpack] Copied \(folderName)/ with \(mergeFailures) file(s) that failed to copy.")
+                }
+            }
         }
 
         await MainActor.run {
@@ -341,20 +347,32 @@ extension AppViewModel {
     }
 
     /// Recursively copies all contents of `src` into `dst`, overwriting existing files.
-    private func mergeDirectory(from src: URL, into dst: URL, fm: FileManager) {
+    /// Returns the number of items that failed to copy (0 = fully succeeded).
+    @discardableResult
+    private func mergeDirectory(from src: URL, into dst: URL, fm: FileManager) -> Int {
         guard let items = try? fm.contentsOfDirectory(
             at: src, includingPropertiesForKeys: [.isDirectoryKey], options: .skipsHiddenFiles
-        ) else { return }
+        ) else { return 0 }
+        var failures = 0
         for item in items {
             let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
             let dest = dst.appendingPathComponent(item.lastPathComponent)
             if isDir {
-                try? fm.createDirectory(at: dest, withIntermediateDirectories: true)
-                mergeDirectory(from: item, into: dest, fm: fm)
+                do {
+                    try fm.createDirectory(at: dest, withIntermediateDirectories: true)
+                    failures += mergeDirectory(from: item, into: dest, fm: fm)
+                } catch {
+                    failures += 1
+                }
             } else {
                 try? fm.removeItem(at: dest)
-                try? fm.copyItem(at: item, to: dest)
+                do {
+                    try fm.copyItem(at: item, to: dest)
+                } catch {
+                    failures += 1
+                }
             }
         }
+        return failures
     }
 }

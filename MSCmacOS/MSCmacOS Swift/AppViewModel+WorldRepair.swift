@@ -82,7 +82,8 @@ extension AppViewModel {
             if Date() > stopDeadline { break }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
-        // Give Docker a moment to release the volume.
+        // Give the backend (VM disk or Docker volume, depending on Bedrock Runtime
+        // setting) a moment to fully release the world files after stopping.
         try? await Task.sleep(nanoseconds: 1_000_000_000)
 
         // 5. Copy the freshly generated level files into the original world folder.

@@ -11,8 +11,12 @@ import Foundation
 /// calls through it, without ever needing to know which concrete type is active.
 ///
 /// Conforming types:
-///   - JavaServerBackend  — wraps ServerProcessManager (JVM + Paper JAR)
-///   - BedrockServerBackend — wraps the Docker CLI
+///   - JavaServerBackend     — wraps ServerProcessManager (JVM + Paper JAR)
+///   - VMBedrockServerBackend — wraps a Virtualization.framework VM running BDS; the
+///     default Bedrock backend (`AppConfig.useVMBedrockBackend`, on by default)
+///   - BedrockServerBackend  — wraps the Docker CLI; the original Bedrock backend,
+///     still selectable via the "Bedrock Runtime" toggle in Settings for users who
+///     opt out of the VM path
 protocol ServerBackend: AnyObject {
 
     // MARK: Lifecycle

@@ -184,7 +184,8 @@ struct ConfigServer: Codable, Identifiable {
         /// True when this server runs the Java (Paper) backend.
         var isJava: Bool { serverType == .java }
 
-        /// True when this server runs the Bedrock Dedicated Server (Docker) backend.
+        /// True when this server runs the Bedrock Dedicated Server backend (VM by
+        /// default, or Docker — see `AppConfig.useVMBedrockBackend`).
         var isBedrock: Bool { serverType == .bedrock }
 
         /// Category (Standard vs Modded) for Java servers; nil for Bedrock.

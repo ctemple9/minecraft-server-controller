@@ -156,8 +156,12 @@ extension AppViewModel {
                     if server.isJava {
                         let jarURL = URL(fileURLWithPath: server.paperJarPath)
                         if fm.fileExists(atPath: jarURL.path) {
-                            try? fm.copyItem(at: jarURL, to: outDir.appendingPathComponent("paper.jar"))
-                            bundledPaperJar = true
+                            do {
+                                try fm.copyItem(at: jarURL, to: outDir.appendingPathComponent("paper.jar"))
+                                bundledPaperJar = true
+                            } catch {
+                                log("[Transfer] \(server.displayName): failed to bundle paper.jar — \(error.localizedDescription)")
+                            }
                         }
                     }
 
@@ -165,7 +169,11 @@ extension AppViewModel {
                     for sub in ["world_slots", "backups", "plugins", "mods", "resource-packs"] {
                         let src = serverURL.appendingPathComponent(sub, isDirectory: true)
                         if fm.fileExists(atPath: src.path) {
-                            try? fm.copyItem(at: src, to: outDir.appendingPathComponent(sub, isDirectory: true))
+                            do {
+                                try fm.copyItem(at: src, to: outDir.appendingPathComponent(sub, isDirectory: true))
+                            } catch {
+                                log("[Transfer] \(server.displayName): failed to bundle \(sub)/ — \(error.localizedDescription)")
+                            }
                         }
                     }
 
@@ -173,7 +181,11 @@ extension AppViewModel {
                     if server.javaFlavor == .neoforge || server.javaFlavor == .forge {
                         let libSrc = serverURL.appendingPathComponent("libraries", isDirectory: true)
                         if fm.fileExists(atPath: libSrc.path) {
-                            try? fm.copyItem(at: libSrc, to: outDir.appendingPathComponent("libraries", isDirectory: true))
+                            do {
+                                try fm.copyItem(at: libSrc, to: outDir.appendingPathComponent("libraries", isDirectory: true))
+                            } catch {
+                                log("[Transfer] \(server.displayName): failed to bundle libraries/ — \(error.localizedDescription)")
+                            }
                         }
                     }
 
@@ -183,7 +195,11 @@ extension AppViewModel {
                     for folderName in WorldSlotManager.worldFolderNames(for: server) {
                         let src = serverURL.appendingPathComponent(folderName, isDirectory: true)
                         if fm.fileExists(atPath: src.path) {
-                            try? fm.copyItem(at: src, to: outDir.appendingPathComponent(folderName, isDirectory: true))
+                            do {
+                                try fm.copyItem(at: src, to: outDir.appendingPathComponent(folderName, isDirectory: true))
+                            } catch {
+                                log("[Transfer] \(server.displayName): failed to bundle live world \"\(folderName)\" — \(error.localizedDescription)")
+                            }
                         }
                     }
 
@@ -458,15 +474,23 @@ extension AppViewModel {
                         for candidate in [levelName, "\(levelName)_nether", "\(levelName)_the_end"] {
                             let src = pkgDir.appendingPathComponent(candidate, isDirectory: true)
                             if fm.fileExists(atPath: src.path) {
-                                try? fm.copyItem(at: src, to: destURL.appendingPathComponent(candidate, isDirectory: true))
-                                restoredLiveWorld = true
+                                do {
+                                    try fm.copyItem(at: src, to: destURL.appendingPathComponent(candidate, isDirectory: true))
+                                    restoredLiveWorld = true
+                                } catch {
+                                    log("[Transfer] \(entry.server.displayName): failed to restore live world \"\(candidate)\" — \(error.localizedDescription)")
+                                }
                             }
                         }
                     } else {
                         let src = pkgDir.appendingPathComponent("worlds", isDirectory: true)
                         if fm.fileExists(atPath: src.path) {
-                            try? fm.copyItem(at: src, to: destURL.appendingPathComponent("worlds", isDirectory: true))
-                            restoredLiveWorld = true
+                            do {
+                                try fm.copyItem(at: src, to: destURL.appendingPathComponent("worlds", isDirectory: true))
+                                restoredLiveWorld = true
+                            } catch {
+                                log("[Transfer] \(entry.server.displayName): failed to restore live world — \(error.localizedDescription)")
+                            }
                         }
                     }
 

@@ -61,7 +61,7 @@ extension DetailsPerformanceTabView {
         .frame(minHeight: 120, maxHeight: .infinity)
     }
 
-    // MARK: - Bedrock CPU chart (Docker only)
+    // MARK: - Bedrock CPU chart (VM backend by default, or Docker)
 
     var enhancedBedrockCPUChart: some View {
         let samples = viewModel.bedrockCpuHistory.enumerated().map {

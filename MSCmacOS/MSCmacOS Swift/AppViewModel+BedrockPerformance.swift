@@ -2,9 +2,10 @@
 //  AppViewModel+BedrockPerformance.swift
 //  MinecraftServerController
 //
-//  Bedrock performance metrics backed by `docker stats`.
-//  Keeps the existing Performance tab layout while feeding it
-//  Docker-safe data instead of Java/JVM-only metrics.
+//  Bedrock performance metrics, sourced from the in-guest VM stats reporter by
+//  default or `docker stats` for the legacy Docker backend.
+//  Keeps the existing Performance tab layout while feeding it non-JVM-shaped
+//  data instead of the Java-only metrics it was originally built for.
 //
 
 import Foundation

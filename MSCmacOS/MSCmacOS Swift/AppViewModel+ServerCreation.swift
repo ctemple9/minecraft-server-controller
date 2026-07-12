@@ -368,7 +368,11 @@ extension AppViewModel {
             // Apply staged add-ons chosen during the wizard.
             if !stagedAddOns.isEmpty, let addOnKind = flavor.addOnKind {
                 let addOnDir = newDir.appendingPathComponent(addOnKind.folderName, isDirectory: true)
-                try? fm.createDirectory(at: addOnDir, withIntermediateDirectories: true)
+                do {
+                    try fm.createDirectory(at: addOnDir, withIntermediateDirectories: true)
+                } catch {
+                    logAppMessage("[CreateServer] Failed to create \(addOnKind.folderName)/ for staged add-ons: \(error.localizedDescription)")
+                }
                 for addOn in stagedAddOns {
                     await applyStagedAddOn(addOn, to: addOnDir, serverConfig: cfgServer, label: "[CreateServer]")
                 }
@@ -709,8 +713,12 @@ extension AppViewModel {
                                                         options: .skipsSubdirectoryDescendants) {
                 for item in items where item.pathExtension.lowercased() == "jar" {
                     let dest = addOnDir.appendingPathComponent(item.lastPathComponent)
-                    try? fm.copyItem(at: item, to: dest)
-                    noteCreation("\(label) Copied \(item.lastPathComponent) from zip.")
+                    do {
+                        try fm.copyItem(at: item, to: dest)
+                        noteCreation("\(label) Copied \(item.lastPathComponent) from zip.")
+                    } catch {
+                        noteCreation("\(label) Failed to copy \(item.lastPathComponent) from zip: \(error.localizedDescription)")
+                    }
                 }
             }
         }

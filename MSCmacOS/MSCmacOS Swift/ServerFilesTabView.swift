@@ -4,8 +4,9 @@
 //
 //  In-app file browser for the server directory.
 //  Works for both Java and Bedrock servers — both have a real local serverDir
-//  on the host filesystem. Bedrock's directory is bind-mounted into Docker at /data
-//  when the server runs, so all persistent files are visible here.
+//  on the host filesystem. Bedrock's directory is shared into its backend while the
+//  server runs (virtio-fs for the default VM backend, a bind mount at /data for the
+//  legacy Docker backend), so all persistent files are visible here either way.
 //
 
 import SwiftUI
