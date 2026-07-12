@@ -12,28 +12,31 @@ enum NavDestination: String, CaseIterable, Hashable {
     case console
     case players
     case health
+    case components
     case worlds
     case settings
 
     var title: String {
         switch self {
-        case .dashboard: return "Dashboard"
-        case .console:   return "Console"
-        case .players:   return "Players"
-        case .health:    return "Health"
-        case .worlds:    return "Worlds"
-        case .settings:  return "Settings"
+        case .dashboard:   return "Dashboard"
+        case .console:     return "Console"
+        case .players:     return "Players"
+        case .health:      return "Health"
+        case .components:  return "Components"
+        case .worlds:      return "Worlds"
+        case .settings:    return "Settings"
         }
     }
 
     var icon: String {
         switch self {
-        case .dashboard: return "gauge.with.dots.needle.50percent"
-        case .console:   return "terminal"
-        case .players:   return "person.2"
-        case .health:    return "cross.case"
-        case .worlds:    return "globe"
-        case .settings:  return "gearshape"
+        case .dashboard:   return "gauge.with.dots.needle.50percent"
+        case .console:     return "terminal"
+        case .players:     return "person.2"
+        case .health:      return "cross.case"
+        case .components:  return "puzzlepiece.extension"
+        case .worlds:      return "globe"
+        case .settings:    return "gearshape"
         }
     }
 }
@@ -280,6 +283,9 @@ struct RootView: View {
                 .environmentObject(dashboardVM)
         case .health:
             HealthView()
+                .environmentObject(dashboardVM)
+        case .components:
+            ComponentsView()
                 .environmentObject(dashboardVM)
         case .worlds:
             WorldsView()
