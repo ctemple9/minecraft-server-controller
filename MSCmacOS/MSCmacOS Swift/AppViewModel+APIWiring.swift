@@ -32,6 +32,7 @@ extension AppViewModel {
         wirePlayerAndWorldProviders(into: server, isoFmt: isoFmt)
         wireBackupProviders(into: server, isoFmt: isoFmt)
         wireHealthProviders(into: server)
+        wireSkinAndFileProviders(into: server)
     }
 
     // MARK: - Infra (watchdog, connectivity, playit, DuckDNS, Geyser)
