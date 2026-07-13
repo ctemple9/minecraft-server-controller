@@ -127,6 +127,30 @@ Control your server from your iPhone over LAN or Tailscale VPN.
 
 ---
 
+## Privacy
+
+MSC collects no analytics, sends no telemetry, and keeps all server data (worlds, configs, backups) on machines you own. It does contact third-party services to do its job — here is the complete list and when each is reached:
+
+- **PaperMC** (`fill.papermc.io`) and **PurpurMC** (`api.purpurmc.org`) — server JAR downloads and build listings; contacted when you create or update a Paper or Purpur server.
+- **Mojang** (`launchermeta.mojang.com`) — Vanilla Minecraft version manifest; contacted for Vanilla server creation and version changes.
+- **FabricMC** (`meta.fabricmc.net`) — loader and installer downloads; contacted for Fabric server creation and version changes.
+- **NeoForge** (`maven.neoforged.net`) and **Forge** (`maven.minecraftforge.net`, `files.minecraftforge.net`) — modded installer downloads; contacted for NeoForge/Forge server creation and version changes.
+- **GeyserMC downloads** (`download.geysermc.org`) — Geyser and Floodgate plugin JARs; contacted when you install cross-platform support.
+- **Bedrock server manifest** (`raw.githubusercontent.com/kittizz/bedrock-server-downloads`) — Bedrock server download index; contacted at Bedrock server creation and version changes.
+- **Adoptium** (`api.adoptium.net`) — JDK release listing and download; contacted during the Java prerequisites setup step.
+- **Modrinth** (`api.modrinth.com`) — mod and plugin search, version listings, and update checks; contacted when you use the add-ons browser or the background update checker runs.
+- **Hangar** (`hangar.papermc.io`) — Paper-platform plugin downloads; contacted when you install Hangar-hosted plugins.
+- **Playit.gg** (`api.playit.gg`) — tunnel creation and management; contacted only when Playit.gg tunneling is enabled.
+- **MCXboxBroadcast** (GitHub releases via `api.github.com`) — binary update check for the Xbox broadcast helper; contacted when broadcast is enabled. The MCXboxBroadcast process authenticates with Xbox Live to enable console/mobile LAN discovery — MSC does not handle that credential.
+- **GitHub** (`api.github.com`) — release checks for MSC itself, the Playit.gg binary, and Chunker (world converter).
+- **Player avatars and profiles** — `mc-heads.net`, `crafatar.com`, and `minotar.net` for head/body renders; `sessionserver.mojang.com` for Java player UUID lookups; `api.geysermc.org` for Bedrock player XUID-to-gamertag resolution. Contacted only when players connect and you view the player list.
+- **Minecraft item textures** (`raw.githubusercontent.com/InventivetalentDev/minecraft-assets`) — block and item images for the player inventory panel; contacted when you open a player's inventory.
+- **Connectivity diagnostics** — `api.ipify.org` to detect your WAN IP; `api.mcsrvstat.us` to verify your server is reachable from the internet. Contacted only when you check server connectivity.
+
+No credentials, usernames, or world data are ever sent to any of these services. Each call is scoped to its stated purpose and initiated by a user action (or a background check you can see in the UI).
+
+---
+
 ## Built on Open Source
 
 MSC would not exist without these projects. Thanks to everyone who built and maintains them:
@@ -150,3 +174,9 @@ MSC would not exist without these projects. Thanks to everyone who built and mai
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+---
+
+## For contributors
+
+→ [Architecture guide](docs/architecture.md) — host/remote model, Remote API provider pattern, DTO conventions, 64 KB body cap, pbxproj registration, SwiftUI crash rules
