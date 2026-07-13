@@ -38,8 +38,8 @@ Package.resolved
 Pods/
 Podfile.lock
 
-# ----- Large media (host in GitHub Releases instead) -----
-splash_intro.mp4
+# ----- Large media -----
+# splash_intro.mp4 is committed directly (3.2 MB, acceptable for git)
 
 # ----- Test outputs -----
 *.log
