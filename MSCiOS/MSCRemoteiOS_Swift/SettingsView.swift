@@ -171,6 +171,12 @@ struct SettingsView: View {
                     isOn: $settings.notifyPlayerJoined
                 )
             }
+
+            Text("Notifications fire while MSC Remote is open or was recently opened — iOS pauses background apps. For always-on alerts, watch for notifications on your Mac.")
+                .font(.system(size: 11))
+                .foregroundStyle(MSCRemoteStyle.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, MSCRemoteStyle.spaceMD)
         }
         .mscCard()
     }

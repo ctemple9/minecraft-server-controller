@@ -464,6 +464,12 @@ struct ContentView: View {
 
             Divider()
 
+            if viewModel.showCrashRecoveryBanner {
+                CrashRecoveryBanner()
+                    .environmentObject(viewModel)
+                Divider()
+            }
+
             if viewModel.orphanedJavaProcessCount > 0 {
                 OrphanedProcessBanner(count: viewModel.orphanedJavaProcessCount)
                     .environmentObject(viewModel)
@@ -1081,6 +1087,62 @@ private struct OrphanedProcessBanner: View {
         .padding(.horizontal, MSC.Spacing.xxl)
         .padding(.vertical, MSC.Spacing.sm)
         .background(Color.orange.opacity(0.10))
+    }
+}
+
+// MARK: - Crash Recovery Banner
+
+private struct CrashRecoveryBanner: View {
+    @EnvironmentObject var viewModel: AppViewModel
+
+    var body: some View {
+        HStack(spacing: MSC.Spacing.md) {
+            Image(systemName: "arrow.counterclockwise.circle.fill")
+                .foregroundStyle(.blue)
+                .font(.system(size: 14, weight: .semibold))
+
+            Text("MSC recovered from an unexpected exit.")
+                .font(.system(size: 13))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            if let ipsURL = latestMSCCrashReport() {
+                Button("Reveal Crash Report") {
+                    NSWorkspace.shared.activateFileViewerSelecting([ipsURL])
+                    viewModel.showCrashRecoveryBanner = false
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.small)
+            }
+
+            Button("Dismiss") {
+                viewModel.showCrashRecoveryBanner = false
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
+        }
+        .padding(.horizontal, MSC.Spacing.xxl)
+        .padding(.vertical, MSC.Spacing.sm)
+        .background(Color.blue.opacity(0.08))
+    }
+
+    private func latestMSCCrashReport() -> URL? {
+        let dir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Logs/DiagnosticReports")
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        )) ?? []
+        return files
+            .filter { $0.pathExtension == "ips" && $0.lastPathComponent.contains("MinecraftServerController") }
+            .sorted {
+                let d1 = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                let d2 = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                return d1 > d2
+            }
+            .first
     }
 }
 

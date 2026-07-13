@@ -6,20 +6,34 @@
 //  `MSCSettingsView.isLocalOrPrivateHost(_:)`, which is a `private` method on a
 //  SwiftUI View and therefore NOT reachable even via `@testable import`. Per the
 //  prompt's explicit allowance ("port a copy … choose what's testable today and
-//  note the choice"), this suite pins a VERBATIM PORT of that rule set. If the real
-//  implementation in MSCSettingsView.swift changes, update this copy in lockstep.
+//  note the choice"), this suite pins a VERBATIM PORT of the iOS NetworkSafety rule
+//  set (including the IPv6 additions from S5). If NetworkSafety.swift changes,
+//  update this port in lockstep.
 //
-//  Source of truth: MSCSettingsView.swift `isLocalOrPrivateHost(_:)` (U1 pairing fix).
+//  Source of truth: NetworkSafety.swift (iOS) — MSCSettingsView.isLocalOrPrivateHost
+//  is the macOS twin but diverges for IPv6 (macOS pairing uses different input paths).
 //
 
 import XCTest
 
 /// Verbatim port of MSCSettingsView.isLocalOrPrivateHost — keep in sync by hand.
+/// IPv6 additions (::1, fe80::/10, fd00::/8) are also mirrored from NetworkSafety.swift (iOS).
 private func isLocalOrPrivateHost(_ host: String) -> Bool {
     let h = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     guard !h.isEmpty else { return false }
     if h == "localhost" || h == "127.0.0.1" { return true }
     if h.hasSuffix(".local") { return true }
+    if h.hasSuffix(".ts.net") { return true }
+
+    // IPv6: colons present and no dots (excludes IPv4-mapped ::ffff:a.b.c.d forms)
+    if h.contains(":") && !h.contains(".") {
+        if h == "::1" { return true }          // loopback (RFC 4291)
+        if h.hasPrefix("fe80:") { return true } // link-local (fe80::/10)
+        if h.hasPrefix("fd") { return true }    // ULA (fd00::/8, RFC 4193)
+        return false
+    }
+
+    // IPv4 — verbatim port of MSCSettingsView
     if h.hasPrefix("10.") { return true }
     if h.hasPrefix("192.168.") { return true }
     if h.hasPrefix("172.") {
@@ -74,5 +88,31 @@ final class NetworkSafetyTests: XCTestCase {
     func testEmptyRejected() {
         XCTAssertFalse(isLocalOrPrivateHost(""))
         XCTAssertFalse(isLocalOrPrivateHost("   "))
+    }
+
+    // MARK: - IPv6 (S5) — URL.host always strips brackets, so test bare forms
+
+    func testIPv6Loopback() {
+        XCTAssertTrue(isLocalOrPrivateHost("::1"))
+    }
+
+    func testIPv6LinkLocal() {
+        XCTAssertTrue(isLocalOrPrivateHost("fe80::1"))
+        XCTAssertTrue(isLocalOrPrivateHost("fe80::aabb:ccdd:eeff"))
+    }
+
+    func testIPv6ULA() {
+        XCTAssertTrue(isLocalOrPrivateHost("fd00::1"))
+        XCTAssertTrue(isLocalOrPrivateHost("fd12:3456:789a::1"))
+    }
+
+    func testIPv6PublicRejected() {
+        XCTAssertFalse(isLocalOrPrivateHost("2001:db8::1"))    // documentation range
+        XCTAssertFalse(isLocalOrPrivateHost("2606:4700::1"))   // public Cloudflare
+    }
+
+    func testTailscaleMagicDNS() {
+        XCTAssertTrue(isLocalOrPrivateHost("my-mac.ts.net"))
+        XCTAssertFalse(isLocalOrPrivateHost("example.ts.net.evil.com"))
     }
 }

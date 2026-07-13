@@ -157,6 +157,7 @@ final class AppViewModel: ObservableObject {
     @Published var commandText: String = ""
     @Published var isServerRunning: Bool = false
     @Published var orphanedJavaProcessCount: Int = 0
+    @Published var showCrashRecoveryBanner: Bool = false
     @Published var watchdogEnabled: Bool = false
     @Published var isShowingInitialSetup: Bool = false
     /// Set by ContentView to reflect its own local @State sheet booleans,
@@ -449,6 +450,11 @@ final class AppViewModel: ObservableObject {
 
         requestNotificationPermissionIfNeeded()
         checkForOrphansOnStartup()
+        // Cookie persists across a crash; if it already exists here the previous session
+        // exited uncleanly. Record it before markSessionActive() recreates the file.
+        if FileManager.default.fileExists(atPath: WatchdogRunner.sessionCookieURL.path) {
+            showCrashRecoveryBanner = true
+        }
         WatchdogRunner.markSessionActive()
         checkWatchdogStatus()
 

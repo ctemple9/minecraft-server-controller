@@ -2,6 +2,7 @@ import Foundation
 
 enum NetworkSafety {
     /// Allow HTTP only when the host looks local/private (LAN/VPN ranges).
+    /// URL.host already strips brackets from IPv6 literals (e.g. [::1] → ::1).
     static func isLocalOrPrivateHost(_ host: String) -> Bool {
         let h = host.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if h == "localhost" || h == "127.0.0.1" { return true }
@@ -9,6 +10,11 @@ enum NetworkSafety {
 
         // Tailscale MagicDNS hostnames
         if h.hasSuffix(".ts.net") { return true }
+
+        // IPv6 checks (before IPv4: colons in the string exclude IPv4 parsing)
+        if let ipv6 = IPv6Address(h) {
+            return ipv6.isPrivateOrLocal
+        }
 
         // IPv4 checks
         if let ipv4 = IPv4Address(h) {
@@ -22,6 +28,23 @@ enum NetworkSafety {
         guard (url.scheme ?? "").lowercased() == "http" else { return true } // https is fine
         guard let host = url.host else { return false }
         return isLocalOrPrivateHost(host)
+    }
+}
+
+private struct IPv6Address {
+    let raw: String
+
+    /// Matches IPv6 literals (contain colon, no dot — rejects IPv4-mapped ::ffff:a.b.c.d forms).
+    init?(_ s: String) {
+        guard s.contains(":"), !s.contains(".") else { return nil }
+        self.raw = s.lowercased()
+    }
+
+    var isPrivateOrLocal: Bool {
+        if raw == "::1" { return true }           // loopback (RFC 4291)
+        if raw.hasPrefix("fe80:") { return true } // link-local (fe80::/10, RFC 4291)
+        if raw.hasPrefix("fd") { return true }    // ULA (fd00::/8, RFC 4193)
+        return false
     }
 }
 
