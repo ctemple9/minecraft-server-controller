@@ -74,3 +74,59 @@ final class ComponentVersionParsingTests: XCTestCase {
         XCTAssertNil(ComponentVersionParsing.buildDisplayString(nil))
     }
 }
+
+// MARK: - MCVersionComparator (U4b)
+
+final class MCVersionComparatorTests: XCTestCase {
+
+    func testUpgradeReturnsFalse() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.20.4", to: "1.21.0"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.20", to: "1.21"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.3", to: "1.21.4"))
+    }
+
+    func testDowngradeReturnsTrue() {
+        XCTAssertTrue(MCVersionComparator.isDowngrade(from: "1.21.4", to: "1.20.6"))
+        XCTAssertTrue(MCVersionComparator.isDowngrade(from: "1.21.4", to: "1.21.3"))
+        XCTAssertTrue(MCVersionComparator.isDowngrade(from: "1.21", to: "1.20.4"))
+    }
+
+    func testSameVersionReturnsFalse() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.4", to: "1.21.4"))
+    }
+
+    func testPaddedComponents() {
+        // "1.21" and "1.21.0" are the same version (trailing zeros padded).
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21", to: "1.21.0"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.0", to: "1.21"))
+    }
+
+    func testBedrockFourPartVersions() {
+        XCTAssertTrue(MCVersionComparator.isDowngrade(from: "1.21.30.03", to: "1.21.10.01"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.10.01", to: "1.21.30.03"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.30.03", to: "1.21.30.03"))
+    }
+
+    func testNilCurrentSkipsCheck() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: nil, to: "1.20.0"))
+    }
+
+    func testEmptyCurrentSkipsCheck() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "", to: "1.20.0"))
+    }
+
+    func testLatestTargetSkipsCheck() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.4", to: "LATEST"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.4", to: "latest"))
+    }
+
+    func testLatestCurrentSkipsCheck() {
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "LATEST", to: "1.20.0"))
+    }
+
+    func testNonNumericSnapshotSkipsCheck() {
+        // Snapshot-style versions have a letter suffix — not safely ordered.
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "24w14a", to: "1.20.4"))
+        XCTAssertFalse(MCVersionComparator.isDowngrade(from: "1.21.4", to: "24w14a"))
+    }
+}

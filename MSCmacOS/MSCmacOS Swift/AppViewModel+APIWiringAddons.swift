@@ -330,9 +330,25 @@ extension AppViewModel {
             // BEDROCK: pin the version then trigger the VM download (fire-and-forget — same as Mac UI).
             if ctx.isBedrock {
                 let pinned = versionId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // Downgrade guard: check and backup BEFORE pinning, so we can return
+                // backup_failed synchronously. updateBedrockVMFiles is called with
+                // skipDowngradeCheck: true to avoid a redundant second backup.
+                if pinned.uppercased() != "LATEST" {
+                    let serverDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
+                    let installed = BedrockProvisioner.installedVersion(serverDir: serverDir)
+                    if MCVersionComparator.isDowngrade(from: installed, to: pinned) {
+                        let ok = await self.createBackup(for: cfg, isAutomatic: true, triggerReason: "pre-downgrade")
+                        if !ok {
+                            return RemoteAPIServer.VersionChangeResultDTO(
+                                success: false, message: "backup_failed", requiresRestart: false)
+                        }
+                    }
+                }
+
                 await MainActor.run {
                     self.setBedrockVersion(pinned)
-                    self.updateBedrockVMFiles(cfg: cfg)
+                    self.updateBedrockVMFiles(cfg: cfg, skipDowngradeCheck: true)
                 }
                 let label = (pinned.uppercased() == "LATEST") ? "latest" : pinned
                 return RemoteAPIServer.VersionChangeResultDTO(
@@ -344,6 +360,25 @@ extension AppViewModel {
             // JAVA: authoritative-async — calls the same underlying async installers.
             guard let flavor = ctx.flavor else {
                 return RemoteAPIServer.VersionChangeResultDTO(success: false, message: "not_supported", requiresRestart: false)
+            }
+
+            // Downgrade guard: extract the target MC version from versionId and compare
+            // to the currently pinned version. NeoForge/Forge versionIds are "MC—Loader"
+            // (em-dash); all other flavors use the MC version directly as versionId.
+            let targetMCForCheck: String?
+            switch flavor {
+            case .neoforge, .forge:
+                let mc = versionId.components(separatedBy: "\u{2014}").first ?? ""
+                targetMCForCheck = (mc.isEmpty || mc == "__latest__") ? nil : mc
+            default:
+                targetMCForCheck = (versionId.isEmpty || versionId == "__latest__") ? nil : versionId
+            }
+            if let t = targetMCForCheck, MCVersionComparator.isDowngrade(from: cfg.minecraftVersion, to: t) {
+                let ok = await self.createBackup(for: cfg, isAutomatic: true, triggerReason: "pre-downgrade")
+                if !ok {
+                    return RemoteAPIServer.VersionChangeResultDTO(
+                        success: false, message: "backup_failed", requiresRestart: false)
+                }
             }
 
             await MainActor.run { self.isDownloadingJar = true }

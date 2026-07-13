@@ -451,6 +451,25 @@ extension AppViewModel {
                 return
             }
 
+            // Downgrade guard: if the target MC version is older than the current one, force
+            // a world backup. The backup must succeed before the version swap proceeds.
+            let targetMC = entry.flatMap { $0.isLatest ? nil : $0.mcVersion }
+            if let t = targetMC, MCVersionComparator.isDowngrade(from: cfg.minecraftVersion, to: t) {
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Downgrade detected (\(cfg.minecraftVersion ?? "?") → \(t)). Creating pre-downgrade backup…")
+                }
+                let ok = await self.createBackup(for: cfg, isAutomatic: true, triggerReason: "pre-downgrade")
+                if !ok {
+                    await MainActor.run {
+                        self.logAppMessage("[\(cfg.javaFlavor.displayName)] Backup failed — version swap aborted.")
+                        self.showError(title: "Backup Required",
+                                       message: "A world backup is required before downgrading the server version, but the backup could not be created. Resolve the backup issue and try again.")
+                        self.isDownloadingJar = false
+                    }
+                    return
+                }
+            }
+
             let label = entry.flatMap { $0.isLatest ? nil : $0.displayLabel } ?? "latest"
             await MainActor.run {
                 self.logAppMessage("[\(cfg.javaFlavor.displayName)] Downloading \(label)…")
@@ -509,6 +528,25 @@ extension AppViewModel {
 
             await MainActor.run {
                 self.logAppMessage("[\(cfg.javaFlavor.displayName)] Upgrading to \(label)…")
+            }
+
+            // Downgrade guard: for specific (non-latest) version entries, check if the
+            // target MC version is older than the current one and force a backup if so.
+            let targetMC = entry.flatMap { $0.isLatest ? nil : $0.mcVersion }
+            if let t = targetMC, MCVersionComparator.isDowngrade(from: cfg.minecraftVersion, to: t) {
+                await MainActor.run {
+                    self.logAppMessage("[\(cfg.javaFlavor.displayName)] Downgrade detected (\(cfg.minecraftVersion ?? "?") → \(t)). Creating pre-downgrade backup…")
+                }
+                let ok = await self.createBackup(for: cfg, isAutomatic: true, triggerReason: "pre-downgrade")
+                if !ok {
+                    await MainActor.run {
+                        self.logAppMessage("[\(cfg.javaFlavor.displayName)] Backup failed — version swap aborted.")
+                        self.showError(title: "Backup Required",
+                                       message: "A world backup is required before downgrading the server version, but the backup could not be created. Resolve the backup issue and try again.")
+                        self.isDownloadingJar = false
+                    }
+                    return
+                }
             }
 
             do {
@@ -727,12 +765,37 @@ extension AppViewModel {
 
     /// VM-backend equivalent of "pull latest image": download + install the pinned
     /// (or latest) Bedrock server files into serverDir. The server must be stopped.
-    func updateBedrockVMFiles(cfg: ConfigServer) {
+    ///
+    /// - Parameter skipDowngradeCheck: Pass `true` when the caller has already performed
+    ///   the downgrade check and backup (e.g. the Remote API path). Defaults to `false`.
+    func updateBedrockVMFiles(cfg: ConfigServer, skipDowngradeCheck: Bool = false) {
         isUpdatingBedrockImage = true
         let serverDir = URL(fileURLWithPath: cfg.serverDir, isDirectory: true)
         let version = cfg.bedrockVersion
         Task.detached { [weak self] in
             guard let self else { return }
+
+            // Downgrade guard: if a specific older version is being pinned, force a backup.
+            if !skipDowngradeCheck, let targetVersion = version, targetVersion.uppercased() != "LATEST" {
+                let installed = BedrockProvisioner.installedVersion(serverDir: serverDir)
+                if MCVersionComparator.isDowngrade(from: installed, to: targetVersion) {
+                    await MainActor.run {
+                        self.logAppMessage("[Bedrock] Downgrade detected (\(installed ?? "?") → \(targetVersion)). Creating pre-downgrade backup…")
+                    }
+                    let ok = await self.createBackup(for: cfg, isAutomatic: true, triggerReason: "pre-downgrade")
+                    if !ok {
+                        await MainActor.run {
+                            self.isUpdatingBedrockImage = false
+                            self.logAppMessage("[Bedrock] Backup failed — version swap aborted.")
+                            self.showError(title: "Backup Required",
+                                           message: "A world backup is required before downgrading the Bedrock version, but the backup could not be created. Resolve the backup issue and try again.")
+                            self.refreshHealthCardsForSelectedServer()
+                        }
+                        return
+                    }
+                }
+            }
+
             do {
                 try BedrockProvisioner.ensureInstalled(serverDir: serverDir, version: version, force: true) { line in
                     Task { @MainActor in self.logAppMessage(line) }

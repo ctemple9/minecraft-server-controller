@@ -65,3 +65,46 @@ enum ComponentVersionParsing {
         return "build \(build)"
     }
 }
+
+// MARK: - MC version comparison (U4b)
+
+/// Pure semantic-version comparator for Minecraft version strings.
+/// Handles dotted-integer forms used by both Java (e.g. "1.21.4") and
+/// Bedrock (e.g. "1.21.30.03"). Non-numeric or "LATEST" strings are
+/// treated as unresolvable, meaning no backup is forced.
+struct MCVersionComparator {
+
+    /// Returns `true` if `target` is a strict version downgrade from `current`.
+    /// Returns `false` whenever comparison is impossible (blank, "LATEST", or any
+    /// non-integer dot-separated segment such as a snapshot like "24w14a").
+    static func isDowngrade(from current: String?, to target: String) -> Bool {
+        guard let current, !current.isEmpty else { return false }
+        let c = current.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let t = target.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard c != "latest", !t.isEmpty, t != "latest" else { return false }
+        guard let cv = parseComponents(c), let tv = parseComponents(t) else { return false }
+        return compareComponents(tv, cv) == .orderedAscending
+    }
+
+    private static func parseComponents(_ s: String) -> [Int]? {
+        let parts = s.split(separator: ".")
+        guard !parts.isEmpty else { return nil }
+        var result: [Int] = []
+        for part in parts {
+            guard let n = Int(part) else { return nil }
+            result.append(n)
+        }
+        return result
+    }
+
+    private static func compareComponents(_ a: [Int], _ b: [Int]) -> ComparisonResult {
+        let count = max(a.count, b.count)
+        for i in 0..<count {
+            let av = i < a.count ? a[i] : 0
+            let bv = i < b.count ? b[i] : 0
+            if av < bv { return .orderedAscending }
+            if av > bv { return .orderedDescending }
+        }
+        return .orderedSame
+    }
+}

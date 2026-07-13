@@ -346,6 +346,8 @@ struct ServerVersionView: View {
                     showToast("A download is already in progress. Try again in a moment.")
                 case "no_active_server":
                     showToast("No active server selected.")
+                case "backup_failed":
+                    showToast("Pre-downgrade backup failed. Resolve the backup issue on your Mac and try again.")
                 default:
                     showToast(result.message)
                 }
