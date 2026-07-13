@@ -82,13 +82,14 @@ struct DashboardPerformanceCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(health.color)
+                    .accessibilityHidden(true)
                 Text(title.uppercased())
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .foregroundStyle(MSCRemoteStyle.textTertiary)
                     .kerning(0.5)
             }
             Text(value)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .font(.system(.title2, design: .rounded).weight(.semibold))
                 .foregroundStyle(health == .neutral ? MSCRemoteStyle.textPrimary : health.color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -104,6 +105,9 @@ struct DashboardPerformanceCard: View {
                     lineWidth: 1
                 )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityValue(value == "—" ? "no data" : value)
     }
 
     private func formatTPS(_ v: Double?) -> String {

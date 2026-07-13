@@ -16,6 +16,7 @@ struct ComponentsStatusStripView: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .accessibilityHidden(true)
                 }
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
 
@@ -55,6 +56,8 @@ struct ComponentsStatusStripView: View {
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(MSCRemoteStyle.textSecondary)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(component.name), \(componentStatusWord(for: component))")
     }
 
     @ViewBuilder
@@ -69,10 +72,17 @@ struct ComponentsStatusStripView: View {
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(MSCRemoteStyle.textSecondary)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Broadcast, \(isRunning ? "running" : "stopped")")
     }
 
     private func dotColor(for component: ComponentStatusDTO) -> Color {
         guard component.installedBuild != nil else { return MSCRemoteStyle.textTertiary }
         return component.isUpToDate ? MSCRemoteStyle.success : Color.orange
+    }
+
+    private func componentStatusWord(for component: ComponentStatusDTO) -> String {
+        guard component.installedBuild != nil else { return "not installed" }
+        return component.isUpToDate ? "up to date" : "update available"
     }
 }

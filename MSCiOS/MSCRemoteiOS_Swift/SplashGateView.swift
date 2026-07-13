@@ -8,6 +8,7 @@ import Combine
 /// - If the video is missing, shows a fallback briefly then dismisses.
 struct SplashGateView: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isShowingSplash = true
     /// Flips to true the moment the splash finishes. Passed into RootView so
     /// it knows it's safe to show the first-launch QuickGuide sheet.
@@ -30,6 +31,11 @@ struct SplashGateView: View {
         }
         .statusBarHidden(isShowingSplash)
         .onAppear {
+            guard !reduceMotion else {
+                // Reduce Motion is on: the splash is a video, so skip straight to content.
+                dismissSplash()
+                return
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + maxSplashTime) {
                 dismissSplash()
             }

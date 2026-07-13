@@ -18,6 +18,7 @@ struct DashboardPlayersCard: View {
                     Image(systemName: "person.slash")
                         .font(.system(size: 13))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .accessibilityHidden(true)
                     Text("No players online")
                         .font(.system(size: 13))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)

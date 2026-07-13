@@ -21,6 +21,13 @@ struct DashboardStatusCard: View {
         return String(format: "%ds", s)
     }
 
+    private var statusAccessibilityValue: String {
+        guard isPaired else { return "Not paired" }
+        var parts = [activeServerNameText, isRunning ? "Running" : "Stopped"]
+        if let uptime = uptimeString { parts.append("uptime \(uptime)") }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             MSCSectionHeader(title: "Server Status")
@@ -45,12 +52,16 @@ struct DashboardStatusCard: View {
                             Image(systemName: "clock")
                                 .font(.system(size: 10))
                                 .foregroundStyle(MSCRemoteStyle.textTertiary)
+                                .accessibilityHidden(true)
                             Text(uptime)
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                                 .foregroundStyle(MSCRemoteStyle.textTertiary)
                         }
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Server status")
+                .accessibilityValue(statusAccessibilityValue)
                 Spacer()
                 Button(action: refreshAction) {
                     Image(systemName: "arrow.clockwise")
@@ -61,6 +72,7 @@ struct DashboardStatusCard: View {
                         .clipShape(Circle())
                 }
                 .disabled(!isPaired)
+                .accessibilityLabel("Refresh status")
             }
 
             if !isPaired {

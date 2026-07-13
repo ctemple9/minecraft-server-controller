@@ -39,6 +39,7 @@ struct PlayerRow: View {
             }
             .frame(width: 32, height: 32)
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .accessibilityHidden(true)
 
             Text(player.name)
                 .font(.system(size: 14, weight: .medium))
@@ -47,6 +48,7 @@ struct PlayerRow: View {
             Spacer()
         }
         .padding(.vertical, MSCRemoteStyle.spaceSM)
+        .accessibilityElement(children: .combine)
     }
 
     private var genericAvatarIcon: some View {

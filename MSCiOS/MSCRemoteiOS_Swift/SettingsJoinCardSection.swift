@@ -27,6 +27,7 @@ struct SettingsJoinCardSection: View {
                     .onChange(of: showJoinCard) { _, _ in
                         saveAction()
                     }
+                    .accessibilityLabel("Show Join Card on Dashboard")
             }
         }
         .mscCard()

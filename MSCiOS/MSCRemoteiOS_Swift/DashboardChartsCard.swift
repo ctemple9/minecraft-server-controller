@@ -58,6 +58,24 @@ struct DashboardChartsCard: View {
         .accessibilityLabel(showRAMLine ? "Hide RAM overlay" : "Show RAM overlay")
     }
 
+    private var chartAccessibilitySummary: String {
+        guard let latest = performanceHistory.last?.tps1m else { return "No performance data yet" }
+        var trend = "steady"
+        if performanceHistory.count >= 5 {
+            let earlier = performanceHistory[performanceHistory.count - 5].tps1m ?? latest
+            let delta = latest - earlier
+            if delta > 1 { trend = "rising" }
+            else if delta < -1 { trend = "falling" }
+            else { trend = "flat" }
+        }
+        var summary = "TPS \(String(format: "%.0f", latest)) out of 20, trending \(trend)"
+        if showRAMLine, let usedMB = performanceHistory.last?.ramUsedMB, let maxMB = performanceHistory.last?.ramMaxMB, maxMB > 0 {
+            let pct = Int((usedMB / maxMB) * 100)
+            summary += ". RAM \(pct) percent"
+        }
+        return summary
+    }
+
     private var collectingDataPlaceholder: some View {
         ZStack {
             Color(hex: "#0A0C0E")
@@ -195,6 +213,9 @@ struct DashboardChartsCard: View {
                 RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
                     .strokeBorder(MSCRemoteStyle.borderSubtle, lineWidth: 1)
             )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Performance history chart")
+            .accessibilityValue(chartAccessibilitySummary)
         }
     }
 

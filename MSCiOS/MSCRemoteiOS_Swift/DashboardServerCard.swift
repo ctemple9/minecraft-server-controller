@@ -72,6 +72,8 @@ struct DashboardServerCard: View {
                         )
                     }
                     .disabled(!isPaired)
+                    .accessibilityLabel("Active server: \(activeServerNameText)")
+                    .accessibilityHint("Double tap to choose a different server")
 
                     Button(action: manageAction) {
                         Image(systemName: "gearshape")

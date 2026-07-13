@@ -257,6 +257,7 @@ struct DashboardView: View {
                     .font(.system(size: 18))
                     .foregroundStyle(MSCRemoteStyle.accent)
                     .frame(width: 28)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Server Settings")
                         .font(.system(size: 15, weight: .semibold))
@@ -269,10 +270,12 @@ struct DashboardView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .accessibilityHidden(true)
             }
             .mscCard()
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
     private var usersLinkCard: some View {
@@ -286,6 +289,7 @@ struct DashboardView: View {
                     .font(.system(size: 18))
                     .foregroundStyle(MSCRemoteStyle.accent)
                     .frame(width: 28)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Users & Access")
                         .font(.system(size: 15, weight: .semibold))
@@ -298,10 +302,12 @@ struct DashboardView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .accessibilityHidden(true)
             }
             .mscCard()
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -309,6 +315,7 @@ struct DashboardView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 14))
                 .foregroundStyle(MSCRemoteStyle.danger)
+                .accessibilityHidden(true)
             Text(message)
                 .font(.system(size: 13))
                 .foregroundStyle(MSCRemoteStyle.danger)
@@ -320,6 +327,8 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusMD, style: .continuous)
                 .strokeBorder(MSCRemoteStyle.danger.opacity(0.3), lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Error: \(message)")
     }
 
     private var footerText: some View {
@@ -487,6 +496,7 @@ private struct ManageServersSheet: View {
                             .foregroundStyle(MSCRemoteStyle.accent)
                     }
                     .disabled(resolvedBaseURL == nil || resolvedToken == nil)
+                    .accessibilityLabel("Refresh servers")
                 }
             }
             .task { await refreshServers() }
@@ -626,6 +636,7 @@ private struct ManageServersSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Rename \(server.name)")
 
                     Button {
                         hapticLight()
@@ -639,6 +650,7 @@ private struct ManageServersSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Delete \(server.name)")
                 }
             }
         }
@@ -835,6 +847,7 @@ private struct ServerTemplatesSheet: View {
                     .labelsHidden()
                     .tint(MSCRemoteStyle.accent)
                     .disabled(!isAdmin || isWorking)
+                    .accessibilityLabel("Include plugin JARs")
             }
             .padding(.bottom, MSCRemoteStyle.spaceMD)
 
@@ -1276,6 +1289,7 @@ private func labeledField(_ label: String, text: Binding<String>, placeholder: S
             .padding(.vertical, 10)
             .background(MSCRemoteStyle.bgElevated)
             .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .accessibilityLabel(label)
     }
 }
 
@@ -1293,6 +1307,8 @@ private func toggleRow(title: String, detail: String, isOn: Binding<Bool>) -> so
         Toggle("", isOn: isOn)
             .labelsHidden()
             .tint(MSCRemoteStyle.accent)
+            .accessibilityLabel(title)
+            .accessibilityHint(detail)
     }
 }
 

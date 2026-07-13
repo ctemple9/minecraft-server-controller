@@ -153,6 +153,7 @@ struct PlayersView: View {
     private func profileRow(_ profile: PlayerProfileDTO) -> some View {
         HStack(spacing: MSCRemoteStyle.spaceMD) {
             PlayerSkinImageView(profile: profile, size: 36, cornerRadius: 5)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
@@ -192,6 +193,20 @@ struct PlayersView: View {
         .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
         .opacity(profile.isHiddenResolved ? 0.62 : 1.0)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(profileAccessibilityLabel(profile))
+        .accessibilityHint("Double tap for player details")
+    }
+
+    private func profileAccessibilityLabel(_ profile: PlayerProfileDTO) -> String {
+        var parts = [profile.displayName]
+        parts.append(profile.isOnline ? "Online" : "Offline")
+        if profile.isOp { parts.append("Operator") }
+        if profile.isHiddenResolved { parts.append("Hidden") }
+        if !profile.isOnline, let lastSeen = profile.lastSeen {
+            parts.append("last seen \(relativeDate(lastSeen))")
+        }
+        return parts.joined(separator: ", ")
     }
 
     // MARK: - Session Log Card
@@ -248,6 +263,7 @@ struct PlayersView: View {
             Image(systemName: event.eventType == "joined" ? "arrow.right.circle.fill" : "arrow.left.circle.fill")
                 .font(.system(size: 16))
                 .foregroundStyle(event.eventType == "joined" ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.playerName)
@@ -293,7 +309,7 @@ struct PlayersView: View {
             HStack(spacing: MSCRemoteStyle.spaceMD) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(vm.performanceLatest?.playersOnline.map(String.init) ?? "—")
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
                         .foregroundStyle(MSCRemoteStyle.textPrimary)
                     Text("players online")
                         .font(.system(size: 12, design: .monospaced))
@@ -301,7 +317,11 @@ struct PlayersView: View {
                 }
                 Spacer()
                 MSCStatusDot(isActive: vm.status?.running == true, size: 14)
+                    .accessibilityHidden(true)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Players online")
+            .accessibilityValue("\(vm.performanceLatest?.playersOnline.map(String.init) ?? "unknown"), server \(vm.status?.running == true ? "running" : "stopped")")
         }
         .mscCard()
     }
@@ -319,6 +339,7 @@ struct PlayersView: View {
                     .font(.system(size: 18))
                     .foregroundStyle(MSCRemoteStyle.accent)
                     .frame(width: 28)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Allowlist")
                         .font(.system(size: 15, weight: .semibold))
@@ -331,10 +352,12 @@ struct PlayersView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .accessibilityHidden(true)
             }
             .mscCard()
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
     private var allowlistSubtitle: String {
@@ -526,9 +549,14 @@ struct ExpandablePlayerRow: View {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .accessibilityHidden(true)
                 }
                 .padding(.vertical, MSCRemoteStyle.spaceSM)
                 .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(player.name)
+                .accessibilityHint("Double tap to show actions")
+                .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
             }
             .buttonStyle(.plain)
 
@@ -721,6 +749,7 @@ struct ExpandablePlayerRow: View {
                 Image(systemName: icon)
                     .font(.system(size: 13))
                     .foregroundStyle(destructive ? MSCRemoteStyle.danger : tint)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(destructive ? MSCRemoteStyle.danger : MSCRemoteStyle.textPrimary)

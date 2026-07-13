@@ -31,6 +31,7 @@ struct SettingsPairingCard: View {
                         .font(.system(size: 11))
                         .foregroundStyle(MSCRemoteStyle.accent)
                         .padding(.top, 1)
+                        .accessibilityHidden(true)
                     Text("Enter your Mac's IP address and the token shown in MSC's Preferences → Remote API to get started. Or scan the QR code for instant setup.")
                         .font(.system(size: 12))
                         .foregroundStyle(MSCRemoteStyle.textSecondary)
@@ -72,6 +73,7 @@ struct SettingsPairingCard: View {
                         RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
                             .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
                     )
+                    .accessibilityLabel("Base URL")
 
                 fieldLabel("Token")
                 SecureField(
@@ -92,12 +94,15 @@ struct SettingsPairingCard: View {
                             lineWidth: 1
                         )
                 )
+                .accessibilityLabel("Token")
+                .accessibilityValue(hasToken ? "saved" : "empty")
 
                 if hasToken && settings.tokenDraft.isEmpty {
                     HStack(spacing: 5) {
                         Image(systemName: "key.fill")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(MSCRemoteStyle.accent)
+                            .accessibilityHidden(true)
                         Text("Token stored in Keychain  ••••••••")
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(MSCRemoteStyle.accent.opacity(0.8))
@@ -110,10 +115,12 @@ struct SettingsPairingCard: View {
             if let warning = safetyWarning {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
+                        .accessibilityHidden(true)
                     Text(warning).font(.system(size: 11)).textSelection(.enabled)
                 }
                 .foregroundStyle(MSCRemoteStyle.warning)
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
+                .accessibilityElement(children: .combine)
             }
 
             HStack(spacing: MSCRemoteStyle.spaceMD) {
@@ -152,6 +159,7 @@ struct SettingsPairingCard: View {
                                 .strokeBorder(MSCRemoteStyle.borderMid, lineWidth: 1)
                         )
                 }
+                .accessibilityLabel("More pairing options")
             }
 
             Button {
@@ -162,6 +170,7 @@ struct SettingsPairingCard: View {
                     Image(systemName: "lock.shield")
                         .font(.system(size: 12))
                         .foregroundStyle(MSCRemoteStyle.accent)
+                        .accessibilityHidden(true)
                     Text("Away from home? Use Tailscale (2-min setup)")
                         .font(.system(size: 12))
                         .foregroundStyle(MSCRemoteStyle.accent)
@@ -169,6 +178,7 @@ struct SettingsPairingCard: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .accessibilityHidden(true)
                 }
                 .padding(.top, MSCRemoteStyle.spaceMD)
             }
@@ -221,6 +231,7 @@ struct SettingsPairingCard: View {
                     .animation(.easeInOut(duration: 0.2), value: vm.connectedRole)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func quickPairButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -229,6 +240,7 @@ struct SettingsPairingCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.accent)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(MSCRemoteStyle.textSecondary)

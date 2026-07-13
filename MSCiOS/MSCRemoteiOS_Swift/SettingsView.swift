@@ -197,6 +197,8 @@ struct SettingsView: View {
                 .onChange(of: isOn.wrappedValue) { _, _ in
                     settings.saveNotificationPreferences()
                 }
+                .accessibilityLabel(title)
+                .accessibilityHint(subtitle)
         }
     }
 
@@ -221,6 +223,8 @@ struct SettingsView: View {
                         accentSwatch(color: Color(hex: preset.hex), name: preset.name, isSelected: isSelected)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(preset.name)
+                    .accessibilityValue(isSelected ? "Selected" : "")
                 }
 
                 // Custom colour picker slot

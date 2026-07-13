@@ -41,6 +41,7 @@ struct SettingsConnectionTestSection: View {
                         .font(.system(size: 13))
                         .foregroundStyle(resultColor)
                         .padding(.top, 1)
+                        .accessibilityHidden(true)
 
                     Text(msg)
                         .font(.system(size: 12, design: .monospaced))
@@ -59,6 +60,9 @@ struct SettingsConnectionTestSection: View {
                         .strokeBorder(resultColor.opacity(0.2), lineWidth: 1)
                 )
                 .padding(.top, MSCRemoteStyle.spaceMD)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(lastTestWasSuccess ? "Test succeeded" : "Test failed")
+                .accessibilityValue(msg)
             }
         }
         .mscCard()
