@@ -46,9 +46,8 @@ Podfile.lock
 server_config_swift.json
 *.psc_config
 
-# ----- Large media (host in GitHub Releases instead) -----
-# Uncomment this line if you move the splash video to GitHub Releases:
-splash_intro.mp4
+# ----- Large media -----
+# splash_intro.mp4 is committed directly (3.2 MB, acceptable for git)
 
 # ----- Test outputs -----
 *.log
