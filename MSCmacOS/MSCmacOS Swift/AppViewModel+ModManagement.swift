@@ -414,9 +414,10 @@ extension AppViewModel {
             logAppMessage("[Modpack] \"\(manifest.name)\" v\(manifest.versionId) — starting download…")
         }
 
-        // Filter to server-compatible files (skip client-only)
+        // Tier 1: honor the manifest's own env — files marked server=unsupported are
+        // client-only and are never downloaded.
         let serverFiles = manifest.files.filter {
-            $0.env?.server?.lowercased() != "unsupported"
+            !ModpackClientOnlyClassifier.isManifestServerUnsupported($0.env)
         }
         let skipped = manifest.files.count - serverFiles.count
 
@@ -424,15 +425,37 @@ extension AppViewModel {
             logAppMessage("[Modpack] \(serverFiles.count) files to download, \(skipped) client-only skipped.")
         }
 
+        // Tier 2: batch-fetch Modrinth side metadata for every downloadable project so we
+        // can catch client-only mods the manifest wrongly marks server-required (BMC4).
+        let projectsById = await fetchMrpackProjectMetadata(for: serverFiles)
+
         var downloaded = 0
         var failed: [String] = []
+        // filename → disable reason, for a single summary log at the end.
+        var disabledClientOnly: [(name: String, reason: String)] = []
+        // Jars we placed from the manifest, so the override sweep can skip re-checking them.
+        var manifestJarFilenames: Set<String> = []
 
         for file in serverFiles {
             let destURL = serverDir.appendingPathComponent(file.path)
             try? fm.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
 
-            // Skip if already present
-            if fm.fileExists(atPath: destURL.path) { downloaded += 1; continue }
+            if ModpackClientOnlyClassifier.isModsJar(path: file.path) {
+                manifestJarFilenames.insert(destURL.lastPathComponent)
+            }
+
+            // Never re-download over an existing .jar.disabled (a prior import already
+            // pruned this mod) — leave it disabled and count it as present.
+            let disabledURL = ModpackClientOnlyClassifier.disabledURL(forActiveJar: destURL)
+            if fm.fileExists(atPath: disabledURL.path) { downloaded += 1; continue }
+
+            // Skip if already present, but still (re)classify it.
+            if fm.fileExists(atPath: destURL.path) {
+                downloaded += 1
+                classifyAndDisableManifestJar(file: file, jarURL: destURL, projectsById: projectsById,
+                                              fm: fm, into: &disabledClientOnly)
+                continue
+            }
 
             var ok = false
             for urlStr in file.downloads {
@@ -444,7 +467,13 @@ extension AppViewModel {
                     break
                 } catch { continue }
             }
-            if ok { downloaded += 1 } else { failed.append(file.path) }
+            if ok {
+                downloaded += 1
+                classifyAndDisableManifestJar(file: file, jarURL: destURL, projectsById: projectsById,
+                                              fm: fm, into: &disabledClientOnly)
+            } else {
+                failed.append(file.path)
+            }
         }
 
         // Copy overrides/ and server-overrides/ into the server dir
@@ -461,7 +490,20 @@ extension AppViewModel {
             }
         }
 
+        // Tiers 2–3 for override-provided jars (they aren't in the manifest, so their
+        // Modrinth project is resolved by file hash; jar metadata is the offline fallback).
+        let overrideDisabled = await disableClientOnlyOverrideJars(
+            in: serverDir, skipping: manifestJarFilenames, fm: fm
+        )
+        disabledClientOnly.append(contentsOf: overrideDisabled)
+
         await MainActor.run {
+            if !disabledClientOnly.isEmpty {
+                let names = disabledClientOnly.map { $0.name }
+                let preview = names.prefix(8).joined(separator: ", ")
+                let suffix = names.count > 8 ? ", +\(names.count - 8) more" : ""
+                logAppMessage("[Modpack] Disabled \(names.count) client-only mod(s) for server use: \(preview)\(suffix)")
+            }
             if failed.isEmpty {
                 logAppMessage("[Modpack] Done — \(downloaded) files installed.")
             } else {
@@ -469,6 +511,114 @@ extension AppViewModel {
             }
             refreshDiscoveredMods()
         }
+    }
+
+    // MARK: - Client-only mod pruning (P7.4)
+
+    /// Batch-fetches Modrinth project metadata (for `server_side`) for every downloadable
+    /// mod jar, keyed by project ID. Degrades gracefully: a failed chunk is logged and simply
+    /// absent from the result, so classification falls back to Tier 3 (jar metadata).
+    private func fetchMrpackProjectMetadata(for files: [MrpackFile]) async -> [String: ModrinthProject] {
+        let ids = Array(Set(files.compactMap {
+            ModpackClientOnlyClassifier.modrinthProjectId(fromDownloadURLs: $0.downloads)
+        })).sorted()
+        guard !ids.isEmpty else { return [:] }
+
+        var byId: [String: ModrinthProject] = [:]
+        var i = 0
+        while i < ids.count {
+            let end = min(i + 100, ids.count)   // Modrinth caps batch project lookups
+            let chunk = Array(ids[i..<end])
+            do {
+                for project in try await ModrinthAPI.projects(ids: chunk) { byId[project.id] = project }
+            } catch {
+                await MainActor.run {
+                    logAppMessage("[Modpack] Could not verify server support for \(chunk.count) project(s) (offline?); using embedded jar metadata instead.")
+                }
+            }
+            i = end
+        }
+        return byId
+    }
+
+    /// Classifies a just-installed manifest jar (Tier 2 via its Modrinth project, Tier 3 via
+    /// embedded jar metadata) and disables it if client-only. No-op for non-mods/ files.
+    private func classifyAndDisableManifestJar(
+        file: MrpackFile,
+        jarURL: URL,
+        projectsById: [String: ModrinthProject],
+        fm: FileManager,
+        into disabled: inout [(name: String, reason: String)]
+    ) {
+        guard ModpackClientOnlyClassifier.isModsJar(path: file.path) else { return }
+        let project = ModpackClientOnlyClassifier.modrinthProjectId(fromDownloadURLs: file.downloads)
+            .flatMap { projectsById[$0] }
+        let jarEnv = ModJarMetadataParser.parse(jarURL: jarURL)?.environment
+        guard let reason = ModpackClientOnlyClassifier.clientOnlyReason(
+            modrinthServerSide: project?.serverSide,
+            modrinthProjectTitle: project?.title,
+            jarEnvironment: jarEnv
+        ) else { return }
+        if let name = ModpackClientOnlyClassifier.disableJar(at: jarURL, fm: fm) {
+            disabled.append((name, reason))
+        }
+    }
+
+    /// Scans active jars in mods/ that came from overrides/ (not the manifest) and disables
+    /// the client-only ones. Tier 2: identify each by SHA-512 → Modrinth project → `server_side`.
+    /// Tier 3 fallback: embedded `fabric.mod.json` `environment=client`. A failed hash lookup
+    /// (offline) is logged and degrades to Tier 3 — it never blocks the import.
+    private func disableClientOnlyOverrideJars(
+        in serverDir: URL,
+        skipping manifestJarFilenames: Set<String>,
+        fm: FileManager
+    ) async -> [(name: String, reason: String)] {
+        let modsDir = serverDir.appendingPathComponent("mods", isDirectory: true)
+        guard let entries = try? fm.contentsOfDirectory(
+            at: modsDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        let overrideJars = entries.filter {
+            $0.pathExtension.lowercased() == "jar" && !manifestJarFilenames.contains($0.lastPathComponent)
+        }
+        guard !overrideJars.isEmpty else { return [] }
+
+        // Tier 2: hash → Modrinth version → project id → project (server_side).
+        var projectIdByHash: [String: String] = [:]
+        var hashByJar: [URL: String] = [:]
+        for jar in overrideJars {
+            if let hash = ModrinthAPI.sha512Hex(of: jar) { hashByJar[jar] = hash }
+        }
+        var projectsById: [String: ModrinthProject] = [:]
+        if !hashByJar.isEmpty {
+            do {
+                let versions = try await ModrinthAPI.versionsFromHashes(Array(hashByJar.values))
+                for (hash, version) in versions { if let pid = version.projectId { projectIdByHash[hash] = pid } }
+                let ids = Array(Set(projectIdByHash.values)).sorted()
+                if !ids.isEmpty {
+                    for project in try await ModrinthAPI.projects(ids: ids) { projectsById[project.id] = project }
+                }
+            } catch {
+                await MainActor.run {
+                    logAppMessage("[Modpack] Could not verify override mods against Modrinth (offline?); using embedded jar metadata instead.")
+                }
+            }
+        }
+
+        var disabled: [(name: String, reason: String)] = []
+        for jar in overrideJars {
+            let project = hashByJar[jar].flatMap { projectIdByHash[$0] }.flatMap { projectsById[$0] }
+            let jarEnv = ModJarMetadataParser.parse(jarURL: jar)?.environment
+            guard let reason = ModpackClientOnlyClassifier.clientOnlyReason(
+                modrinthServerSide: project?.serverSide,
+                modrinthProjectTitle: project?.title,
+                jarEnvironment: jarEnv
+            ) else { continue }
+            if let name = ModpackClientOnlyClassifier.disableJar(at: jar, fm: fm) {
+                disabled.append((name, reason))
+            }
+        }
+        return disabled
     }
 
     /// Recursively copies all contents of `src` into `dst`, overwriting existing files.
