@@ -885,7 +885,9 @@ final class DashboardViewModel: ObservableObject {
                 addonsResponse = AddonsResponseDTO(
                     addons: current.addons.filter { $0.jarStem != jarStem },
                     isResolving: current.isResolving,
-                    serverSupportsAddons: current.serverSupportsAddons
+                    serverSupportsAddons: current.serverSupportsAddons,
+                    packManaged: current.packManaged,
+                    packName: current.packName
                 )
             }
             return nil

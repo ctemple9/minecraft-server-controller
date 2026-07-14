@@ -658,7 +658,9 @@ final class DTOContractTests: XCTestCase {
         let mac = RemoteAPIServer.AddonsResponseDTO(
             addons: [addon],
             isResolving: false,
-            serverSupportsAddons: true
+            serverSupportsAddons: true,
+            packManaged: true,
+            packName: "Better MC [FORGE] BMC4"
         )
         let data = try encode(mac)
         let ios = try decode(iOSModels.AddonsResponseDTO.self, from: data)
@@ -668,6 +670,8 @@ final class DTOContractTests: XCTestCase {
         XCTAssertEqual(ios.addons[0].availableVersion, "0.6.1")
         XCTAssertFalse(ios.isResolving)
         XCTAssertTrue(ios.serverSupportsAddons)
+        XCTAssertEqual(ios.packManaged, true)
+        XCTAssertEqual(ios.packName, "Better MC [FORGE] BMC4")
     }
 
     // MARK: - 17. DuckDNS / Geyser

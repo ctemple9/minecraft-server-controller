@@ -19,6 +19,7 @@ struct AddonUpdateSheet: View {
     @State private var selected: Set<String> = []
     @State private var detailHit: ModrinthSearchHit? = nil
     @State private var linkingItem: AddonUpdateItem? = nil
+    @State private var showPackManagedAlert = false
 
     private var kindNoun: String { cfg.javaFlavor.addOnKind == .mod ? "Mods" : "Plugins" }
     private var projectType: String { cfg.javaFlavor.addOnKind == .mod ? "mod" : "plugin" }
@@ -77,6 +78,24 @@ struct AddonUpdateSheet: View {
             })
             .environmentObject(viewModel)
         }
+        .background(
+            Color.clear
+                .alert("Pack-managed server", isPresented: $showPackManagedAlert) {
+                    Button("Update Anyway", role: .destructive) {
+                        let toUpdate = items(.updateAvailable).filter { selected.contains($0.jarStem) }
+                        viewModel.updateAddons(toUpdate, for: cfg)
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    let label: String = {
+                        var parts: [String] = []
+                        if let n = cfg.packName { parts.append(n) }
+                        if let v = cfg.packVersion { parts.append(v) }
+                        return parts.isEmpty ? "a modpack" : parts.joined(separator: " ")
+                    }()
+                    Text("This server was installed from \(label). Updating individual mods can break the pack's tested version set.")
+                }
+        )
     }
 
     // MARK: - Content
@@ -251,8 +270,12 @@ struct AddonUpdateSheet: View {
             Button("Done") { isPresented = false }
                 .buttonStyle(MSCSecondaryButtonStyle())
             Button {
-                let toUpdate = items(.updateAvailable).filter { selected.contains($0.jarStem) }
-                viewModel.updateAddons(toUpdate, for: cfg)
+                if cfg.packManaged {
+                    showPackManagedAlert = true
+                } else {
+                    let toUpdate = items(.updateAvailable).filter { selected.contains($0.jarStem) }
+                    viewModel.updateAddons(toUpdate, for: cfg)
+                }
             } label: {
                 if isBusy {
                     HStack(spacing: 4) { ProgressView().controlSize(.mini); Text("Updating…") }

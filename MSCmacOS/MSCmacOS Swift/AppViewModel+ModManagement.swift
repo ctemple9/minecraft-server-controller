@@ -412,6 +412,13 @@ extension AppViewModel {
 
         await MainActor.run {
             logAppMessage("[Modpack] \"\(manifest.name)\" v\(manifest.versionId) — starting download…")
+            // Persist pack provenance now so the add-on update guard can check it.
+            if let idx = configManager.config.servers.firstIndex(where: { $0.id == cfg.id }) {
+                configManager.config.servers[idx].packManaged = true
+                configManager.config.servers[idx].packName    = manifest.name
+                configManager.config.servers[idx].packVersion = manifest.versionId
+                configManager.save()
+            }
         }
 
         // Tier 1: honor the manifest's own env — files marked server=unsupported are

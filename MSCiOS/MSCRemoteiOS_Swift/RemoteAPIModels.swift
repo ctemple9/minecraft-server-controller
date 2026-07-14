@@ -329,6 +329,10 @@ struct AddonsResponseDTO: Codable, Equatable {
     let addons: [AddonItemDTO]
     let isResolving: Bool
     let serverSupportsAddons: Bool
+    /// Nil when the server was not created from a .mrpack import (older server or non-pack server).
+    let packManaged: Bool?
+    /// The Modrinth modpack name, e.g. "Better MC [FORGE] BMC4". Nil for non-pack servers.
+    let packName: String?
 
     var updateCount: Int { addons.filter { $0.hasUpdate }.count }
 }

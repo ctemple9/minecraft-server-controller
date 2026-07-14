@@ -67,12 +67,12 @@ extension AppViewModel {
         // GET /addons — returns the current add-on update plan, triggering a resolve if stale.
         let addonsProvider: () async -> RemoteAPIServer.AddonsResponseDTO = { [weak self] in
             guard let self else {
-                return RemoteAPIServer.AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false)
+                return RemoteAPIServer.AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false, packManaged: false, packName: nil)
             }
             return await MainActor.run {
                 let cfg = self.configManager.config
                 guard let activeServer = cfg.servers.first(where: { $0.id == cfg.activeServerId }) else {
-                    return RemoteAPIServer.AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false)
+                    return RemoteAPIServer.AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false, packManaged: false, packName: nil)
                 }
                 let supportsAddons = activeServer.javaFlavor.addOnKind != nil
                 if supportsAddons { self.resolveAddonUpdates(for: activeServer) }
@@ -91,7 +91,9 @@ extension AppViewModel {
                 return RemoteAPIServer.AddonsResponseDTO(
                     addons: dtos,
                     isResolving: self.isResolvingAddonUpdates,
-                    serverSupportsAddons: supportsAddons
+                    serverSupportsAddons: supportsAddons,
+                    packManaged: activeServer.packManaged,
+                    packName: activeServer.packName
                 )
             }
         }

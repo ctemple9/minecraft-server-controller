@@ -1098,7 +1098,18 @@ private struct AddonRowUpdateControl: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will replace \(item.currentVersion ?? "the current version") with \(item.availableVersion ?? "the latest build").")
+                let base = "This will replace \(item.currentVersion ?? "the current version") with \(item.availableVersion ?? "the latest build")."
+                if let cfg, cfg.packManaged {
+                    let label: String = {
+                        var parts: [String] = []
+                        if let n = cfg.packName { parts.append(n) }
+                        if let v = cfg.packVersion { parts.append(v) }
+                        return parts.isEmpty ? "a modpack" : parts.joined(separator: " ")
+                    }()
+                    Text("\(base)\n\nThis server was installed from \(label). Updating individual mods may break the pack's tested version set.")
+                } else {
+                    Text(base)
+                }
             }
             .sheet(item: $detailHit) { hit in
                 if let cfg {

@@ -269,6 +269,7 @@
 		D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */; };
 		D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000102 /* TpsMonitoringTests.swift */; };
 		D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */; };
+		D1E900520000000000000107 /* PackManagedGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000106 /* PackManagedGuardTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -537,6 +538,7 @@
 		D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorCrashAnalysisTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000102 /* TpsMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsMonitoringTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeGuardsTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000106 /* PackManagedGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackManagedGuardTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -837,6 +839,7 @@
 				D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */,
 				D1E900520000000000000102 /* TpsMonitoringTests.swift */,
 				D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */,
+				D1E900520000000000000106 /* PackManagedGuardTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1233,6 +1236,7 @@
 				D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */,
 				D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */,
 				D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */,
+				D1E900520000000000000107 /* PackManagedGuardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

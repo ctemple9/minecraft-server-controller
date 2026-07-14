@@ -151,6 +151,8 @@ enum iOSModels {
         let addons: [AddonItemDTO]
         let isResolving: Bool
         let serverSupportsAddons: Bool
+        let packManaged: Bool?
+        let packName: String?
     }
 
     struct AddonUpdateResultDTO: Codable, Equatable {

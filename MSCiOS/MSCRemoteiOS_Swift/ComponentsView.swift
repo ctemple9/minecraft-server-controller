@@ -340,6 +340,18 @@ struct ComponentsView: View {
                     .padding(.bottom, MSCRemoteStyle.spaceSM)
                 }
 
+                if response.packManaged == true {
+                    HStack(spacing: 6) {
+                        Image(systemName: "shippingbox")
+                            .font(.system(size: 11))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        Text(response.packName.map { "Pack-managed: \($0)" } ?? "Pack-managed server")
+                            .font(.system(size: 12))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    }
+                    .padding(.bottom, MSCRemoteStyle.spaceSM)
+                }
+
                 if vm.connectedRole != "guest" && updateCount > 0 {
                     Button {
                         Task { await doUpdateAllAddons() }

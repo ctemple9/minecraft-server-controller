@@ -175,7 +175,7 @@ final class RemoteAPIServer {
     }
 
     /// Returns the current add-on update plan (Modrinth-tracked mods/plugins).
-    var addonsProvider:       () async -> AddonsResponseDTO          = { AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false) }
+    var addonsProvider:       () async -> AddonsResponseDTO          = { AddonsResponseDTO(addons: [], isResolving: false, serverSupportsAddons: false, packManaged: false, packName: nil) }
     /// Updates a specific add-on (jarStem) or all updatable add-ons (updateAll=true). Fire-and-forget.
     var updateAddonProvider:  (_ jarStem: String?, _ updateAll: Bool) -> AddonUpdateResultDTO = { _, _ in AddonUpdateResultDTO(result: "not_available", jarStem: nil, count: 0) }
     /// Removes an installed add-on by jarStem. Returns result after file deletion.

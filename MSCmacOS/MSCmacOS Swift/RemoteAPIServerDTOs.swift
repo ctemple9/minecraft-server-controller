@@ -416,6 +416,11 @@ extension RemoteAPIServer {
         let isResolving: Bool
         /// false for Paper/Vanilla servers that have no plugins/ or mods/ folder.
         let serverSupportsAddons: Bool
+        /// True when the server was created by importing a .mrpack file.
+        /// iOS uses this to show a pack-managed note on the add-ons card.
+        let packManaged: Bool
+        /// The Modrinth modpack name, e.g. "Better MC [FORGE] BMC4". Nil for non-pack servers.
+        let packName: String?
     }
 
     /// Response for POST /components/update when updating a Modrinth add-on (fire-and-forget).

@@ -239,6 +239,18 @@ struct ConfigServer: Codable, Identifiable {
     /// Stays true permanently (never ask again). Cleared if SVC is removed/disabled.
     var svcPortForwardingConfirmed: Bool = false
 
+    // MARK: - Modpack provenance (P7.8)
+
+    /// True when this server was created by importing a .mrpack file.
+    /// Guards the per-mod update flow to prevent breaking the pack's tested version set.
+    var packManaged: Bool = false
+
+    /// The Modrinth modpack name from the .mrpack manifest (e.g. "Better MC [FORGE] BMC4").
+    var packName: String? = nil
+
+    /// The Modrinth modpack version from the .mrpack manifest (e.g. "v43").
+    var packVersion: String? = nil
+
     enum CodingKeys: String, CodingKey {
         case id
         case displayName = "display_name"
@@ -289,6 +301,10 @@ struct ConfigServer: Codable, Identifiable {
         case svcTunnelPromptDismissed   = "svc_tunnel_prompt_dismissed"
         case svcPortForwardingConfirmed = "svc_port_forwarding_confirmed"
         case autoRestartOnCrash         = "auto_restart_on_crash"
+
+        case packManaged = "pack_managed"
+        case packName    = "pack_name"
+        case packVersion = "pack_version"
             }
         }
 
@@ -359,6 +375,10 @@ extension ConfigServer {
         svcTunnelPromptDismissed   = try c.decodeIfPresent(Bool.self, forKey: .svcTunnelPromptDismissed)   ?? false
         svcPortForwardingConfirmed = try c.decodeIfPresent(Bool.self, forKey: .svcPortForwardingConfirmed) ?? false
         autoRestartOnCrash         = try c.decodeIfPresent(Bool.self, forKey: .autoRestartOnCrash)         ?? false
+
+        packManaged = try c.decodeIfPresent(Bool.self,   forKey: .packManaged) ?? false
+        packName    = try c.decodeIfPresent(String.self, forKey: .packName)
+        packVersion = try c.decodeIfPresent(String.self, forKey: .packVersion)
             }
 
     func encode(to encoder: Encoder) throws {
@@ -413,6 +433,10 @@ extension ConfigServer {
         try c.encode(svcTunnelPromptDismissed,   forKey: .svcTunnelPromptDismissed)
         try c.encode(svcPortForwardingConfirmed, forKey: .svcPortForwardingConfirmed)
         try c.encode(autoRestartOnCrash,         forKey: .autoRestartOnCrash)
+
+        try c.encode(packManaged,              forKey: .packManaged)
+        try c.encodeIfPresent(packName,        forKey: .packName)
+        try c.encodeIfPresent(packVersion,     forKey: .packVersion)
             }
 }
 
