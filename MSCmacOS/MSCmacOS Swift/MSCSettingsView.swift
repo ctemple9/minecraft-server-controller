@@ -21,6 +21,7 @@ struct MSCSettingsView: View {
 
     @State private var javaPath: String = ""
     @State private var extraFlags: String = ""
+    @State private var curseForgeAPIKey: String = ""
     @State private var remoteAPIExposeOnLAN: Bool = false
     @State private var useVMBedrockBackend: Bool = false
     @State private var preferredPairingHostInput: String = ""
@@ -284,6 +285,7 @@ struct MSCSettingsView: View {
                     }
                     viewModel.configManager.config.useVMBedrockBackend = useVMBedrockBackend
                     viewModel.configManager.save()
+                    KeychainManager.shared.writeCurseForgeAPIKey(curseForgeAPIKey)
                     viewModel.syncTourAccentColor()
                     dismiss()
                 }
@@ -390,6 +392,7 @@ struct MSCSettingsView: View {
         case .general:
             appearanceCard
             javaCard
+            curseForgeCard
             bedrockRuntimeCard
             PreferencesProcessCleanupSection()
                 .environmentObject(viewModel)
@@ -413,6 +416,32 @@ struct MSCSettingsView: View {
             extraFlags: $extraFlags,
             anchorID: javaCardAnchorID
         )
+    }
+
+    /// CurseForge API key (user-supplied). Stored in Keychain, never in JSON. Required to
+    /// import CurseForge modpacks — the CF API resolves projectID/fileID → download URLs.
+    private var curseForgeCard: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Label("CurseForge", systemImage: "shippingbox")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("API Key")
+                    .font(.system(size: 12, weight: .medium))
+                SecureField("Paste your CurseForge API key", text: $curseForgeAPIKey)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 420)
+                Text("Needed only to import CurseForge modpacks. Get a free key at console.curseforge.com → API Keys. Stored securely in your Mac's Keychain.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .pscCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Transitional toggle: run Bedrock servers in the native Virtualization.framework
@@ -534,6 +563,7 @@ struct MSCSettingsView: View {
         let cfg = viewModel.configManager.config
         javaPath = cfg.javaPath
         extraFlags = cfg.extraFlags
+        curseForgeAPIKey = KeychainManager.shared.readCurseForgeAPIKey() ?? ""
         remoteAPIExposeOnLAN = cfg.remoteAPIExposeOnLAN
         useVMBedrockBackend = cfg.useVMBedrockBackend
         preferredPairingHostInput = cfg.remoteAPIPreferredPairingHost ?? ""

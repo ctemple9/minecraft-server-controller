@@ -20,6 +20,7 @@ enum WizardStagedSource {
     case localJar(url: URL)
     case remoteJar(url: URL, filename: String)
     case mrpackFile(url: URL)
+    case curseForgeFile(url: URL)
     case zipFolder(url: URL)
 }
 
@@ -2186,12 +2187,58 @@ struct AddServerWizardView: View {
                 }
             }
         } else if ext == "zip" {
-            // Zip with JARs — staged for extraction at creation time.
-            stagedAddOns.append(WizardStagedAddOn(
-                name: "Zip: \(url.deletingPathExtension().lastPathComponent)",
-                filename: url.lastPathComponent,
-                source: .zipFolder(url: url)
-            ))
+            // A .zip may be a CurseForge modpack (manifest.json) or a plain jars folder.
+            // Sniff for CurseForge first so we can pin its loader + MC version like .mrpack.
+            if let metadata = try? AppViewModel.readCurseForgeMetadata(from: url) {
+                let manifest = metadata.manifest
+
+                if serverType != .java { serverType = .java }
+                if let flavor = metadata.loaderFlavor {
+                    selectedCategory = flavor.category
+                    if selectedFlavor != flavor {
+                        preserveVersionOnNextFlavorChange = true
+                        selectedFlavor = flavor
+                    }
+                    jarSourceMode = .downloadLatest
+                }
+                if let entry = metadata.versionEntry {
+                    selectedVersionEntry = entry
+                    availableVersions.removeAll { $0.id == entry.id }
+                    availableVersions.insert(entry, at: 0)
+                }
+                if serverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    serverName = metadata.name
+                }
+
+                let detectedParts = [
+                    metadata.minecraftVersion.map { "Minecraft \($0)" },
+                    metadata.loaderFlavor.map { flavor in
+                        if let loaderVersion = metadata.loaderVersion {
+                            return "\(flavor.displayName) \(loaderVersion)"
+                        }
+                        return flavor.displayName
+                    }
+                ].compactMap { $0 }
+                if !detectedParts.isEmpty {
+                    statusMessage = "Detected CurseForge pack \(metadata.name): \(detectedParts.joined(separator: " · "))."
+                }
+
+                let stagedName = metadata.versionId.isEmpty
+                    ? "CurseForge: \(manifest.name ?? metadata.name)"
+                    : "CurseForge: \(metadata.name) v\(metadata.versionId)"
+                stagedAddOns.append(WizardStagedAddOn(
+                    name: stagedName,
+                    filename: url.lastPathComponent,
+                    source: .curseForgeFile(url: url)
+                ))
+            } else {
+                // Plain zip with JARs — staged for extraction at creation time.
+                stagedAddOns.append(WizardStagedAddOn(
+                    name: "Zip: \(url.deletingPathExtension().lastPathComponent)",
+                    filename: url.lastPathComponent,
+                    source: .zipFolder(url: url)
+                ))
+            }
         }
     }
 }

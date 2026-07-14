@@ -700,6 +700,11 @@ extension AppViewModel {
             noteCreation("\(label) Importing modpack \(addOn.filename)…")
             await importModpack(from: url, for: serverConfig)
 
+        case .curseForgeFile(let url):
+            noteCreation("\(label) Importing CurseForge modpack \(addOn.filename)…")
+            // importModpack sniffs the archive and routes to the CurseForge importer.
+            await importModpack(from: url, for: serverConfig)
+
         case .zipFolder(let url):
             let tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("MSC-zip-\(UUID().uuidString)", isDirectory: true)

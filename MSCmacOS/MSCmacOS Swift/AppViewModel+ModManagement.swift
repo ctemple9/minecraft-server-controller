@@ -91,6 +91,23 @@ struct MrpackMetadata {
     /// A `ServerVersionEntry` carrying the pinned MC + loader version, ready to inject
     /// into the wizard's `availableVersions` and select. Nil if no MC version is pinned.
     var versionEntry: ServerVersionEntry? {
+        ModpackVersionEntry.make(
+            minecraftVersion: minecraftVersion,
+            loaderFlavor: loaderFlavor,
+            loaderVersion: loaderVersion
+        )
+    }
+}
+
+/// Builds the `ServerVersionEntry` a pinned modpack injects into the wizard. Shared by
+/// both the .mrpack (`MrpackMetadata`) and CurseForge (`CurseForgeMetadata`) paths so a
+/// single "1.20.1 — Forge 47.4.1" pinning shape covers every modpack format (P7.2/P7.10).
+enum ModpackVersionEntry {
+    static func make(
+        minecraftVersion: String?,
+        loaderFlavor: JavaServerFlavor?,
+        loaderVersion: String?
+    ) -> ServerVersionEntry? {
         guard let minecraftVersion, !minecraftVersion.isEmpty else { return nil }
         guard let loaderFlavor else {
             return ServerVersionEntry(
@@ -351,6 +368,39 @@ extension AppViewModel {
         MrpackMetadata.from(manifest: try readMrpackManifest(from: mrpackURL))
     }
 
+    /// Extracts a CurseForge modpack `.zip` and distills its `manifest.json` into pinning
+    /// metadata (pinned MC + loader flavor/version) for the Add Server wizard — the CF
+    /// analogue of `readMrpackMetadata`. Throws if the zip is not a CurseForge modpack or
+    /// its loader id is malformed/unknown (so the wizard shows a clear error, not a guess).
+    static func readCurseForgeMetadata(from zipURL: URL) throws -> CurseForgeMetadata {
+        let fm = FileManager.default
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("msc_cfpack_meta_\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        p.arguments = ["-x", "-k", zipURL.path, tempDir.path]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError  = FileHandle.nullDevice
+        do { try p.run(); p.waitUntilExit() } catch {
+            throw MrpackReadError.extractionFailed(-1)
+        }
+        guard p.terminationStatus == 0 else {
+            throw MrpackReadError.extractionFailed(p.terminationStatus)
+        }
+
+        let manifestURL = tempDir.appendingPathComponent("manifest.json")
+        guard fm.fileExists(atPath: manifestURL.path),
+              let data = try? Data(contentsOf: manifestURL),
+              CurseForgeModpack.isCurseForgeModpackManifest(data) else {
+            throw CurseForgeManifestError.notCurseForgeModpack
+        }
+        let manifest = try JSONDecoder().decode(CurseForgeManifest.self, from: data)
+        return try CurseForgeMetadata.from(manifest: manifest)
+    }
+
     /// Imports a Modrinth modpack (.mrpack) into the given server.
     /// Downloads all server-compatible files from the manifest, then copies
     /// the overrides/ and server-overrides/ trees into the server directory.
@@ -391,10 +441,18 @@ extension AppViewModel {
             return
         }
 
-        // Parse modrinth.index.json — distinguish absent vs present-but-unreadable vs malformed.
+        // Sniff the extracted root: Modrinth .mrpack vs CurseForge .zip vs neither (P7.10).
+        // A CurseForge pack has no modrinth.index.json; it routes to its own importer below.
         let manifestURL = tempDir.appendingPathComponent("modrinth.index.json")
         guard fm.fileExists(atPath: manifestURL.path) else {
-            await MainActor.run { logAppMessage("[Modpack] not a valid .mrpack (no modrinth.index.json).") }
+            switch CurseForgeModpack.detectKind(inExtractedRoot: tempDir, fm: fm) {
+            case .curseForge:
+                await importExtractedCurseForgeModpack(extractedAt: tempDir, into: serverDir, for: cfg, fm: fm)
+            default:
+                await MainActor.run {
+                    logAppMessage("[Modpack] Unrecognized modpack — no modrinth.index.json (Modrinth) or CurseForge manifest.json found.")
+                }
+            }
             return
         }
         let manifestData: Data
@@ -515,6 +573,156 @@ extension AppViewModel {
                 logAppMessage("[Modpack] Done — \(downloaded) files installed.")
             } else {
                 logAppMessage("[Modpack] Done — \(downloaded) installed, \(failed.count) failed: \(failed.joined(separator: ", "))")
+            }
+            refreshDiscoveredMods()
+        }
+    }
+
+    // MARK: - CurseForge modpack import (P7.10)
+
+    /// Imports an already-extracted CurseForge modpack. Unlike .mrpack, the manifest carries
+    /// only projectID/fileID pairs (no URLs) and no per-file env, so downloads go through the
+    /// official CurseForge API (user-supplied key) and client-only detection reuses the
+    /// hash→Modrinth / jar-metadata tiers over the whole mods/ folder afterward.
+    private func importExtractedCurseForgeModpack(
+        extractedAt tempDir: URL,
+        into serverDir: URL,
+        for cfg: ConfigServer,
+        fm: FileManager
+    ) async {
+        // Decode manifest.json (detection already confirmed it's a CurseForge modpack).
+        let manifestURL = tempDir.appendingPathComponent("manifest.json")
+        guard let data = try? Data(contentsOf: manifestURL),
+              let manifest = try? JSONDecoder().decode(CurseForgeManifest.self, from: data) else {
+            await MainActor.run { logAppMessage("[Modpack] CurseForge manifest.json could not be read.") }
+            return
+        }
+
+        let name = manifest.name?.isEmpty == false ? manifest.name! : "CurseForge Modpack"
+        let versionId = manifest.version ?? ""
+
+        // The API key is user-supplied and lives in the Keychain. Without it we cannot
+        // resolve any download URLs, so stop early with a friendly explanation.
+        guard let apiKey = KeychainManager.shared.readCurseForgeAPIKey(),
+              !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            await MainActor.run {
+                logAppMessage("[Modpack] \"\(name)\" is a CurseForge pack, which needs a CurseForge API key to download its mods.")
+                logAppMessage("[Modpack] Add a free key in Preferences ▸ General ▸ CurseForge (get one at console.curseforge.com ▸ API Keys), then import again.")
+            }
+            return
+        }
+
+        await MainActor.run {
+            logAppMessage("[Modpack] \"\(name)\"\(versionId.isEmpty ? "" : " v\(versionId)") — CurseForge pack, resolving \(manifest.files.count) file(s)…")
+            // Persist pack provenance so the add-on update guard covers CF servers too (P7.8).
+            if let idx = configManager.config.servers.firstIndex(where: { $0.id == cfg.id }) {
+                configManager.config.servers[idx].packManaged = true
+                configManager.config.servers[idx].packName    = name
+                configManager.config.servers[idx].packVersion = versionId.isEmpty ? nil : versionId
+                configManager.save()
+            }
+        }
+
+        // Resolve every fileId → file metadata (downloadUrl, fileName) via the official API.
+        let fileIds = manifest.files.map { $0.fileID }
+        let resolved: [CFFile]
+        do {
+            resolved = try await CurseForgeAPI.files(fileIds: fileIds, apiKey: apiKey)
+        } catch {
+            await MainActor.run {
+                logAppMessage("[Modpack] CurseForge API error: \(error.localizedDescription). Import stopped.")
+            }
+            return
+        }
+
+        let modsDir = serverDir.appendingPathComponent("mods", isDirectory: true)
+        try? fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
+
+        var downloaded = 0
+        var failed: [String] = []
+        var blockedFiles: [CFFile] = []   // downloadUrl == nil → manual download
+
+        for file in resolved {
+            let destURL = modsDir.appendingPathComponent(file.fileName)
+
+            // Never clobber an existing .jar.disabled (a prior import already pruned it).
+            let disabledURL = ModpackClientOnlyClassifier.disabledURL(forActiveJar: destURL)
+            if fm.fileExists(atPath: disabledURL.path) { downloaded += 1; continue }
+            if fm.fileExists(atPath: destURL.path) { downloaded += 1; continue }
+
+            guard let urlStr = file.downloadUrl, let url = URL(string: urlStr) else {
+                // Author opted out of API distribution — collect for the manual-download list.
+                blockedFiles.append(file)
+                continue
+            }
+            do {
+                let (bytes, _) = try await MSCHTTP.get(url)
+                try bytes.write(to: destURL)
+                downloaded += 1
+            } catch {
+                failed.append(file.fileName)
+            }
+        }
+
+        // Copy overrides/ (client configs/resources) into the server dir via the shared merge.
+        let overridesName = (manifest.overrides?.isEmpty == false) ? manifest.overrides! : "overrides"
+        let overridesSrc = tempDir.appendingPathComponent(overridesName, isDirectory: true)
+        if fm.fileExists(atPath: overridesSrc.path) {
+            let mergeFailures = mergeDirectory(from: overridesSrc, into: serverDir, fm: fm)
+            await MainActor.run {
+                if mergeFailures == 0 {
+                    logAppMessage("[Modpack] Copied \(overridesName)/.")
+                } else {
+                    logAppMessage("[Modpack] Copied \(overridesName)/ with \(mergeFailures) file(s) that failed to copy.")
+                }
+            }
+        }
+
+        // Client-only auto-disable: CF gives no per-file env, so classify EVERY jar in mods/
+        // by hash→Modrinth server_side (Tier A) with embedded jar env as the fallback (Tier B).
+        // Reuses the .mrpack override sweep unchanged, skipping nothing.
+        let disabledClientOnly = await disableClientOnlyOverrideJars(in: serverDir, skipping: [], fm: fm)
+
+        // Build the manual-download list for distribution-blocked files (mod name + page link).
+        var manualDownloads: [CurseForgeModpack.ManualDownload] = []
+        if !blockedFiles.isEmpty {
+            let projectsById: [Int: CFMod]
+            do {
+                let mods = try await CurseForgeAPI.mods(modIds: blockedFiles.map { $0.modId }, apiKey: apiKey)
+                projectsById = Dictionary(mods.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            } catch {
+                projectsById = [:]   // degrade to fileName-only entries; never block the import
+            }
+            manualDownloads = CurseForgeModpack.manualDownloads(blockedFiles: blockedFiles, projectsById: projectsById)
+        }
+
+        await MainActor.run {
+            if !disabledClientOnly.isEmpty {
+                let names = disabledClientOnly.map { $0.name }
+                let preview = names.prefix(8).joined(separator: ", ")
+                let suffix = names.count > 8 ? ", +\(names.count - 8) more" : ""
+                logAppMessage("[Modpack] Disabled \(names.count) client-only mod(s) for server use: \(preview)\(suffix)")
+            }
+            if failed.isEmpty {
+                logAppMessage("[Modpack] Done — \(downloaded) files installed.")
+            } else {
+                logAppMessage("[Modpack] Done — \(downloaded) installed, \(failed.count) failed: \(failed.joined(separator: ", "))")
+            }
+            // AddonLink identity for CF mods is resolved by the existing hash→Modrinth
+            // resolver when the Components tab opens (same as .mrpack override jars); mods
+            // with no Modrinth match stay unlinked and updates remain Modrinth-driven.
+            if !manualDownloads.isEmpty {
+                logAppMessage("[Modpack] \(manualDownloads.count) mod(s) can't be auto-downloaded (author disabled API distribution). Download these manually and drop them into mods/:")
+                for m in manualDownloads {
+                    logAppMessage("[Modpack]   • \(m.modName) — \(m.fileName) — \(m.projectPageURL)")
+                }
+                // Surface the list in the app's global result alert (the log has the links).
+                let lines = manualDownloads.prefix(20).map { "• \($0.modName) (\($0.fileName))" }.joined(separator: "\n")
+                let more = manualDownloads.count > 20 ? "\n…and \(manualDownloads.count - 20) more (see the log)." : ""
+                errorAlert = AppError(
+                    title: "\(manualDownloads.count) mod(s) need a manual download",
+                    message: "The authors of these mods disabled automatic downloads on CurseForge. The server is usable now; add them by downloading each from its CurseForge page (links are in the app log) and dropping the .jar into the server's mods/ folder:\n\n\(lines)\(more)"
+                )
             }
             refreshDiscoveredMods()
         }

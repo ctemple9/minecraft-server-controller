@@ -87,11 +87,12 @@ struct DetailsComponentsTabView: View {
         ) { result in
             guard case .success(let urls) = result,
                   let url = urls.first,
-                  url.pathExtension.lowercased() == "mrpack",
+                  ["mrpack", "zip"].contains(url.pathExtension.lowercased()),
                   let cfg = selectedConfig else { return }
             Task {
                 let accessed = url.startAccessingSecurityScopedResource()
                 defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                // importModpack sniffs the archive: .mrpack (Modrinth) or .zip (CurseForge).
                 await viewModel.importModpack(from: url, for: cfg)
             }
         }

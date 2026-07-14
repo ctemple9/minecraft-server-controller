@@ -33,8 +33,14 @@ final class KeychainManager {
     /// Keychain service name for the playit.gg agent secret key.
     private static let playitSecretKeyService = "com.camerontemple.minecraftservercontroller.playit.secretkey"
 
+    /// Keychain service name for the user-supplied CurseForge API key.
+    private static let curseForgeAPIKeyService = "com.camerontemple.minecraftservercontroller.curseforge.apikey"
+
     /// Fixed account name for the playit secret key (there is only one global key).
     private static let playitSecretKeyAccount = "agent"
+
+    /// Fixed account name for the CurseForge API key (there is only one global key).
+    private static let curseForgeAPIKeyAccount = "apikey"
 
     /// Fixed account name for the Remote API token (there is only one owner token).
     private static let remoteAPITokenAccount = "owner"
@@ -103,6 +109,21 @@ final class KeychainManager {
         return write(value: key, service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount)
     }
 
+    // MARK: - CurseForge API Key
+
+    func readCurseForgeAPIKey() -> String? {
+        return read(service: Self.curseForgeAPIKeyService, account: Self.curseForgeAPIKeyAccount)
+    }
+
+    /// Writes the CurseForge API key to Keychain. Passing `nil` or an empty string deletes it.
+    @discardableResult
+    func writeCurseForgeAPIKey(_ key: String?) -> Bool {
+        guard let key, !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return delete(service: Self.curseForgeAPIKeyService, account: Self.curseForgeAPIKeyAccount)
+        }
+        return write(value: key, service: Self.curseForgeAPIKeyService, account: Self.curseForgeAPIKeyAccount)
+    }
+
     // MARK: - Reset helpers
 
     /// Deletes the global Remote API token and every per-server Xbox Broadcast alt password.
@@ -120,6 +141,10 @@ final class KeychainManager {
         }
 
         if !delete(service: Self.playitSecretKeyService, account: Self.playitSecretKeyAccount) {
+            allSucceeded = false
+        }
+
+        if !delete(service: Self.curseForgeAPIKeyService, account: Self.curseForgeAPIKeyAccount) {
             allSucceeded = false
         }
 

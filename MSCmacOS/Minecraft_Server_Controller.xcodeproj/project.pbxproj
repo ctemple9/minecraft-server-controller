@@ -203,6 +203,8 @@
 		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
 		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
 		9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */; };
+		9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02290000000000000001 /* CurseForgeModpack.swift */; };
+		9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022A0000000000000001 /* CurseForgeAPI.swift */; };
 		9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */; };
 		9AFE02280000000000000002 /* TpsLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02280000000000000001 /* TpsLineParser.swift */; };
 		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
@@ -270,6 +272,7 @@
 		D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000102 /* TpsMonitoringTests.swift */; };
 		D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */; };
 		D1E900520000000000000107 /* PackManagedGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000106 /* PackManagedGuardTests.swift */; };
+		D1E900520000000000000109 /* CurseForgeModpackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000108 /* CurseForgeModpackTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -471,6 +474,8 @@
 		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
 		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
 		9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyClassifier.swift; sourceTree = "<group>"; };
+		9AFE02290000000000000001 /* CurseForgeModpack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpack.swift; sourceTree = "<group>"; };
+		9AFE022A0000000000000001 /* CurseForgeAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeAPI.swift; sourceTree = "<group>"; };
 		9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthSlugNormalizer.swift; sourceTree = "<group>"; };
 		9AFE02280000000000000001 /* TpsLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsLineParser.swift; sourceTree = "<group>"; };
 		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
@@ -539,6 +544,7 @@
 		D1E900520000000000000102 /* TpsMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsMonitoringTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeGuardsTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000106 /* PackManagedGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackManagedGuardTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000108 /* CurseForgeModpackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpackTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -712,6 +718,8 @@
 				9AFE020C0000000000000001 /* ModrinthBrowserView.swift */,
 				9AFE020D0000000000000001 /* ModJarMetadataParser.swift */,
 				9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */,
+				9AFE02290000000000000001 /* CurseForgeModpack.swift */,
+				9AFE022A0000000000000001 /* CurseForgeAPI.swift */,
 				9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */,
 				9AFE02280000000000000001 /* TpsLineParser.swift */,
 				9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */,
@@ -840,6 +848,7 @@
 				D1E900520000000000000102 /* TpsMonitoringTests.swift */,
 				D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */,
 				D1E900520000000000000106 /* PackManagedGuardTests.swift */,
+				D1E900520000000000000108 /* CurseForgeModpackTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1167,6 +1176,8 @@
 				9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */,
 				9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */,
 				9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */,
+				9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */,
+				9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */,
 				9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */,
 				9AFE02280000000000000002 /* TpsLineParser.swift in Sources */,
 				9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */,
@@ -1237,6 +1248,7 @@
 				D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */,
 				D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */,
 				D1E900520000000000000107 /* PackManagedGuardTests.swift in Sources */,
+				D1E900520000000000000109 /* CurseForgeModpackTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
