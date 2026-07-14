@@ -299,12 +299,18 @@ extension AppViewModel {
             guard let self else { return }
             let loaders = cfg.javaFlavor.modrinthLoaderFacets
             let type = (cfg.javaFlavor.addOnKind == .mod) ? "mod" : "plugin"
+            let forgeFamily = cfg.javaFlavor.isForgeFamily
+            // A missing dependency isn't installed, so its identity can only come from the
+            // alias table (c) + Modrinth search (d) — file-hash / persisted-link rungs don't apply.
+            let canonical = ModrinthSlugNormalizer.canonicalSlug(for: dep, forgeFamily: forgeFamily)
+            let query = ModrinthSlugNormalizer.searchQuery(for: dep, forgeFamily: forgeFamily)
             do {
                 let results = try await ModrinthAPI.search(
-                    query: dep, loaders: loaders, gameVersion: cfg.minecraftVersion,
+                    query: query, loaders: loaders, gameVersion: cfg.minecraftVersion,
                     projectType: type, limit: 8)
-                let norm = dep.lowercased().replacingOccurrences(of: " ", with: "-")
-                let hit = results.hits.first { $0.slug.lowercased() == norm }
+                let norm = ModrinthSlugNormalizer.normalizedSlug(dep)
+                let hit = results.hits.first { $0.slug.lowercased() == canonical }
+                    ?? results.hits.first { $0.slug.lowercased() == norm }
                     ?? results.hits.first { $0.title.lowercased() == dep.lowercased() }
                     ?? results.hits.first
                 guard let hit else {
@@ -318,6 +324,80 @@ extension AppViewModel {
                     log: "[Repair] Failed to install \(dep): \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Resolves the best Modrinth identity for a startup problem's offender, for the "View
+    /// on Modrinth" action. Runs the layered lookup ladder, most-authoritative first:
+    ///   (a) the installed file's SHA-512 → Modrinth version → project (exact match);
+    ///   (b) a persisted AddonLink for that file (the cached, hash-derived form of (a));
+    ///   (c) the known-alias table (connectormod → connector, etc.), trusted as a real slug;
+    ///   (d) a Modrinth search on the canonical query.
+    /// Falls back to a bare canonical-slug hit (the detail view refetches by slug), so this
+    /// returns nil only when there's no offender text at all.
+    func startupProblemModrinthHit(for problem: StartupProblem, cfg: ConfigServer) async -> ModrinthSearchHit? {
+        let forgeFamily = cfg.javaFlavor.isForgeFamily
+        let projectType = (cfg.javaFlavor.addOnKind == .plugin) ? "plugin" : "mod"
+        let rawOffender = problem.offenderId ?? problem.offenderName
+
+        // (a) Installed-file hash → Modrinth version → project.
+        if let file = problem.installedFile {
+            let folder = (cfg.javaFlavor.addOnKind == .plugin) ? "plugins" : "mods"
+            let jarURL = URL(fileURLWithPath: cfg.serverDir)
+                .appendingPathComponent(folder, isDirectory: true)
+                .appendingPathComponent(file)
+            if FileManager.default.fileExists(atPath: jarURL.path),
+               let hash = ModrinthAPI.sha512Hex(of: jarURL),
+               let version = try? await ModrinthAPI.versionFromHash(hash),
+               let projectId = version.projectId {
+                if let project = try? await ModrinthAPI.project(idOrSlug: projectId) {
+                    return ModrinthSearchHit(
+                        projectId: project.id, slug: project.slug, title: project.title,
+                        description: "", author: "", downloads: 0, iconUrl: project.iconUrl,
+                        clientSide: project.clientSide, serverSide: project.serverSide, projectType: projectType)
+                }
+                return ModrinthSearchHit(
+                    projectId: projectId, slug: projectId, title: problem.offenderName,
+                    description: "", author: "", downloads: 0, iconUrl: nil,
+                    clientSide: "unknown", serverSide: "unknown", projectType: projectType)
+            }
+        }
+
+        // (b) Persisted AddonLink (matched by file name, then by installed hash).
+        if let link = cfg.addonLinks?.values.first(where: { $0.installedFileName == problem.installedFile }) {
+            return ModrinthSearchHit(
+                projectId: link.projectId, slug: link.slug, title: link.title,
+                description: "", author: "", downloads: 0, iconUrl: link.iconURL,
+                clientSide: link.clientSide ?? "unknown", serverSide: link.serverSide ?? "unknown",
+                projectType: projectType)
+        }
+
+        // (c) Known alias — trust the rewritten slug directly.
+        let canonical = ModrinthSlugNormalizer.canonicalSlug(for: rawOffender, forgeFamily: forgeFamily)
+        if ModrinthSlugNormalizer.isKnownAlias(rawOffender, forgeFamily: forgeFamily), !canonical.isEmpty {
+            return ModrinthSearchHit(
+                projectId: canonical, slug: canonical, title: problem.offenderName,
+                description: "", author: "", downloads: 0, iconUrl: nil,
+                clientSide: "unknown", serverSide: "unknown", projectType: projectType)
+        }
+
+        // (d) Modrinth search on the canonical query.
+        let loaders = cfg.javaFlavor.modrinthLoaderFacets
+        let query = ModrinthSlugNormalizer.searchQuery(for: rawOffender, forgeFamily: forgeFamily)
+        if let results = try? await ModrinthAPI.search(
+            query: query, loaders: loaders, gameVersion: cfg.minecraftVersion,
+            projectType: projectType, limit: 8) {
+            let hit = results.hits.first { $0.slug.lowercased() == canonical }
+                ?? results.hits.first { $0.title.lowercased() == problem.offenderName.lowercased() }
+                ?? results.hits.first
+            if let hit { return hit }
+        }
+
+        // Floor: a bare canonical-slug hit, so "View" always opens *something* to refine.
+        guard !canonical.isEmpty else { return nil }
+        return ModrinthSearchHit(
+            projectId: canonical, slug: canonical, title: problem.offenderName,
+            description: "", author: "", downloads: 0, iconUrl: nil,
+            clientSide: "unknown", serverSide: "unknown", projectType: projectType)
     }
 
     /// Common completion for a repair: logs, clears the spinner, and on success drops the

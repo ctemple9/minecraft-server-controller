@@ -241,7 +241,7 @@ struct StartupProblemsSheet: View {
                     }
                 }
 
-                Button("View") { openModrinth(p) }
+                Button("View") { Task { await openModrinth(p) } }
                     .buttonStyle(MSCSecondaryButtonStyle()).controlSize(.mini)
 
                 if p.installedJarStem != nil {
@@ -285,26 +285,26 @@ struct StartupProblemsSheet: View {
         resolve(p)
     }
 
-    /// Opens the Modrinth detail view for the offender. Prefers a persisted link
-    /// (reliable project id), falling back to the mod-id as the project slug.
-    private func openModrinth(_ p: StartupProblem) {
-        let linked = cfg?.addonLinks?.values.first { $0.installedFileName == p.installedFile }
-        let projectType = (cfg?.javaFlavor.addOnKind == .mod) ? "mod" : "plugin"
-        if let linked {
-            detailHit = ModrinthSearchHit(
-                projectId: linked.projectId, slug: linked.slug, title: linked.title,
-                description: "", author: "", downloads: 0, iconUrl: linked.iconURL,
-                clientSide: "unknown", serverSide: "unknown", projectType: projectType)
-        } else if let slug = p.offenderId ?? slugGuess(from: p.offenderName) {
-            detailHit = ModrinthSearchHit(
-                projectId: slug, slug: slug, title: p.offenderName,
-                description: "", author: "", downloads: 0, iconUrl: nil,
-                clientSide: "unknown", serverSide: "unknown", projectType: projectType)
+    /// Opens the Modrinth detail view for the offender, resolving its identity through the
+    /// layered lookup ladder (installed-file hash → persisted AddonLink → known-alias slug →
+    /// Modrinth search). Falls back to a canonical-slug guess so "View" always opens something.
+    @MainActor
+    private func openModrinth(_ p: StartupProblem) async {
+        guard let cfg else {
+            // No server context — best-effort slug guess, matching prior behavior.
+            if let slug = p.offenderId ?? slugGuess(from: p.offenderName) {
+                detailHit = ModrinthSearchHit(
+                    projectId: slug, slug: slug, title: p.offenderName,
+                    description: "", author: "", downloads: 0, iconUrl: nil,
+                    clientSide: "unknown", serverSide: "unknown", projectType: "mod")
+            }
+            return
         }
+        detailHit = await viewModel.startupProblemModrinthHit(for: p, cfg: cfg)
     }
 
     private func slugGuess(from name: String) -> String? {
-        let s = name.lowercased().replacingOccurrences(of: " ", with: "-")
+        let s = ModrinthSlugNormalizer.canonicalSlug(for: name, forgeFamily: cfg?.javaFlavor.isForgeFamily ?? false)
         return s.isEmpty ? nil : s
     }
 }

@@ -123,7 +123,9 @@ extension AppViewModel {
             if p.kind == .missingDependency, p.missingDependency != nil { actions.append("install") }
             if p.installedJarStem != nil { actions.append("disable"); actions.append("delete") }
             let linkedSlug = cfg.addonLinks?.values.first { $0.installedFileName == p.installedFile }?.slug
-            let slug = (linkedSlug ?? p.offenderId ?? p.offenderName.lowercased().replacingOccurrences(of: " ", with: "-"))
+            let canonicalSlug = ModrinthSlugNormalizer.canonicalSlug(
+                for: p.offenderId ?? p.offenderName, forgeFamily: cfg.javaFlavor.isForgeFamily)
+            let slug = (linkedSlug ?? canonicalSlug)
                 .trimmingCharacters(in: .whitespaces)
             let modrinthURL = slug.isEmpty ? nil : "https://modrinth.com/project/\(slug)"
             return RemoteAPIServer.StartupProblemDTO(

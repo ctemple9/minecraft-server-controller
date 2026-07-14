@@ -268,12 +268,41 @@ enum StartupCrashAnalyzer {
 
         for raw in text.components(separatedBy: .newlines) {
             let line = raw.trimmingCharacters(in: .whitespaces)
+            // Sinytra Connector surfaces Fabric-side failures inside a Forge start as an
+            // EarlyLoadingException — parse those before the Forge dependency-line format.
+            if let problem = parseConnectorEntrypointFailure(line, installedMods: installedMods),
+               seen.insert(problem.id).inserted {
+                problems.append(problem)
+                continue
+            }
             guard line.contains("Mod ID:"), line.contains("Requested by:"),
                   line.contains("Actual version:") else { continue }
             guard let problem = parseForgeDependencyLine(line, installedMods: installedMods) else { continue }
             if seen.insert(problem.id).inserted { problems.append(problem) }
         }
         return problems
+    }
+
+    /// Sinytra Connector can surface a Fabric entrypoint failure inside a Forge start as:
+    ///   net.minecraftforge.fml.loading.EarlyLoadingException: Could not execute entrypoint
+    ///   stage 'main' due to errors, provided by 'particle_effects'
+    /// These aren't Forge dependency lines, but they still name the mod we can disable.
+    /// Returns nil (rather than guessing) when the line lacks a `provided by '<modid>'`.
+    private static func parseConnectorEntrypointFailure(_ line: String, installedMods: [ModEntry]) -> StartupProblem? {
+        guard line.contains("Could not execute entrypoint stage"),
+              line.contains("provided by") else { return nil }
+        guard let offenderId = quotedValue(after: "provided by", in: line), !offenderId.isEmpty else { return nil }
+        let match = matchInstalledMod(offenderId, installedMods: installedMods)
+        return StartupProblem(
+            kind: .loadError,
+            offenderName: match?.displayName ?? offenderId,
+            offenderId: offenderId,
+            installedFile: match?.filename,
+            installedJarStem: match?.jarStem,
+            requirement: "Failed while loading a Connector/Fabric entrypoint on the dedicated server.",
+            missingDependency: nil,
+            rawExcerpt: line
+        )
     }
 
     private static func parseForgeDependencyLine(_ line: String, installedMods: [ModEntry]) -> StartupProblem? {
@@ -307,8 +336,7 @@ enum StartupCrashAnalyzer {
             requirement = "Needs version \(expected ?? "?") (have \(actual ?? "?")); required by \(requestedBy)"
         }
 
-        let match = installedMods.first { $0.modId == offenderId }
-            ?? installedMods.first { $0.displayName.caseInsensitiveCompare(offenderId) == .orderedSame }
+        let match = matchInstalledMod(offenderId, installedMods: installedMods)
 
         return StartupProblem(
             kind: kind,
@@ -331,6 +359,50 @@ enum StartupCrashAnalyzer {
         guard let q2 = rest.range(of: "'") else { return nil }
         let value = String(rest[..<q2.lowerBound]).trimmingCharacters(in: .whitespaces)
         return value.isEmpty ? nil : value
+    }
+
+    /// Maps a loader mod-id or display name back to an installed jar, tolerant of the
+    /// separator drift between Forge internal ids, Modrinth slugs, and human names —
+    /// `particle_effects`, `particle-effects`, and "Particle Effects" all match the same
+    /// jar. Tries (in order): normalized id, normalized display name, punctuation-stripped
+    /// id, punctuation-stripped name, then a jar-stem prefix match. Returns nil if nothing
+    /// matches — the caller keeps the raw offender id rather than mis-attributing.
+    static func matchInstalledMod(_ idOrName: String, installedMods: [ModEntry]) -> ModEntry? {
+        let wanted = normalizedIdentifier(idOrName)
+        guard !wanted.isEmpty else { return nil }
+        let wantedCompact = compactIdentifier(idOrName)
+
+        if let m = installedMods.first(where: { normalizedIdentifier($0.modId ?? "") == wanted }) { return m }
+        if let m = installedMods.first(where: { normalizedIdentifier($0.displayName) == wanted }) { return m }
+        if let m = installedMods.first(where: { compactIdentifier($0.modId ?? "") == wantedCompact }) { return m }
+        if let m = installedMods.first(where: { compactIdentifier($0.displayName) == wantedCompact }) { return m }
+        if let m = installedMods.first(where: { compactIdentifier($0.jarStem).hasPrefix(wantedCompact) }) { return m }
+        return nil
+    }
+
+    /// Lowercases and collapses every run of non-alphanumerics to a single dash, trimming
+    /// leading/trailing dashes. "Particle Effects" → "particle-effects"; "particle_effects"
+    /// → "particle-effects".
+    static func normalizedIdentifier(_ raw: String) -> String {
+        let lower = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        var result = ""
+        var previousWasDash = false
+        for scalar in lower.unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                result.unicodeScalars.append(scalar)
+                previousWasDash = false
+            } else if !previousWasDash {
+                result.append("-")
+                previousWasDash = true
+            }
+        }
+        return result.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+
+    /// Like `normalizedIdentifier` but with all separators removed — "particle-effects" and
+    /// "particleeffects" collapse together for the loosest (prefix) matching tier.
+    static func compactIdentifier(_ raw: String) -> String {
+        normalizedIdentifier(raw).replacingOccurrences(of: "-", with: "")
     }
 
     // MARK: - Paper / Spigot plugins (soft fail)

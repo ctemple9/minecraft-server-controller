@@ -124,6 +124,11 @@ enum JavaServerFlavor: String, Codable, CaseIterable {
         }
     }
 
+    /// Forge/NeoForge run Fabric mods through Sinytra Connector, which changes which
+    /// Modrinth project a Fabric-side dependency maps to (e.g. fabric-api →
+    /// forgified-fabric-api). Used by ModrinthSlugNormalizer to alias conditionally.
+    var isForgeFamily: Bool { self == .forge || self == .neoforge }
+
     /// What add-ons this flavor accepts. Vanilla has no plugin/mod API
     /// (datapacks only), so it returns nil — the add-on browser is hidden for it.
     var addOnKind: AddOnKind? {
