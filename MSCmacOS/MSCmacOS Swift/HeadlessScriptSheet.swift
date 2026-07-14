@@ -50,21 +50,17 @@ struct HeadlessScriptSheet: View {
                 includeXboxBroadcast: includeXboxBroadcast
             )
         case .bedrock:
-            if appConfig.useVMBedrockBackend {
-                return """
-                # Headless shell scripts are not supported for the built-in VM Bedrock backend.
-                #
-                # The built-in VM is managed by the app using Apple Virtualization.framework.
-                # There is no standalone docker run equivalent.
-                #
-                # To run the server without the app, use the Minecraft Server Controller
-                # Remote API or manage the VM directly.
-                """
-            }
-            return HeadlessScriptGenerator.bedrockScript(
-                config: config,
-                dockerRestart: dockerRestart
-            )
+            // Bedrock servers run inside MSC's built-in Virtualization.framework VM —
+            // they cannot be started from a shell script.
+            // (Docker script kept below for reference; not surfaced — hide-don't-delete policy.)
+            return """
+            # Bedrock servers run inside MSC's built-in VM.
+            # Keep MSC running — the crash watchdog handles restarts automatically.
+            #
+            # There is no standalone shell-script equivalent; the VM is managed entirely
+            # by the app via Apple Virtualization.framework.
+            """
+            // return HeadlessScriptGenerator.bedrockScript(config: config, dockerRestart: dockerRestart)
         }
     }
 
@@ -172,32 +168,24 @@ struct HeadlessScriptSheet: View {
     // MARK: - Bedrock options
 
     private var bedrockOptions: some View {
-        Group {
-            if appConfig.useVMBedrockBackend {
-                SECallout(
-                    icon: "memorychip",
-                    color: .orange,
-                    text: "This Bedrock server uses the built-in VM backend. Headless shell scripts are not applicable — the VM is managed by the app via Apple Virtualization.framework."
-                )
-            } else {
-                // Docker restart picker — only relevant when Docker backend is in use
-                SESection(icon: "gearshape.fill", title: "Options", color: .blue) {
-                    HStack {
-                        Text("Restart policy")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                        Picker("", selection: $dockerRestart) {
-                            ForEach(HeadlessDockerRestart.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 280)
-                        Spacer(minLength: 0)
-                    }
-                }
-            }
-        }
+        // Bedrock servers run inside the built-in VM — no shell script needed.
+        // (Docker restart picker kept below for reference; not surfaced — hide-don't-delete policy.)
+        SECallout(
+            icon: "memorychip",
+            color: .orange,
+            text: "Bedrock servers run inside MSC's built-in VM. Keep MSC running — the crash watchdog handles restarts automatically."
+        )
+        // Docker restart picker (hidden — Docker backend retired):
+        // SESection(icon: "gearshape.fill", title: "Options", color: .blue) {
+        //     HStack {
+        //         Text("Restart policy").font(.system(size: 12)).foregroundStyle(.secondary)
+        //         Picker("", selection: $dockerRestart) {
+        //             ForEach(HeadlessDockerRestart.allCases) { mode in Text(mode.rawValue).tag(mode) }
+        //         }
+        //         .pickerStyle(.segmented).frame(maxWidth: 280)
+        //         Spacer(minLength: 0)
+        //     }
+        // }
     }
 
     // MARK: - Script display

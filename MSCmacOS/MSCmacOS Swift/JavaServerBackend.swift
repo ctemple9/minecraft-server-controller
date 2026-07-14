@@ -56,32 +56,30 @@ final class JavaServerBackend: ServerBackend {
 
     /// Start the Java/Paper server using the provided ConfigServer and AppConfig.
     ///
-    /// Reads javaPath, extraFlags, paperJarPath, minRam, maxRam from the two
-    /// config objects — exactly as AppViewModel.startServer() did before this refactor.
+    /// Uses `JavaServerLaunchHelper.resolve()` — the same helper as `HeadlessScriptGenerator` —
+    /// so flavor routing and java-path normalization can never drift between the two.
     func start(config: ConfigServer, appConfig: AppConfig) throws {
         let serverDirURL = URL(fileURLWithPath: config.serverDir)
 
-        // NeoForge and Forge launch from installer-generated args files rather than a jar.
-        let neoForgeArgs: String?
-        switch config.javaFlavor {
-        case .neoforge: neoForgeArgs = NeoForgeInstaller.findArgsFile(in: serverDirURL, specificVersion: config.loaderVersion)
-        case .forge:    neoForgeArgs = ForgeInstaller.findArgsFile(in: serverDirURL, mcVersion: config.minecraftVersion, forgeVersion: config.loaderVersion)
-        default:        neoForgeArgs = nil
-        }
+        let launch = JavaServerLaunchHelper.resolve(
+            config: config,
+            appConfig: appConfig,
+            serverDirURL: serverDirURL,
+            minRamGB: config.minRam,
+            maxRamGB: config.maxRam
+        )
 
-        let jarPath = config.paperJarPath.isEmpty
-            ? serverDirURL.appendingPathComponent("paper.jar").path
-            : config.paperJarPath
+        let jarPath = serverDirURL.appendingPathComponent(launch.jarName).path
 
         do {
             try processManager.startServer(
-                javaPath: appConfig.javaPath,
+                javaPath: launch.javaPath,
                 extraFlags: appConfig.extraFlags,
                 serverDirectory: serverDirURL,
                 paperJarPath: jarPath,
                 minRamGB: config.minRam,
                 maxRamGB: config.maxRam,
-                neoForgeArgsFile: neoForgeArgs
+                neoForgeArgsFile: launch.neoForgeArgsFile
             )
         } catch let error as ServerProcessManager.ServerProcessError {
             // Translate to the protocol-level error type so callers are
