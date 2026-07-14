@@ -268,6 +268,7 @@
 		D1E9005200000000000000F1 /* ModpackClientOnlyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */; };
 		D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */; };
 		D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000102 /* TpsMonitoringTests.swift */; };
+		D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -535,6 +536,7 @@
 		D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorCrashAnalysisTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000102 /* TpsMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsMonitoringTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeGuardsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -834,6 +836,7 @@
 				D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */,
 				D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */,
 				D1E900520000000000000102 /* TpsMonitoringTests.swift */,
+				D1E900520000000000000104 /* JavaRuntimeGuardsTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1229,6 +1232,7 @@
 				D1E9005200000000000000F1 /* ModpackClientOnlyTests.swift in Sources */,
 				D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */,
 				D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */,
+				D1E900520000000000000105 /* JavaRuntimeGuardsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

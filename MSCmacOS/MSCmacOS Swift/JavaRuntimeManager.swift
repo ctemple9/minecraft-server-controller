@@ -89,14 +89,63 @@ enum JavaRuntimeManager {
         return first
     }
 
-    /// Returns a user-facing warning if the configured Java is too old for the
-    /// server's Minecraft version, or nil if it's fine / undeterminable.
+    // MARK: - Path normalization
+
+    /// Normalizes a java path so MSC always receives an executable binary, not a JDK
+    /// home directory. Bare command names that contain no "/" (e.g. "java") are left
+    /// as-is — they are resolved against PATH at launch time. A directory that contains
+    /// `bin/java` is automatically expanded to that binary (handles the common mistake
+    /// of pasting a JAVA_HOME path from the Finder into Preferences, which produces
+    /// "permission denied" when MSC tries to exec a directory).
+    ///
+    /// Returns `(path: normalized, error: nil)` on success, or `(path: nil, error: reason)`
+    /// when the path cannot be resolved to something executable.
+    static func normalizedJavaExecutablePath(_ rawPath: String) -> (path: String?, error: String?) {
+        guard rawPath.contains("/") else { return (rawPath, nil) }
+        let fm = FileManager.default
+        let expanded = (rawPath as NSString).expandingTildeInPath
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: expanded, isDirectory: &isDir) else {
+            return (nil, "Java path does not exist: \(rawPath)")
+        }
+        if isDir.boolValue {
+            let candidate = (expanded as NSString).appendingPathComponent("bin/java")
+            guard fm.isExecutableFile(atPath: candidate) else {
+                return (nil, "'\(rawPath)' is a Java HOME directory but has no executable at bin/java")
+            }
+            return (candidate, nil)
+        }
+        guard fm.isExecutableFile(atPath: expanded) else {
+            return (nil, "'\(rawPath)' exists but is not executable")
+        }
+        return (expanded, nil)
+    }
+
+    // MARK: - Compatibility warning
+
+    /// Core warning logic extracted for testability (takes pre-detected major versions so
+    /// no process needs to be spawned in tests). Returns nil when no warning is needed.
+    static func compatibilityWarningText(minecraftVersion: String?, required: Int, detected: Int) -> String? {
+        let versionText = minecraftVersion.map { "Minecraft \($0)" } ?? "this Minecraft version"
+        if detected < required {
+            return "\(versionText) needs Java \(required), but the configured Java is version \(detected). "
+                 + "Install Java \(required) (e.g. Temurin/Adoptium) and set it in Preferences, or choose an older Minecraft version."
+        }
+        // Java-17-era Minecraft (1.17–1.20.x, required=17) is known to have classpath and
+        // ASM issues with Java 21+. Warn when a newer runtime is configured so the user
+        // understands why a modpack might fail, without blocking the start.
+        if detected > required, required <= 17 {
+            return "\(versionText) modpacks are usually built and tested for Java \(required), but the configured Java is version \(detected). "
+                 + "If this server fails to start, install Java \(required) (e.g. Temurin/Adoptium) and set it in Preferences."
+        }
+        return nil
+    }
+
+    /// Returns a user-facing warning if the configured Java is too old or (for Java-17-era
+    /// Minecraft) too new for the server's Minecraft version, or nil if it looks fine.
     static func compatibilityWarning(minecraftVersion: String?, javaPath: String) -> String? {
         let required = requiredJavaMajor(forMinecraftVersion: minecraftVersion)
         guard let detected = detectJavaMajor(javaPath: javaPath) else { return nil }
-        guard detected < required else { return nil }
-        let versionText = minecraftVersion.map { "Minecraft \($0)" } ?? "this Minecraft version"
-        return "\(versionText) needs Java \(required), but the configured Java is version \(detected). "
-             + "Install Java \(required) (e.g. Temurin/Adoptium) and set it in Preferences, or choose an older Minecraft version."
+        return compatibilityWarningText(minecraftVersion: minecraftVersion, required: required, detected: detected)
     }
 }

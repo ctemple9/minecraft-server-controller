@@ -24,7 +24,7 @@ extension AppViewModel {
         try? fm.createDirectory(atPath: cfg.paperTemplateDir, withIntermediateDirectories: true)
 
         let trimmedJava = javaPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        cfg.javaPath = trimmedJava.isEmpty ? "java" : trimmedJava
+        cfg.javaPath = resolvedJavaPath(trimmedJava)
         cfg.initialSetupDone = true
 
         configManager.config = cfg
@@ -336,7 +336,7 @@ extension AppViewModel {
         if !root.isEmpty { try? fm.createDirectory(atPath: root, withIntermediateDirectories: true) }
         cfg.serversRoot = root
         let trimmedJava = prefs.javaPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        cfg.javaPath = trimmedJava.isEmpty ? "java" : trimmedJava
+        cfg.javaPath = resolvedJavaPath(trimmedJava)
         cfg.extraFlags = prefs.extraFlags
         let oldDuck = cfg.duckdnsHostname
         let trimmedDuck = prefs.duckdnsHostname.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -355,7 +355,7 @@ extension AppViewModel {
         let previous = configManager.config
         var cfg = previous
         let trimmedJava = javaPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        cfg.javaPath = trimmedJava.isEmpty ? "java" : trimmedJava
+        cfg.javaPath = resolvedJavaPath(trimmedJava)
         cfg.extraFlags = extraFlags.trimmingCharacters(in: .whitespacesAndNewlines)
         cfg.remoteAPIExposeOnLAN = remoteAPIExposeOnLAN
         configManager.config = cfg
@@ -394,5 +394,21 @@ extension AppViewModel {
               let cfgServer = configServer(for: server) else { return nil }
         if let desired = effectiveBedrockPort(for: cfgServer), desired > 0 { return desired }
         return nil
+    }
+
+    // MARK: - Java path helpers
+
+    /// Returns the canonical java executable path to store in config.
+    /// Silently normalizes a JAVA_HOME directory to `<dir>/bin/java`; logs a
+    /// `[App]` message when it does so or when the path cannot be validated.
+    private func resolvedJavaPath(_ trimmed: String) -> String {
+        let raw = trimmed.isEmpty ? "java" : trimmed
+        let (normalized, errorMessage) = JavaRuntimeManager.normalizedJavaExecutablePath(raw)
+        if let n = normalized {
+            if n != raw { logAppMessage("[App] Java path normalized: '\(raw)' → '\(n)'.") }
+            return n
+        }
+        if let e = errorMessage { logAppMessage("[App] Java path warning: \(e)") }
+        return raw
     }
 }
