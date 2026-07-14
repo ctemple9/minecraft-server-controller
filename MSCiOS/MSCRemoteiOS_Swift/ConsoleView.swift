@@ -52,6 +52,8 @@ private func isAutoLine(_ text: String) -> Bool {
     if text.contains("[Auto →") || text.contains("[Auto ->") { return true }
     let lower = text.lowercased()
     if lower.contains("tps from last 1m, 5m, 15m") { return true }
+    // Forge/NeoForge `forge tps` reply: "Overall: … Mean tick time: X ms. Mean TPS: Y"
+    if lower.contains("mean tick time") && lower.contains("mean tps") { return true }
     if lower.contains("there are") && lower.contains("players online") { return true }
     return false
 }

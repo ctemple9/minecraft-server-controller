@@ -204,6 +204,7 @@
 		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
 		9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */; };
 		9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */; };
+		9AFE02280000000000000002 /* TpsLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02280000000000000001 /* TpsLineParser.swift */; };
 		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
 		9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020F0000000000000001 /* AddonUpdateResolver.swift */; };
 		9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */; };
@@ -266,6 +267,7 @@
 		D1E9005200000000000000E1 /* ArgsFileResolutionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000E0 /* ArgsFileResolutionTests.swift */; };
 		D1E9005200000000000000F1 /* ModpackClientOnlyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */; };
 		D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */; };
+		D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000102 /* TpsMonitoringTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -468,6 +470,7 @@
 		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
 		9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyClassifier.swift; sourceTree = "<group>"; };
 		9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthSlugNormalizer.swift; sourceTree = "<group>"; };
+		9AFE02280000000000000001 /* TpsLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsLineParser.swift; sourceTree = "<group>"; };
 		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
 		9AFE020F0000000000000001 /* AddonUpdateResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateResolver.swift; sourceTree = "<group>"; };
 		9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+AddonUpdates.swift"; sourceTree = "<group>"; };
@@ -531,6 +534,7 @@
 		D1E9005200000000000000E0 /* ArgsFileResolutionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgsFileResolutionTests.swift; sourceTree = "<group>"; };
 		D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorCrashAnalysisTests.swift; sourceTree = "<group>"; };
+		D1E900520000000000000102 /* TpsMonitoringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsMonitoringTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -705,6 +709,7 @@
 				9AFE020D0000000000000001 /* ModJarMetadataParser.swift */,
 				9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */,
 				9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */,
+				9AFE02280000000000000001 /* TpsLineParser.swift */,
 				9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */,
 				9AFE02070000000000000001 /* BedrockSkinFetcher.swift */,
 				9A5632392F65AD6C00FB8246 /* OverviewQuickActionsCardView.swift */,
@@ -828,6 +833,7 @@
 				D1E9005200000000000000E0 /* ArgsFileResolutionTests.swift */,
 				D1E9005200000000000000F0 /* ModpackClientOnlyTests.swift */,
 				D1E900520000000000000100 /* ConnectorCrashAnalysisTests.swift */,
+				D1E900520000000000000102 /* TpsMonitoringTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1156,6 +1162,7 @@
 				9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */,
 				9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */,
 				9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */,
+				9AFE02280000000000000002 /* TpsLineParser.swift in Sources */,
 				9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */,
 				9AFE02070000000000000002 /* BedrockSkinFetcher.swift in Sources */,
 				9A5632ED2F65AD6D00FB8246 /* DetailsComponentsTabView.swift in Sources */,
@@ -1221,6 +1228,7 @@
 				D1E9005200000000000000E1 /* ArgsFileResolutionTests.swift in Sources */,
 				D1E9005200000000000000F1 /* ModpackClientOnlyTests.swift in Sources */,
 				D1E900520000000000000101 /* ConnectorCrashAnalysisTests.swift in Sources */,
+				D1E900520000000000000103 /* TpsMonitoringTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

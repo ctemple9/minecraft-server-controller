@@ -341,22 +341,18 @@ extension AppViewModel {
 
     // MARK: - TPS parsing
 
+    /// Records a TPS sample from a console line. Recognizes both the Paper-family
+    /// trio ("TPS from last 1m, 5m, 15m: …") and the Forge/NeoForge single overall
+    /// value ("Overall: … Mean TPS: Y"). Forge lines clear the 5m/15m slots so the
+    /// Performance tab renders one number rather than stale numbers from a prior
+    /// Paper run. Parsing lives in the pure `TpsLineParser` seam for testability.
     private func parseTps(from line: String) {
         let clean = AppUtilities.sanitized(line)
-        guard clean.contains("TPS from last 1m, 5m, 15m:") else { return }
-        guard let colonIndex = clean.lastIndex(of: ":") else { return }
-        let numbersPart = clean[clean.index(after: colonIndex)...]
-            .trimmingCharacters(in: .whitespaces)
-        let parts = numbersPart.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-        guard parts.count >= 3 else { return }
-        guard let t1 = Double(parts[0]),
-              let t5 = Double(parts[1]),
-              let t15 = Double(parts[2]) else { return }
-        latestTps1m = t1
-        latestTps5m = t5
-        latestTps15m = t15
-        tpsHistory1m.append(t1)
+        guard let sample = TpsLineParser.parse(clean) else { return }
+        latestTps1m = sample.t1
+        latestTps5m = sample.t5
+        latestTps15m = sample.t15
+        tpsHistory1m.append(sample.t1)
         if tpsHistory1m.count > 30 { tpsHistory1m.removeFirst() }
     }
 

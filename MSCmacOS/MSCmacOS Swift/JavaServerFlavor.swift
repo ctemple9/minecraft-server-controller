@@ -180,6 +180,24 @@ enum JavaServerFlavor: String, Codable, CaseIterable {
         }
     }
 
+    /// Flavor-specific console command MSC can send to request a TPS sample.
+    /// Paper-family servers expose a bare `tps`; Forge and NeoForge nest it under
+    /// their loader root command (`forge tps` / `neoforge tps`). Vanilla, Fabric,
+    /// and Quilt have no stable built-in TPS command, so this is nil for them and
+    /// MSC skips the poll rather than spamming "Unknown or incomplete command".
+    var autoTpsCommand: String? {
+        switch self {
+        case .paper, .purpur, .pufferfish, .spigot:
+            return "tps"
+        case .forge:
+            return "forge tps"
+        case .neoforge:
+            return "neoforge tps"
+        case .vanilla, .fabric, .quilt:
+            return nil
+        }
+    }
+
     /// Highlighted as the recommended default within its category.
     var isRecommended: Bool { self == .paper || self == .fabric }
 

@@ -360,7 +360,11 @@ extension AppViewModel {
               let cfgServer = configServer(for: server) else { return }
         guard cfgServer.serverType == .java else { return }
         sendCommand("list", origin: .auto)
-        sendCommand("tps", origin: .auto)
+        // Only poll TPS on flavors with a real built-in command. Sending a bare
+        // "tps" to Forge/Vanilla/Fabric spams "Unknown or incomplete command".
+        if let tpsCommand = cfgServer.javaFlavor.autoTpsCommand {
+            sendCommand(tpsCommand, origin: .auto)
+        }
     }
 
     /// Records a player-count sample for a running Bedrock server so the Performance
