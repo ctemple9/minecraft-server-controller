@@ -123,7 +123,7 @@ enum NeoForgeInstaller {
         guard code == 0 else { throw NeoForgeError.installerFailed(code) }
 
         // Locate the generated unix args file.
-        guard let argsRel = findArgsFile(in: serverDir) else { throw NeoForgeError.argsFileMissing }
+        guard let argsRel = findArgsFile(in: serverDir, specificVersion: version) else { throw NeoForgeError.argsFileMissing }
         onLog("NeoForge install complete.")
 
         // Tidy up the installer jar (and its log) — they're not needed to run.
@@ -157,7 +157,7 @@ enum NeoForgeInstaller {
         let code = try await runJavaInstaller(javaPath: javaPath, installerJar: installerJar, cwd: serverDir, onLog: onLog)
         guard code == 0 else { throw NeoForgeError.installerFailed(code) }
 
-        guard let argsRel = findArgsFile(in: serverDir) else { throw NeoForgeError.argsFileMissing }
+        guard let argsRel = findArgsFile(in: serverDir, specificVersion: version) else { throw NeoForgeError.argsFileMissing }
         onLog("NeoForge \(version) install complete.")
 
         try? FileManager.default.removeItem(at: installerJar)
@@ -179,6 +179,19 @@ enum NeoForgeInstaller {
             }
         }
         return nil
+    }
+
+    /// Version-aware variant. Checks the directory matching `specificVersion` first;
+    /// falls back to the first-match scan when the configured version isn't found on disk.
+    static func findArgsFile(in serverDir: URL, specificVersion version: String?) -> String? {
+        if let v = version?.trimmingCharacters(in: .whitespacesAndNewlines), !v.isEmpty {
+            let relative = "libraries/net/neoforged/neoforge/\(v)/unix_args.txt"
+            if FileManager.default.fileExists(atPath: serverDir.appendingPathComponent(relative).path) {
+                return relative
+            }
+            print("[NeoForge] Configured version \(v) args file not found; falling back to first-match scan.")
+        }
+        return findArgsFile(in: serverDir)
     }
 
     // MARK: - Version resolution
@@ -339,7 +352,7 @@ enum ForgeInstaller {
         let code = try await runJavaInstaller(javaPath: javaPath, installerJar: installerJar, cwd: serverDir, onLog: onLog)
         guard code == 0 else { throw ForgeError.installerFailed(code) }
 
-        guard let argsRel = findArgsFile(in: serverDir) else { throw ForgeError.argsFileMissing }
+        guard let argsRel = findArgsFile(in: serverDir, mcVersion: mcVersion, forgeVersion: forgeVersion) else { throw ForgeError.argsFileMissing }
         onLog("Forge install complete.")
 
         try? FileManager.default.removeItem(at: installerJar)
@@ -373,7 +386,7 @@ enum ForgeInstaller {
         let code = try await runJavaInstaller(javaPath: javaPath, installerJar: installerJar, cwd: serverDir, onLog: onLog)
         guard code == 0 else { throw ForgeError.installerFailed(code) }
 
-        guard let argsRel = findArgsFile(in: serverDir) else { throw ForgeError.argsFileMissing }
+        guard let argsRel = findArgsFile(in: serverDir, mcVersion: mcVersion, forgeVersion: forgeVersion) else { throw ForgeError.argsFileMissing }
         onLog("Forge \(forgeVersion) install complete.")
 
         try? FileManager.default.removeItem(at: installerJar)
@@ -458,6 +471,21 @@ enum ForgeInstaller {
             }
         }
         return nil
+    }
+
+    /// Version-aware variant. Checks the directory matching `{mcVersion}-{forgeVersion}` first;
+    /// falls back to the first-match scan when the configured pair isn't found on disk.
+    static func findArgsFile(in serverDir: URL, mcVersion: String?, forgeVersion: String?) -> String? {
+        if let mc = mcVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
+           let forge = forgeVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !mc.isEmpty, !forge.isEmpty {
+            let relative = "libraries/net/minecraftforge/forge/\(mc)-\(forge)/unix_args.txt"
+            if FileManager.default.fileExists(atPath: serverDir.appendingPathComponent(relative).path) {
+                return relative
+            }
+            print("[Forge] Configured pair \(mc)-\(forge) args file not found; falling back to first-match scan.")
+        }
+        return findArgsFile(in: serverDir)
     }
 
     // MARK: - Version resolution

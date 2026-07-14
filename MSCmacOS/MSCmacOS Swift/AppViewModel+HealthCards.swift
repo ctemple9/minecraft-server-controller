@@ -296,8 +296,8 @@ extension AppViewModel {
             let serverDirURL = URL(fileURLWithPath: server.serverDir, isDirectory: true)
             let argsExists: Bool
             switch server.javaFlavor {
-            case .neoforge: argsExists = NeoForgeInstaller.findArgsFile(in: serverDirURL) != nil
-            case .forge:    argsExists = ForgeInstaller.findArgsFile(in: serverDirURL) != nil
+            case .neoforge: argsExists = NeoForgeInstaller.findArgsFile(in: serverDirURL, specificVersion: server.loaderVersion) != nil
+            case .forge:    argsExists = ForgeInstaller.findArgsFile(in: serverDirURL, mcVersion: server.minecraftVersion, forgeVersion: server.loaderVersion) != nil
             default:        argsExists = false
             }
             if !argsExists {

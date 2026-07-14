@@ -64,8 +64,8 @@ final class JavaServerBackend: ServerBackend {
         // NeoForge and Forge launch from installer-generated args files rather than a jar.
         let neoForgeArgs: String?
         switch config.javaFlavor {
-        case .neoforge: neoForgeArgs = NeoForgeInstaller.findArgsFile(in: serverDirURL)
-        case .forge:    neoForgeArgs = ForgeInstaller.findArgsFile(in: serverDirURL)
+        case .neoforge: neoForgeArgs = NeoForgeInstaller.findArgsFile(in: serverDirURL, specificVersion: config.loaderVersion)
+        case .forge:    neoForgeArgs = ForgeInstaller.findArgsFile(in: serverDirURL, mcVersion: config.minecraftVersion, forgeVersion: config.loaderVersion)
         default:        neoForgeArgs = nil
         }
 
