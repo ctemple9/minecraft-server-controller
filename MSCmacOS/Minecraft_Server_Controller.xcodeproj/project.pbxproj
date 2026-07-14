@@ -260,6 +260,7 @@
 		D1E9005200000000000000A1 /* DTOContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000A0 /* DTOContractTests.swift */; };
 		D1E9005200000000000000B1 /* AppConfigRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */; };
 		D1E9005200000000000000C1 /* MrpackExtractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000C0 /* MrpackExtractionTests.swift */; };
+		D1E9005200000000000000D1 /* ModpackPinningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E9005200000000000000D0 /* ModpackPinningTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -519,6 +520,7 @@
 		D1E9005200000000000000A0 /* DTOContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTOContractTests.swift; sourceTree = "<group>"; };
 		D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigRoundTripTests.swift; sourceTree = "<group>"; };
 		D1E9005200000000000000C0 /* MrpackExtractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MrpackExtractionTests.swift; sourceTree = "<group>"; };
+		D1E9005200000000000000D0 /* ModpackPinningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackPinningTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -810,6 +812,7 @@
 				D1E9005200000000000000A0 /* DTOContractTests.swift */,
 				D1E9005200000000000000B0 /* AppConfigRoundTripTests.swift */,
 				D1E9005200000000000000C0 /* MrpackExtractionTests.swift */,
+				D1E9005200000000000000D0 /* ModpackPinningTests.swift */,
 			);
 			path = MSCmacOSTests;
 			sourceTree = "<group>";
@@ -1197,6 +1200,7 @@
 				D1E9005200000000000000A1 /* DTOContractTests.swift in Sources */,
 				D1E9005200000000000000B1 /* AppConfigRoundTripTests.swift in Sources */,
 				D1E9005200000000000000C1 /* MrpackExtractionTests.swift in Sources */,
+				D1E9005200000000000000D1 /* ModpackPinningTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

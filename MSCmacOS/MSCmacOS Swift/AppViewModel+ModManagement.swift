@@ -56,6 +56,65 @@ struct MrpackEnv: Codable {
     let server: String?
 }
 
+/// Distilled view of a .mrpack manifest's `dependencies` block: the pinned Minecraft
+/// version and (if present) the loader flavor + its pinned version. Used by the Add
+/// Server wizard to pre-select flavor and the exact MC/loader build the pack expects.
+struct MrpackMetadata {
+    let manifest: MrpackManifest
+    let minecraftVersion: String?
+    let loaderFlavor: JavaServerFlavor?
+    let loaderVersion: String?
+
+    /// Maps `dependencies` (e.g. `{"forge":"47.4.1","minecraft":"1.20.1"}`) onto a
+    /// flavor + pinned versions. Pure — safe to unit-test with a hand-built manifest.
+    static func from(manifest: MrpackManifest) -> MrpackMetadata {
+        let dependencies = manifest.dependencies ?? [:]
+        let minecraftVersion = dependencies["minecraft"]
+
+        // Modrinth manifest keys → our flavor. Order is the match priority.
+        let loaderPairs: [(key: String, flavor: JavaServerFlavor)] = [
+            ("forge", .forge),
+            ("neoforge", .neoforge),
+            ("fabric-loader", .fabric),
+            ("quilt-loader", .quilt),
+        ]
+        let loader = loaderPairs.first { dependencies[$0.key] != nil }
+
+        return MrpackMetadata(
+            manifest: manifest,
+            minecraftVersion: minecraftVersion,
+            loaderFlavor: loader?.flavor,
+            loaderVersion: loader.flatMap { dependencies[$0.key] }
+        )
+    }
+
+    /// A `ServerVersionEntry` carrying the pinned MC + loader version, ready to inject
+    /// into the wizard's `availableVersions` and select. Nil if no MC version is pinned.
+    var versionEntry: ServerVersionEntry? {
+        guard let minecraftVersion, !minecraftVersion.isEmpty else { return nil }
+        guard let loaderFlavor else {
+            return ServerVersionEntry(
+                id: minecraftVersion,
+                displayLabel: minecraftVersion,
+                mcVersion: minecraftVersion,
+                loaderVersion: nil,
+                buildLabel: nil,
+                isStable: true
+            )
+        }
+        let buildLabel = loaderVersion.map { "\(loaderFlavor.displayName) \($0)" }
+        let idSuffix = loaderVersion ?? loaderFlavor.rawValue
+        return ServerVersionEntry(
+            id: "\(minecraftVersion)—\(idSuffix)",
+            displayLabel: minecraftVersion,
+            mcVersion: minecraftVersion,
+            loaderVersion: loaderVersion,
+            buildLabel: buildLabel,
+            isStable: true
+        )
+    }
+}
+
 extension AppViewModel {
 
     // MARK: - Mod discovery
@@ -284,6 +343,12 @@ extension AppViewModel {
         catch { throw MrpackReadError.manifestUnreadable(error) }
         do { return try JSONDecoder().decode(MrpackManifest.self, from: data) }
         catch { throw MrpackReadError.manifestMalformed(error) }
+    }
+
+    /// Reads a .mrpack and distills its `dependencies` block into `MrpackMetadata`
+    /// (pinned MC + loader flavor/version) for the Add Server wizard.
+    static func readMrpackMetadata(from mrpackURL: URL) throws -> MrpackMetadata {
+        MrpackMetadata.from(manifest: try readMrpackManifest(from: mrpackURL))
     }
 
     /// Imports a Modrinth modpack (.mrpack) into the given server.

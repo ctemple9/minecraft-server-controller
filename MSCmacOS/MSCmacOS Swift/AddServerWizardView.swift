@@ -80,6 +80,10 @@ struct AddServerWizardView: View {
     @State private var isShowingVersionPicker = false
     @State private var availableVersions: [ServerVersionEntry] = []
     @State private var isLoadingVersions = false
+    /// One-shot: when a staged .mrpack sets the flavor from pack metadata, the
+    /// `selectedFlavor` onChange would normally clear the pinned version. This flag
+    /// lets that single programmatic flavor change through without wiping the pin.
+    @State private var preserveVersionOnNextFlavorChange = false
 
     // Staged add-ons
     @State private var stagedAddOns: [WizardStagedAddOn] = []
@@ -238,6 +242,14 @@ struct AddServerWizardView: View {
         if let v = selectedVersionEntry?.mcVersion, !v.isEmpty { return v }
         return availableVersions.first(where: { $0.isStable })?.mcVersion
             ?? availableVersions.first?.mcVersion
+    }
+
+    /// "1.20.1 · Forge 47.4.1" when a loader build is pinned, else just the MC version.
+    private func versionSummary(_ entry: ServerVersionEntry) -> String {
+        if let buildLabel = entry.buildLabel, !buildLabel.isEmpty {
+            return "\(entry.displayLabel) · \(buildLabel)"
+        }
+        return entry.displayLabel
     }
 
     /// A minimal ConfigServer populated with the wizard's current flavor selection,
@@ -754,7 +766,7 @@ struct AddServerWizardView: View {
                             if isLoadingVersions {
                                 ProgressView().controlSize(.mini)
                             }
-                            Text(selectedVersionEntry.map { $0.displayLabel } ?? "Choose version\u{2026}")
+                            Text(selectedVersionEntry.map { versionSummary($0) } ?? "Choose version\u{2026}")
                                 .font(.subheadline)
                                 .foregroundStyle(selectedVersionEntry != nil ? Color.accentColor : .primary)
                         }
@@ -773,14 +785,20 @@ struct AddServerWizardView: View {
                     .buttonStyle(.plain)
                 }
                 if let sv = selectedVersionEntry {
-                    Text("Pinned: \(sv.displayLabel)")
+                    Text("Pinned: \(versionSummary(sv))")
                         .font(.caption).foregroundStyle(Color.accentColor)
                 }
             }
             .onboardingAnchor(.serverSourceArea)
             .onChange(of: selectedFlavor) { _, _ in
-                selectedVersionEntry = nil
-                availableVersions = []
+                // A staged .mrpack programmatically sets the flavor from pack metadata;
+                // in that one case keep the manifest-pinned version instead of clearing.
+                if preserveVersionOnNextFlavorChange {
+                    preserveVersionOnNextFlavorChange = false
+                } else {
+                    selectedVersionEntry = nil
+                    availableVersions = []
+                }
             }
 
             crossPlaySection
@@ -1563,7 +1581,7 @@ struct AddServerWizardView: View {
                         infoRow(key: "Server type",  value: serverType.displayName)
                         if serverType == .java {
                             infoRow(key: "Software", value: "\(selectedFlavor.displayName) · \(selectedCategory.displayName)")
-                            infoRow(key: "Version",  value: selectedVersionEntry.map { $0.displayLabel } ?? "Latest \(selectedFlavor.displayName)")
+                            infoRow(key: "Version",  value: selectedVersionEntry.map { versionSummary($0) } ?? "Latest \(selectedFlavor.displayName)")
                         }
                         if serverType == .java {
                             infoRow(key: "Java Port", value: javaPort)
@@ -2105,9 +2123,54 @@ struct AddServerWizardView: View {
 
         let ext = url.pathExtension.lowercased()
         if ext == "mrpack" {
+            // Pre-parse the manifest so we can pin the flavor + exact MC/loader version the
+            // pack expects, instead of importing blind and downloading "latest".
+            let stagedName: String
+            do {
+                let metadata = try AppViewModel.readMrpackMetadata(from: url)
+                let manifest = metadata.manifest
+                stagedName = "Modpack: \(manifest.name) v\(manifest.versionId)"
+
+                if serverType != .java { serverType = .java }
+                if let flavor = metadata.loaderFlavor {
+                    selectedCategory = flavor.category
+                    if selectedFlavor != flavor {
+                        // Let this single programmatic flavor change keep the pinned version.
+                        preserveVersionOnNextFlavorChange = true
+                        selectedFlavor = flavor
+                    }
+                    // A staged pack always installs a downloaded jar, never a template.
+                    jarSourceMode = .downloadLatest
+                }
+                if let entry = metadata.versionEntry {
+                    selectedVersionEntry = entry
+                    availableVersions.removeAll { $0.id == entry.id }
+                    availableVersions.insert(entry, at: 0)
+                }
+                if serverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    serverName = manifest.name
+                }
+
+                let detectedParts = [
+                    metadata.minecraftVersion.map { "Minecraft \($0)" },
+                    metadata.loaderFlavor.map { flavor in
+                        if let loaderVersion = metadata.loaderVersion {
+                            return "\(flavor.displayName) \(loaderVersion)"
+                        }
+                        return flavor.displayName
+                    }
+                ].compactMap { $0 }
+                if !detectedParts.isEmpty {
+                    statusMessage = "Detected \(manifest.name): \(detectedParts.joined(separator: " · "))."
+                }
+            } catch {
+                stagedName = "Modpack: \(url.deletingPathExtension().lastPathComponent)"
+                statusMessage = "Could not read modpack metadata yet: \(error.localizedDescription)"
+            }
+
             // Stage the whole .mrpack file; it will be imported via importModpack at creation time.
             stagedAddOns.append(WizardStagedAddOn(
-                name: "Modpack: \(url.deletingPathExtension().lastPathComponent)",
+                name: stagedName,
                 filename: url.lastPathComponent,
                 source: .mrpackFile(url: url)
             ))

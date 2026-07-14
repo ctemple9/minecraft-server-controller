@@ -56,29 +56,31 @@ enum NeoForgeInstaller {
         }
         let stable = versions.filter { !$0.contains("-") }
 
-        // Keep the highest NeoForge build per MC version.
-        var byMC: [String: String] = [:]
+        // List every stable build (not just the highest per MC): modpacks pin exact
+        // NeoForge builds, mirroring the Forge picker. Sorted newest-MC-first, then
+        // newest-build-first, de-duplicated by MC—build.
+        var entries: [ServerVersionEntry] = []
+        var seen: Set<String> = []
         for nfv in stable {
             let mc = minecraftVersion(forNeoForge: nfv)
-            if let existing = byMC[mc] {
-                if compare(nfv, existing) == .orderedDescending { byMC[mc] = nfv }
-            } else {
-                byMC[mc] = nfv
-            }
+            let id = "\(mc)—\(nfv)"
+            guard !seen.contains(id) else { continue }
+            seen.insert(id)
+            entries.append(ServerVersionEntry(
+                id: id,
+                displayLabel: mc,
+                mcVersion: mc,
+                loaderVersion: nfv,
+                buildLabel: "NeoForge \(nfv)",
+                isStable: true
+            ))
         }
 
-        return byMC
-            .sorted { compareMC($0.key, $1.key) == .orderedDescending }
-            .map { mc, nfv in
-                ServerVersionEntry(
-                    id: "\(mc)—\(nfv)",
-                    displayLabel: mc,
-                    mcVersion: mc,
-                    loaderVersion: nfv,
-                    buildLabel: "NeoForge \(nfv)",
-                    isStable: true
-                )
-            }
+        return entries.sorted { lhs, rhs in
+            let mcOrder = compareMC(lhs.mcVersion, rhs.mcVersion)
+            if mcOrder != .orderedSame { return mcOrder == .orderedDescending }
+            return compare(lhs.loaderVersion ?? "", rhs.loaderVersion ?? "") == .orderedDescending
+        }
     }
 
     private static func compareMC(_ a: String, _ b: String) -> ComparisonResult {
@@ -380,41 +382,67 @@ enum ForgeInstaller {
     }
 
     /// Returns available Forge versions as MC-paired entries for the version picker.
+    ///
+    /// Uses Forge's Maven metadata (every published build) rather than
+    /// `promotions_slim.json` (only the recommended/latest build per MC version).
+    /// Modpacks routinely pin a non-promoted build — BMC4 wants Forge `47.4.1`, which
+    /// promotions never exposes for `1.20.1` — so the picker must list all of them.
     static func listVersionPairs() async throws -> [ServerVersionEntry] {
-        let url = URL(string: "https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json")!
+        let url = URL(string: "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml")!
         let (data, resp) = try await MSCHTTP.get(url)
         if let http = resp as? HTTPURLResponse, http.statusCode != 200 {
-            throw ForgeError.network("promotions returned status \(http.statusCode)")
+            throw ForgeError.network("metadata returned status \(http.statusCode)")
         }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let promos = json["promos"] as? [String: String] else {
-            throw ForgeError.network("promotions response malformed")
+        guard let xml = String(data: data, encoding: .utf8) else {
+            throw ForgeError.network("metadata not text")
         }
-        // Prefer "-recommended" entries, fall back to "-latest".
-        var byMC: [String: (forge: String, isRecommended: Bool)] = [:]
-        for (key, forgeVer) in promos {
-            if key.hasSuffix("-recommended") {
-                let mc = String(key.dropLast("-recommended".count))
-                byMC[mc] = (forge: forgeVer, isRecommended: true)
-            } else if key.hasSuffix("-latest") {
-                let mc = String(key.dropLast("-latest".count))
-                if byMC[mc] == nil {
-                    byMC[mc] = (forge: forgeVer, isRecommended: false)
-                }
-            }
+        return parseMavenMetadata(xml)
+    }
+
+    /// Pure parser for Forge `maven-metadata.xml` → picker entries. Each `<version>` is
+    /// `mc-forge` (e.g. `1.20.1-47.4.1`). Sorted newest-MC-first, then newest-Forge-first,
+    /// de-duplicated by `mc—forge`. Exposed for unit testing.
+    static func parseMavenMetadata(_ xml: String) -> [ServerVersionEntry] {
+        var mavenVersions: [String] = []
+        var search = xml[...]
+        while let open = search.range(of: "<version>"),
+              let close = search.range(of: "</version>") {
+            mavenVersions.append(String(search[open.upperBound..<close.lowerBound]))
+            search = search[close.upperBound...]
         }
-        return byMC
-            .sorted { compareMCStrings($0.key, $1.key) == .orderedDescending }
-            .map { mc, pair in
-                ServerVersionEntry(
-                    id: "\(mc)—\(pair.forge)",
-                    displayLabel: mc,
-                    mcVersion: mc,
-                    loaderVersion: pair.forge,
-                    buildLabel: "Forge \(pair.forge)",
-                    isStable: true
-                )
-            }
+
+        var entries: [ServerVersionEntry] = []
+        var seen: Set<String> = []
+        for version in mavenVersions {
+            guard let pair = parseMavenVersion(version) else { continue }
+            let id = "\(pair.mc)—\(pair.forge)"
+            guard !seen.contains(id) else { continue }
+            seen.insert(id)
+            entries.append(ServerVersionEntry(
+                id: id,
+                displayLabel: pair.mc,
+                mcVersion: pair.mc,
+                loaderVersion: pair.forge,
+                buildLabel: "Forge \(pair.forge)",
+                isStable: !pair.forge.contains("-")
+            ))
+        }
+
+        return entries.sorted { lhs, rhs in
+            let mcOrder = compareMCStrings(lhs.mcVersion, rhs.mcVersion)
+            if mcOrder != .orderedSame { return mcOrder == .orderedDescending }
+            return compareForgeVersions(lhs.loaderVersion ?? "", rhs.loaderVersion ?? "") == .orderedDescending
+        }
+    }
+
+    /// Splits a Forge Maven version `mc-forge` into its parts, e.g.
+    /// `1.20.1-47.4.1` → (`1.20.1`, `47.4.1`). Nil if it doesn't look like a pair.
+    private static func parseMavenVersion(_ version: String) -> (mc: String, forge: String)? {
+        guard let dash = version.firstIndex(of: "-") else { return nil }
+        let mc = String(version[..<dash])
+        let forge = String(version[version.index(after: dash)...])
+        guard mc.first?.isNumber == true, !forge.isEmpty else { return nil }
+        return (mc, forge)
     }
 
     /// Finds the generated unix args file, e.g.
@@ -463,7 +491,9 @@ enum ForgeInstaller {
             guard key.hasSuffix(suffix) else { return nil }
             return (String(key.dropLast(suffix.count)), value)
         }
-        guard let best = candidates.max(by: { compareForgeVersions($0.0, $1.0) == .orderedAscending }) else {
+        // Pick the highest Minecraft version's recommended build (keys are MC versions,
+        // not Forge builds — comparing Forge numbers here chose the wrong MC line).
+        guard let best = candidates.max(by: { compareMCStrings($0.0, $1.0) == .orderedAscending }) else {
             throw ForgeError.noVersion
         }
         return (best.0, best.1)

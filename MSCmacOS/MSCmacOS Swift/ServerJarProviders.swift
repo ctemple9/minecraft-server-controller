@@ -88,7 +88,7 @@ enum ServerJarProvider {
         case .paper:   return try await PaperDownloader.downloadVersion(entry.mcVersion, to: destination)
         case .purpur:  return try await PurpurDownloader.downloadVersion(entry.mcVersion, to: destination)
         case .vanilla: return try await VanillaDownloader.downloadVersion(entry.mcVersion, to: destination)
-        case .fabric:  return try await FabricDownloader.downloadVersion(entry.mcVersion, to: destination)
+        case .fabric:  return try await FabricDownloader.downloadVersion(entry.mcVersion, loaderVersion: entry.loaderVersion, to: destination)
         default:       throw ServerJarProviderError.unsupportedFlavor(flavor)
         }
     }
@@ -466,18 +466,30 @@ enum FabricDownloader {
             .map { v in ServerVersionEntry(id: v, displayLabel: v, mcVersion: v, loaderVersion: nil, buildLabel: nil, isStable: true) }
     }
 
-    static func downloadVersion(_ mcVersion: String, to destination: URL) async throws -> ServerJarDownloadResult {
-        // Resolve the latest stable loader for this game version.
-        let loaderURL = URL(string: "https://meta.fabricmc.net/v2/versions/loader/\(mcVersion)")!
-        let (loaderData, loaderResp) = try await MSCHTTP.get(loaderURL)
-        try ensureOK(loaderResp, "Fabric loader for \(mcVersion)")
-        guard let loaderList = try JSONSerialization.jsonObject(with: loaderData) as? [[String: Any]],
-              !loaderList.isEmpty else {
-            throw ServerJarProviderError.invalidResponse("No Fabric loaders for \(mcVersion).")
-        }
-        let loaderEntry = loaderList.first { (($0["loader"] as? [String: Any])?["stable"] as? Bool) == true } ?? loaderList[0]
-        guard let loader = (loaderEntry["loader"] as? [String: Any])?["version"] as? String else {
-            throw ServerJarProviderError.invalidResponse("Malformed Fabric loader entry for \(mcVersion).")
+    static func downloadVersion(
+        _ mcVersion: String,
+        loaderVersion pinnedLoaderVersion: String? = nil,
+        to destination: URL
+    ) async throws -> ServerJarDownloadResult {
+        let loader: String
+        if let pinned = pinnedLoaderVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !pinned.isEmpty {
+            // Honor a manifest-pinned fabric-loader (e.g. from a Fabric .mrpack).
+            loader = pinned
+        } else {
+            // Resolve the latest stable loader for this game version.
+            let loaderURL = URL(string: "https://meta.fabricmc.net/v2/versions/loader/\(mcVersion)")!
+            let (loaderData, loaderResp) = try await MSCHTTP.get(loaderURL)
+            try ensureOK(loaderResp, "Fabric loader for \(mcVersion)")
+            guard let loaderList = try JSONSerialization.jsonObject(with: loaderData) as? [[String: Any]],
+                  !loaderList.isEmpty else {
+                throw ServerJarProviderError.invalidResponse("No Fabric loaders for \(mcVersion).")
+            }
+            let loaderEntry = loaderList.first { (($0["loader"] as? [String: Any])?["stable"] as? Bool) == true } ?? loaderList[0]
+            guard let resolved = (loaderEntry["loader"] as? [String: Any])?["version"] as? String else {
+                throw ServerJarProviderError.invalidResponse("Malformed Fabric loader entry for \(mcVersion).")
+            }
+            loader = resolved
         }
         let installer = try await firstStableVersion(
             from: "https://meta.fabricmc.net/v2/versions/installer", what: "Fabric installer")
