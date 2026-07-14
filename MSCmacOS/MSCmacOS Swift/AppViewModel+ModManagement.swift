@@ -12,6 +12,22 @@ import UniformTypeIdentifiers
 
 // MARK: - .mrpack manifest models
 
+enum MrpackReadError: LocalizedError {
+    case extractionFailed(Int32)
+    case manifestAbsent
+    case manifestUnreadable(Error)
+    case manifestMalformed(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .extractionFailed(let code): return "Extraction failed (exit \(code))."
+        case .manifestAbsent: return "not a valid .mrpack (no modrinth.index.json)."
+        case .manifestUnreadable(let e): return "modrinth.index.json could not be read: \(e.localizedDescription)"
+        case .manifestMalformed(let e): return "modrinth.index.json could not be decoded: \(e.localizedDescription)"
+        }
+    }
+}
+
 struct MrpackManifest: Codable {
     let formatVersion: Int
     let game: String
@@ -237,6 +253,39 @@ extension AppViewModel {
 
     // MARK: - .mrpack modpack import
 
+    /// Extracts a .mrpack archive via ditto and decodes modrinth.index.json.
+    /// Exposed as a static testable seam — importModpack uses its own temp dir because
+    /// it also needs the overrides/ tree, but this covers manifest-only reads (P7.2 wizard).
+    static func readMrpackManifest(from mrpackURL: URL) throws -> MrpackManifest {
+        let fm = FileManager.default
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("msc_mrpack_meta_\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        p.arguments = ["-x", "-k", mrpackURL.path, tempDir.path]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError  = FileHandle.nullDevice
+        do { try p.run(); p.waitUntilExit() } catch {
+            throw MrpackReadError.extractionFailed(-1)
+        }
+        guard p.terminationStatus == 0 else {
+            throw MrpackReadError.extractionFailed(p.terminationStatus)
+        }
+
+        let manifestURL = tempDir.appendingPathComponent("modrinth.index.json")
+        guard fm.fileExists(atPath: manifestURL.path) else {
+            throw MrpackReadError.manifestAbsent
+        }
+        let data: Data
+        do { data = try Data(contentsOf: manifestURL) }
+        catch { throw MrpackReadError.manifestUnreadable(error) }
+        do { return try JSONDecoder().decode(MrpackManifest.self, from: data) }
+        catch { throw MrpackReadError.manifestMalformed(error) }
+    }
+
     /// Imports a Modrinth modpack (.mrpack) into the given server.
     /// Downloads all server-compatible files from the manifest, then copies
     /// the overrides/ and server-overrides/ trees into the server directory.
@@ -259,23 +308,34 @@ extension AppViewModel {
             return
         }
 
-        let unzip = Process()
-        unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        unzip.arguments = ["-q", mrpackURL.path, "-d", tempDir.path]
-        do { try unzip.run(); unzip.waitUntilExit() }
+        // Use ditto (-x -k) instead of unzip: ditto preserves Mac metadata and does not
+        // extract entries with mode 000 (a known /usr/bin/unzip quirk that made some packs
+        // appear invalid because modrinth.index.json was unreadable after extraction).
+        let extract = Process()
+        extract.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        extract.arguments = ["-x", "-k", mrpackURL.path, tempDir.path]
+        extract.standardOutput = FileHandle.nullDevice
+        extract.standardError  = FileHandle.nullDevice
+        do { try extract.run(); extract.waitUntilExit() }
         catch {
             await MainActor.run { logAppMessage("[Modpack] Extraction failed: \(error.localizedDescription)") }
             return
         }
-        guard unzip.terminationStatus == 0 else {
-            await MainActor.run { logAppMessage("[Modpack] Extraction failed (exit \(unzip.terminationStatus)).") }
+        guard extract.terminationStatus == 0 else {
+            await MainActor.run { logAppMessage("[Modpack] Extraction failed (exit \(extract.terminationStatus)).") }
             return
         }
 
-        // Parse modrinth.index.json
+        // Parse modrinth.index.json — distinguish absent vs present-but-unreadable vs malformed.
         let manifestURL = tempDir.appendingPathComponent("modrinth.index.json")
-        guard let manifestData = try? Data(contentsOf: manifestURL) else {
-            await MainActor.run { logAppMessage("[Modpack] modrinth.index.json not found — not a valid .mrpack.") }
+        guard fm.fileExists(atPath: manifestURL.path) else {
+            await MainActor.run { logAppMessage("[Modpack] not a valid .mrpack (no modrinth.index.json).") }
+            return
+        }
+        let manifestData: Data
+        do { manifestData = try Data(contentsOf: manifestURL) }
+        catch {
+            await MainActor.run { logAppMessage("[Modpack] modrinth.index.json could not be read: \(error.localizedDescription)") }
             return
         }
         let manifest: MrpackManifest

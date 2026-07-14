@@ -501,7 +501,9 @@ enum ResourcePackManager {
 
             do {
                 try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
-                // Use Process to unzip (Foundation has no built-in zip extraction on macOS)
+                // Use Process to unzip (Foundation has no built-in zip extraction on macOS).
+                // unzip -p (pipe) cannot be used here because we need a file path to parse.
+                // Apply a chmod fallback after extraction to handle the rare mode-000 quirk.
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
                 process.arguments = ["-q", packURL.path, "manifest.json", "-d", tempDir.path]
@@ -509,6 +511,8 @@ enum ResourcePackManager {
                 process.waitUntilExit()
 
                 let manifestURL = tempDir.appendingPathComponent("manifest.json")
+                // Ensure the extracted file is user-readable regardless of stored permissions.
+                try? fm.setAttributes([.posixPermissions: 0o644], ofItemAtPath: manifestURL.path)
                 guard fm.fileExists(atPath: manifestURL.path),
                       let data = try? Data(contentsOf: manifestURL) else { return nil }
                 return parseManifestData(data)

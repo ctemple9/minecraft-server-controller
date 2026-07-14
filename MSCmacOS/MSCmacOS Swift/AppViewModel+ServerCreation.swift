@@ -705,9 +705,12 @@ extension AppViewModel {
                 .appendingPathComponent("MSC-zip-\(UUID().uuidString)", isDirectory: true)
             defer { try? fm.removeItem(at: tmpDir) }
             do { try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true) } catch { return }
+            // Use ditto to avoid /usr/bin/unzip's mode-000 quirk on user-supplied add-on zips.
             let unzip = Process()
-            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            unzip.arguments = ["-q", url.path, "-d", tmpDir.path]
+            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+            unzip.arguments = ["-x", "-k", url.path, tmpDir.path]
+            unzip.standardOutput = FileHandle.nullDevice
+            unzip.standardError  = FileHandle.nullDevice
             try? unzip.run(); unzip.waitUntilExit()
             if let items = try? fm.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: nil,
                                                         options: .skipsSubdirectoryDescendants) {

@@ -86,10 +86,13 @@ extension AppViewModel {
                 let tmp = fm.temporaryDirectory.appendingPathComponent("msc_remote_scan_\(UUID().uuidString)", isDirectory: true)
                 do { try fm.createDirectory(at: tmp, withIntermediateDirectories: true) }
                 catch { return (nil, "Could not create temp directory: \(error.localizedDescription)") }
+                // Use ditto to avoid /usr/bin/unzip's mode-000 quirk on user-uploaded archives.
                 let exitCode: Int32 = await Task.detached(priority: .userInitiated) {
                     let p = Process()
-                    p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-                    p.arguments = ["-q", sourceURL.path, "-d", tmp.path]
+                    p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+                    p.arguments = ["-x", "-k", sourceURL.path, tmp.path]
+                    p.standardOutput = FileHandle.nullDevice
+                    p.standardError  = FileHandle.nullDevice
                     do { try p.run(); p.waitUntilExit() } catch { return -1 }
                     return p.terminationStatus
                 }.value

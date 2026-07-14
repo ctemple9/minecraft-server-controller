@@ -112,13 +112,16 @@ extension AppViewModel {
         // Copy or unzip to destination
         let copyResult: ImportServerResult = await Task.detached(priority: .userInitiated) {
             if isZip {
+                // Use ditto to avoid /usr/bin/unzip's mode-000 quirk on user-supplied archives.
                 let p = Process()
-                p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-                p.arguments = ["-q", sourceURL.path, "-d", destURL.path]
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+                p.arguments = ["-x", "-k", sourceURL.path, destURL.path]
+                p.standardOutput = FileHandle.nullDevice
+                p.standardError  = FileHandle.nullDevice
                 do { try p.run(); p.waitUntilExit() }
-                catch { return .failure("Failed to start unzip: \(error.localizedDescription)") }
+                catch { return .failure("Failed to start archive extraction: \(error.localizedDescription)") }
                 guard p.terminationStatus == 0 else {
-                    return .failure("Unzip failed (exit \(p.terminationStatus)). Ensure the file is a valid .zip archive.")
+                    return .failure("Archive extraction failed (exit \(p.terminationStatus)). Ensure the file is a valid .zip archive.")
                 }
             } else {
                 do { try FileManager.default.copyItem(at: sourceURL, to: destURL) }

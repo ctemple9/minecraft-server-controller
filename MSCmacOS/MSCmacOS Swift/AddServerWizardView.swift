@@ -1922,10 +1922,13 @@ struct AddServerWizardView: View {
                 return
             }
 
+            // Use ditto to avoid /usr/bin/unzip's mode-000 quirk on user-selected archives.
             let exitCode: Int32 = await Task.detached(priority: .userInitiated) {
                 let p = Process()
-                p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-                p.arguments = ["-q", url.path, "-d", tmp.path]
+                p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+                p.arguments = ["-x", "-k", url.path, tmp.path]
+                p.standardOutput = FileHandle.nullDevice
+                p.standardError  = FileHandle.nullDevice
                 do { try p.run(); p.waitUntilExit() } catch { return -1 }
                 return p.terminationStatus
             }.value

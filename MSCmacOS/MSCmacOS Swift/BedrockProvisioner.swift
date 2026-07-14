@@ -201,26 +201,30 @@ enum BedrockProvisioner {
     }
 
     /// Extract the zip into dir. When `overwrite` (an update), replace BDS-shipped
-    /// files but exclude the user's config; when a fresh install, never overwrite
-    /// anything that already exists. worlds/ is never in the zip, so it's untouched.
+    /// files but exclude the user's config; when a fresh install, dir is empty so
+    /// no-overwrite is implicit. Uses ditto to avoid /usr/bin/unzip's mode-000 quirk
+    /// on downloads from some CDNs.
     private static func extract(zip: URL, into dir: URL, overwrite: Bool) throws {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        var args = [overwrite ? "-o" : "-n", "-q", zip.path, "-d", dir.path]
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        // -x extract, -k treat source as zip; --exclude-pattern skips preserved user files on update
+        var args = ["-x", "-k"]
         if overwrite {
-            args.append("-x")
-            args.append(contentsOf: preservedFiles)
+            for name in Self.preservedFiles {
+                args += ["--exclude-pattern", name]
+            }
         }
+        args += [zip.path, dir.path]
         p.arguments = args
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
+        let errPipe = Pipe()
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = errPipe
         try p.run()
         p.waitUntilExit()
         guard p.terminationStatus == 0 else {
-            let out = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-            throw ProvisionError(message: "Failed to extract Bedrock server (unzip \(p.terminationStatus)): \(out)")
+            let out = String(decoding: errPipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            throw ProvisionError(message: "Failed to extract Bedrock server (ditto \(p.terminationStatus)): \(out)")
         }
     }
 }
