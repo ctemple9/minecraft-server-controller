@@ -818,11 +818,15 @@ extension AppViewModel {
         for jar in overrideJars {
             let project = hashByJar[jar].flatMap { projectIdByHash[$0] }.flatMap { projectsById[$0] }
             let jarEnv = ModJarMetadataParser.parse(jarURL: jar)?.environment
-            guard let reason = ModpackClientOnlyClassifier.clientOnlyReason(
-                modrinthServerSide: project?.serverSide,
-                modrinthProjectTitle: project?.title,
-                jarEnvironment: jarEnv
-            ) else { continue }
+            // Tier 0 first — catches Forge-only renderer mods that Modrinth and
+            // fabric.mod.json both miss (no server_side field, no embedded env).
+            let stem = jar.deletingPathExtension().lastPathComponent
+            let reason = ModpackClientOnlyClassifier.knownClientOnlyReason(forJarStem: stem)
+                ?? ModpackClientOnlyClassifier.clientOnlyReason(
+                    modrinthServerSide: project?.serverSide,
+                    modrinthProjectTitle: project?.title,
+                    jarEnvironment: jarEnv)
+            guard let reason else { continue }
             if let name = ModpackClientOnlyClassifier.disableJar(at: jar, fm: fm) {
                 disabled.append((name, reason))
             }

@@ -18,6 +18,38 @@ import Foundation
 
 enum ModpackClientOnlyClassifier {
 
+    // MARK: - Tier 0 — hardcoded shader / renderer blocklist
+
+    /// Forge/NeoForge rendering mods that are purely client-side. They carry no
+    /// `fabric.mod.json` (Tier 3 blind) and may not appear on Modrinth with
+    /// `server_side=unsupported` (Tier 2 blind). Matched against the lowercased
+    /// jar stem using prefix + separator rules to survive version strings.
+    private static let knownClientOnlyPrefixes: [String] = [
+        "oculus",       // Oculus — Iris/shaders for Forge
+        "mekalus",      // Mekalus — Oculus successor
+        "rubidium",     // Rubidium — Sodium port for Forge (client renderer)
+        "embeddium",    // Embeddium — Rubidium fork
+        "iris",         // Iris — Fabric shader loader
+        "optifine",     // OptiFine
+        "optifabric",   // OptiFabric — OptiFine wrapper for Fabric
+    ]
+
+    /// Returns a human-readable reason if the jar stem matches a known client-only
+    /// shader or renderer mod; nil otherwise. Call this BEFORE the Modrinth + jar
+    /// metadata tiers — those have no signal for Forge-only renderer mods.
+    static func knownClientOnlyReason(forJarStem stem: String) -> String? {
+        let lower = stem.lowercased()
+        for prefix in knownClientOnlyPrefixes {
+            if lower == prefix
+                || lower.hasPrefix(prefix + "-")
+                || lower.hasPrefix(prefix + "_")
+                || lower.hasPrefix(prefix + "+") {
+                return "Known client-only shader/renderer mod — has no server-side function"
+            }
+        }
+        return nil
+    }
+
     // MARK: - Tier 1 — manifest env
 
     /// The `.mrpack` manifest's own signal: a file whose `env.server == "unsupported"`

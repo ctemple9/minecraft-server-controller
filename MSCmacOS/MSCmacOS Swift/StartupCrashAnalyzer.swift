@@ -266,6 +266,11 @@ enum StartupCrashAnalyzer {
         var problems: [StartupProblem] = []
         var seen = Set<String>()
 
+        // Client-only mods that crash the server with "invalid dist DEDICATED_SERVER".
+        for p in parseForgeClientOnlyMods(text, installedMods: installedMods) {
+            if seen.insert(p.id).inserted { problems.append(p) }
+        }
+
         for raw in text.components(separatedBy: .newlines) {
             let line = raw.trimmingCharacters(in: .whitespaces)
             // Sinytra Connector surfaces Fabric-side failures inside a Forge start as an
@@ -280,6 +285,102 @@ enum StartupCrashAnalyzer {
             guard let problem = parseForgeDependencyLine(line, installedMods: installedMods) else { continue }
             if seen.insert(problem.id).inserted { problems.append(problem) }
         }
+        return problems
+    }
+
+    /// Detects client-only Forge/NeoForge mods that crash a dedicated server with
+    /// "Attempted to load class … for invalid dist DEDICATED_SERVER".
+    ///
+    /// Two passes (A then B):
+    ///  A — structured `-- MOD id --` sections from the Forge crash report; gives
+    ///      mod ID + jar filename. Used when a crash-report file was written.
+    ///  B — `Failed to create mod instance. ModID: id` log lines; fallback when
+    ///      the crash report is absent or the server exited too fast to write it.
+    private static func parseForgeClientOnlyMods(_ text: String, installedMods: [ModEntry]) -> [StartupProblem] {
+        guard text.contains("invalid dist DEDICATED_SERVER") else { return [] }
+
+        var problems: [StartupProblem] = []
+        var seen = Set<String>()
+        let lines = text.components(separatedBy: .newlines)
+
+        // Pass A: crash report `-- MOD <id> --` sections.
+        var i = 0
+        while i < lines.count {
+            let line = lines[i].trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("-- MOD "), line.hasSuffix(" --") else { i += 1; continue }
+
+            let inner = String(line.dropFirst("-- MOD ".count).dropLast(" --".count))
+                .trimmingCharacters(in: .whitespaces)
+            // Skip generic crash-report section headers like "-- System Details --".
+            guard !inner.isEmpty, !inner.lowercased().contains("system"),
+                  !inner.lowercased().contains("details") else { i += 1; continue }
+            let modId = inner
+
+            // Collect section lines until the next `-- … --` header.
+            var sectionLines: [String] = []
+            var j = i + 1
+            while j < lines.count {
+                let next = lines[j].trimmingCharacters(in: .whitespaces)
+                if next.hasPrefix("-- "), next.hasSuffix(" --") { break }
+                sectionLines.append(lines[j])
+                j += 1
+            }
+            i = j
+
+            let section = sectionLines.joined(separator: "\n")
+            guard section.contains("invalid dist DEDICATED_SERVER") else { continue }
+            guard seen.insert(modId).inserted else { continue }
+
+            // Extract jar filename from `Mod File: /path/to/file.jar`.
+            var jarFilename: String? = nil
+            for sl in sectionLines {
+                let t = sl.trimmingCharacters(in: .whitespaces)
+                if t.hasPrefix("Mod File:") {
+                    let path = String(t.dropFirst("Mod File:".count)).trimmingCharacters(in: .whitespaces)
+                    if !path.isEmpty { jarFilename = URL(fileURLWithPath: path).lastPathComponent }
+                    break
+                }
+            }
+
+            let match = matchInstalledMod(modId, installedMods: installedMods)
+                ?? jarFilename.flatMap { fn in installedMods.first { $0.filename == fn } }
+
+            problems.append(StartupProblem(
+                kind: .loadError,
+                offenderName: match?.displayName ?? modId,
+                offenderId: modId,
+                installedFile: match?.filename ?? jarFilename,
+                installedJarStem: match?.jarStem,
+                requirement: "Client-only mod — has no server-side function. Remove it from mods/.",
+                missingDependency: nil,
+                rawExcerpt: (["-- MOD \(modId) --"] + sectionLines.prefix(5)).joined(separator: "\n")
+            ))
+        }
+
+        // Pass B: log-line fallback when no crash report was written.
+        guard problems.isEmpty else { return problems }
+
+        for raw in lines {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard line.contains("Failed to create mod instance. ModID:"),
+                  let modIdRange = line.range(of: "ModID:") else { continue }
+            let afterModId = line[modIdRange.upperBound...].drop { $0 == " " }
+            let modId = String(afterModId.prefix { $0 != "," && $0 != " " && $0 != "\n" })
+            guard !modId.isEmpty, seen.insert(modId).inserted else { continue }
+
+            let match = matchInstalledMod(modId, installedMods: installedMods)
+            problems.append(StartupProblem(
+                kind: .loadError,
+                offenderName: match?.displayName ?? modId,
+                offenderId: modId,
+                installedFile: match?.filename,
+                installedJarStem: match?.jarStem,
+                requirement: "Client-only mod — has no server-side function. Remove it from mods/.",
+                missingDependency: nil,
+                rawExcerpt: line
+            ))
+        }
+
         return problems
     }
 
