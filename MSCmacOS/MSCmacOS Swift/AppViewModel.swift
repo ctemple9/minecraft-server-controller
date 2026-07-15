@@ -33,6 +33,7 @@ final class AppViewModel: ObservableObject {
     @Published var pendingBroadcastAuthPrompt: BroadcastAuthPrompt?
     @Published var firstStartNotice: FirstStartNotice?
     @Published var errorAlert: AppError?
+    @Published var pendingManualDownloads: PendingCFManualDownloads?
     /// One-time alert shown when `ConfigManager.init` found an unreadable config and
     /// replaced it with defaults (R3). Presented on a separate `Color.clear` anchor in
     /// ContentView to honour the one-presentation-per-view rule.

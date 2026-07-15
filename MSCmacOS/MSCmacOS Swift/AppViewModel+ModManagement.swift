@@ -716,13 +716,7 @@ extension AppViewModel {
                 for m in manualDownloads {
                     logAppMessage("[Modpack]   • \(m.modName) — \(m.fileName) — \(m.projectPageURL)")
                 }
-                // Surface the list in the app's global result alert (the log has the links).
-                let lines = manualDownloads.prefix(20).map { "• \($0.modName) (\($0.fileName))" }.joined(separator: "\n")
-                let more = manualDownloads.count > 20 ? "\n…and \(manualDownloads.count - 20) more (see the log)." : ""
-                errorAlert = AppError(
-                    title: "\(manualDownloads.count) mod(s) need a manual download",
-                    message: "The authors of these mods disabled automatic downloads on CurseForge. The server is usable now; add them by downloading each from its CurseForge page (links are in the app log) and dropping the .jar into the server's mods/ folder:\n\n\(lines)\(more)"
-                )
+                pendingManualDownloads = PendingCFManualDownloads(items: manualDownloads)
             }
             refreshDiscoveredMods()
         }

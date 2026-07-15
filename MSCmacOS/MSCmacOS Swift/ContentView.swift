@@ -709,6 +709,11 @@ struct ContentView: View {
             BroadcastAltAccountSaveSheet(prompt: prompt).environmentObject(viewModel)
         }
 
+        // CurseForge manual-download list (distribution-blocked mods)
+        .sheet(item: $viewModel.pendingManualDownloads) { pending in
+            CurseForgeManualDownloadSheet(pending: pending, isPresented: $viewModel.pendingManualDownloads)
+        }
+
         // Error alerts
         .alert(item: $viewModel.errorAlert) { error in
             Alert(

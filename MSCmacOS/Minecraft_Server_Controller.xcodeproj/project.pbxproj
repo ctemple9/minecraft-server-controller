@@ -206,6 +206,7 @@
 		9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02290000000000000001 /* CurseForgeModpack.swift */; };
 		9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022A0000000000000001 /* CurseForgeAPI.swift */; };
 		9AFE022B0000000000000002 /* JavaServerLaunchHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */; };
+		9AFE022C0000000000000002 /* CurseForgeManualDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */; };
 		9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */; };
 		9AFE02280000000000000002 /* TpsLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02280000000000000001 /* TpsLineParser.swift */; };
 		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
@@ -479,6 +480,7 @@
 		9AFE02290000000000000001 /* CurseForgeModpack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpack.swift; sourceTree = "<group>"; };
 		9AFE022A0000000000000001 /* CurseForgeAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeAPI.swift; sourceTree = "<group>"; };
 		9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerLaunchHelper.swift; sourceTree = "<group>"; };
+		9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeManualDownloadSheet.swift; sourceTree = "<group>"; };
 		9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthSlugNormalizer.swift; sourceTree = "<group>"; };
 		9AFE02280000000000000001 /* TpsLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsLineParser.swift; sourceTree = "<group>"; };
 		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
@@ -725,6 +727,7 @@
 				9AFE02290000000000000001 /* CurseForgeModpack.swift */,
 				9AFE022A0000000000000001 /* CurseForgeAPI.swift */,
 				9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */,
+				9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */,
 				9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */,
 				9AFE02280000000000000001 /* TpsLineParser.swift */,
 				9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */,
@@ -1185,6 +1188,7 @@
 				9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */,
 				9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */,
 				9AFE022B0000000000000002 /* JavaServerLaunchHelper.swift in Sources */,
+				9AFE022C0000000000000002 /* CurseForgeManualDownloadSheet.swift in Sources */,
 				9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */,
 				9AFE02280000000000000002 /* TpsLineParser.swift in Sources */,
 				9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */,
