@@ -4,6 +4,9 @@ import Network
 struct PreferencesJavaSection: View {
     @Binding var javaPath: String
     @Binding var extraFlags: String
+    @State private var detectedJavaRuntimes: [DetectedJavaRuntime] = []
+    @State private var isDetectingJavaRuntimes: Bool = false
+    @State private var isShowingJavaRuntimePicker: Bool = false
     let anchorID: String
 
     var body: some View {
@@ -21,6 +24,23 @@ struct PreferencesJavaSection: View {
                 TextField("Path to java executable", text: $javaPath)
                     .textFieldStyle(.roundedBorder)
                     .font(MSC.Typography.mono)
+
+                Button {
+                    detectJavaRuntimes()
+                } label: {
+                    if isDetectingJavaRuntimes {
+                        HStack(spacing: MSC.Spacing.xs) {
+                            ProgressView().controlSize(.mini)
+                            Text("Detecting")
+                        }
+                    } else {
+                        Label("Detect", systemImage: "magnifyingglass")
+                    }
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.small)
+                .disabled(isDetectingJavaRuntimes)
+                .help("Scan common Java install locations and choose an executable.")
             }
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
@@ -39,6 +59,133 @@ struct PreferencesJavaSection: View {
         .pscCard()
         .id(anchorID)
         .contextualHelpAnchor(anchorID)
+        .sheet(isPresented: $isShowingJavaRuntimePicker) {
+            JavaRuntimePickerSheet(
+                runtimes: detectedJavaRuntimes,
+                selectedExecutablePath: javaPath,
+                onSelect: { runtime in
+                    javaPath = runtime.executablePath
+                    isShowingJavaRuntimePicker = false
+                },
+                onCancel: {
+                    isShowingJavaRuntimePicker = false
+                }
+            )
+        }
+    }
+
+    private func detectJavaRuntimes() {
+        isDetectingJavaRuntimes = true
+        Task {
+            let runtimes = await Task.detached(priority: .userInitiated) {
+                JavaRuntimeManager.detectInstalledJavaRuntimes()
+            }.value
+
+            await MainActor.run {
+                detectedJavaRuntimes = runtimes
+                isDetectingJavaRuntimes = false
+                isShowingJavaRuntimePicker = true
+            }
+        }
+    }
+}
+
+private struct JavaRuntimePickerSheet: View {
+    let runtimes: [DetectedJavaRuntime]
+    let selectedExecutablePath: String
+    let onSelect: (DetectedJavaRuntime) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: MSC.Spacing.md) {
+                VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                    Text("Detected Java Runtimes")
+                        .font(MSC.Typography.pageTitle)
+                    Text("Choose the Java executable MSC should place in Settings.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                }
+
+                Spacer()
+
+                Button("Cancel") {
+                    onCancel()
+                }
+                .buttonStyle(MSCSecondaryButtonStyle())
+            }
+            .padding(MSC.Spacing.xl)
+
+            Divider()
+
+            if runtimes.isEmpty {
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    Label("No Java runtimes found", systemImage: "magnifyingglass")
+                        .font(MSC.Typography.cardTitle)
+                    Text("MSC checked the common macOS, SDKMAN, jenv, and Homebrew Java install locations. You can still paste a Java executable path manually.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(MSC.Spacing.xl)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                List(runtimes) { runtime in
+                    JavaRuntimePickerRow(
+                        runtime: runtime,
+                        isSelected: runtime.executablePath == selectedExecutablePath,
+                        onSelect: { onSelect(runtime) }
+                    )
+                    .listRowInsets(EdgeInsets(
+                        top: MSC.Spacing.sm,
+                        leading: MSC.Spacing.md,
+                        bottom: MSC.Spacing.sm,
+                        trailing: MSC.Spacing.md
+                    ))
+                }
+                .listStyle(.inset)
+            }
+        }
+        .frame(width: 620, height: 420)
+    }
+}
+
+private struct JavaRuntimePickerRow: View {
+    let runtime: DetectedJavaRuntime
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: MSC.Spacing.md) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "terminal")
+                .foregroundStyle(isSelected ? MSC.Colors.success : MSC.Colors.caption)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: MSC.Spacing.sm) {
+                    Text(runtime.versionLabel)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(runtime.name)
+                        .font(.system(size: 13))
+                        .foregroundStyle(MSC.Colors.caption)
+                }
+
+                Text(runtime.executablePath)
+                    .font(MSC.Typography.mono)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Button("Use") {
+                onSelect()
+            }
+            .buttonStyle(MSCPrimaryButtonStyle())
+            .controlSize(.small)
+        }
+        .padding(.vertical, 2)
     }
 }
 

@@ -13,6 +13,20 @@
 
 import Foundation
 
+struct DetectedJavaRuntime: Identifiable, Hashable, Sendable {
+    let name: String
+    let executablePath: String
+    let homePath: String
+    let majorVersion: Int?
+
+    var id: String { executablePath }
+
+    var versionLabel: String {
+        if let majorVersion { return "Java \(majorVersion)" }
+        return "Java"
+    }
+}
+
 enum JavaRuntimeManager {
 
     /// The Java major version a given Minecraft version needs to run.
@@ -87,6 +101,129 @@ enum JavaRuntimeManager {
             return components.count > 1 ? components[1] : 1
         }
         return first
+    }
+
+    // MARK: - Installed runtime discovery
+
+    static func defaultJavaRuntimeSearchRoots() -> [URL] {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return [
+            URL(fileURLWithPath: "/Library/Java/JavaVirtualMachines", isDirectory: true),
+            home.appendingPathComponent("Library/Java/JavaVirtualMachines", isDirectory: true),
+            home.appendingPathComponent(".sdkman/candidates/java", isDirectory: true),
+            home.appendingPathComponent(".jenv/versions", isDirectory: true),
+            URL(fileURLWithPath: "/opt/homebrew/opt", isDirectory: true),
+            URL(fileURLWithPath: "/usr/local/opt", isDirectory: true),
+            URL(fileURLWithPath: "/opt/homebrew/Cellar", isDirectory: true),
+            URL(fileURLWithPath: "/usr/local/Cellar", isDirectory: true)
+        ]
+    }
+
+    static func detectInstalledJavaRuntimes(searchRoots: [URL] = defaultJavaRuntimeSearchRoots()) -> [DetectedJavaRuntime] {
+        let fm = FileManager.default
+        var runtimesByPath: [String: DetectedJavaRuntime] = [:]
+
+        func insertRuntime(homeURL: URL) {
+            let javaURL = homeURL.appendingPathComponent("bin/java", isDirectory: false)
+            guard fm.isExecutableFile(atPath: javaURL.path) else { return }
+
+            let executablePath = javaURL.standardizedFileURL.path
+            guard runtimesByPath[executablePath] == nil else { return }
+
+            let name = javaRuntimeDisplayName(forHome: homeURL)
+            let detectedMajor = detectJavaMajor(javaPath: executablePath)
+            let inferredMajor = inferJavaMajorVersion(from: homeURL.path)
+
+            runtimesByPath[executablePath] = DetectedJavaRuntime(
+                name: name,
+                executablePath: executablePath,
+                homePath: homeURL.standardizedFileURL.path,
+                majorVersion: detectedMajor ?? inferredMajor
+            )
+        }
+
+        func inspectCandidate(_ url: URL) {
+            insertRuntime(homeURL: url)
+            insertRuntime(homeURL: url.appendingPathComponent("Contents/Home", isDirectory: true))
+        }
+
+        for root in searchRoots {
+            inspectCandidate(root)
+
+            guard let children = try? fm.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            ) else { continue }
+
+            for child in children {
+                guard (try? child.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+                guard shouldInspectJavaRuntimeCandidate(child, under: root) else { continue }
+                inspectCandidate(child)
+
+                // Homebrew Cellar packages are typically `<package>/<version>/bin/java`.
+                if root.lastPathComponent == "Cellar",
+                   let versions = try? fm.contentsOfDirectory(
+                    at: child,
+                    includingPropertiesForKeys: [.isDirectoryKey],
+                    options: [.skipsHiddenFiles]
+                   ) {
+                    for version in versions where (try? version.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+                        inspectCandidate(version)
+                    }
+                }
+            }
+        }
+
+        return runtimesByPath.values.sorted { lhs, rhs in
+            switch (lhs.majorVersion, rhs.majorVersion) {
+            case let (l?, r?) where l != r:
+                return l > r
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            }
+        }
+    }
+
+    private static func shouldInspectJavaRuntimeCandidate(_ candidate: URL, under root: URL) -> Bool {
+        let rootName = root.lastPathComponent
+        guard rootName == "opt" || rootName == "Cellar" else { return true }
+
+        let name = candidate.lastPathComponent.lowercased()
+        return name.contains("jdk")
+            || name.contains("java")
+            || name.contains("temurin")
+            || name.contains("zulu")
+            || name.contains("corretto")
+            || name.contains("openjdk")
+    }
+
+    private static func javaRuntimeDisplayName(forHome homeURL: URL) -> String {
+        let components = homeURL.standardizedFileURL.pathComponents
+        if components.suffix(2) == ["Contents", "Home"], components.count >= 3 {
+            return cleanedJavaRuntimeName(components[components.count - 3])
+        }
+        return cleanedJavaRuntimeName(homeURL.lastPathComponent)
+    }
+
+    private static func cleanedJavaRuntimeName(_ raw: String) -> String {
+        raw.replacingOccurrences(of: ".jdk", with: "")
+            .replacingOccurrences(of: ".jdk", with: "", options: .caseInsensitive)
+            .replacingOccurrences(of: "_", with: " ")
+    }
+
+    private static func inferJavaMajorVersion(from text: String) -> Int? {
+        let pattern = #"(?<!\d)(1[.]8|8|11|16|17|18|19|20|21|22|23|24|25|26)(?!\d)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              let versionRange = Range(match.range(at: 1), in: text) else { return nil }
+        let token = String(text[versionRange])
+        return token == "1.8" ? 8 : Int(token)
     }
 
     // MARK: - Path normalization

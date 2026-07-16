@@ -71,6 +71,59 @@ final class JavaRuntimeGuardsTests: XCTestCase {
                       "Expected 'bin/java' in error: \(err ?? "<nil>")")
     }
 
+    // MARK: - Installed runtime discovery
+
+    func testDetectInstalledJavaRuntimesFindsMacOSJDKBundle() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let java = try makeFakeJavaExecutable(
+            home: root.appendingPathComponent("temurin-21.jdk/Contents/Home", isDirectory: true)
+        )
+
+        let runtimes = JavaRuntimeManager.detectInstalledJavaRuntimes(searchRoots: [root])
+
+        XCTAssertEqual(runtimes.map(\.executablePath), [java.path])
+        XCTAssertEqual(runtimes.first?.majorVersion, 21)
+        XCTAssertEqual(runtimes.first?.name, "temurin-21")
+    }
+
+    func testDetectInstalledJavaRuntimesFindsPlainJavaHome() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let java8 = try makeFakeJavaExecutable(
+            home: root.appendingPathComponent("8.0.402-tem", isDirectory: true)
+        )
+        let java17 = try makeFakeJavaExecutable(
+            home: root.appendingPathComponent("17.0.11-tem", isDirectory: true)
+        )
+
+        let runtimes = JavaRuntimeManager.detectInstalledJavaRuntimes(searchRoots: [root])
+
+        XCTAssertEqual(Set(runtimes.map(\.executablePath)), Set([java8.path, java17.path]))
+        XCTAssertEqual(runtimes.first?.majorVersion, 17, "Newest detected major should sort first")
+    }
+
+    func testDetectInstalledJavaRuntimesIgnoresInvalidCandidates() throws {
+        let root = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let invalidHome = root.appendingPathComponent("broken-21.jdk/Contents/Home", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: invalidHome.appendingPathComponent("bin", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(
+            atPath: invalidHome.appendingPathComponent("bin/java").path,
+            contents: Data("#!/bin/sh\n".utf8)
+        )
+
+        let runtimes = JavaRuntimeManager.detectInstalledJavaRuntimes(searchRoots: [root])
+
+        XCTAssertTrue(runtimes.isEmpty, "Non-executable java files should not be offered in Settings")
+    }
+
     // MARK: - Too-new warning (compatibilityWarningText)
 
     func testRequiredJavaMajorMapping() {
@@ -133,5 +186,24 @@ final class JavaRuntimeGuardsTests: XCTestCase {
         XCTAssertTrue(w!.contains("version 8"),     "Should mention version 8: \(w!)")
         XCTAssertFalse(w!.contains("modpacks are usually"),
                        "Should be the too-old phrasing, not too-new: \(w!)")
+    }
+
+    // MARK: - Helpers
+
+    private func makeTemporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    @discardableResult
+    private func makeFakeJavaExecutable(home: URL) throws -> URL {
+        let bin = home.appendingPathComponent("bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        let java = bin.appendingPathComponent("java")
+        FileManager.default.createFile(atPath: java.path, contents: Data("#!/bin/sh\n".utf8))
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: java.path)
+        return java
     }
 }

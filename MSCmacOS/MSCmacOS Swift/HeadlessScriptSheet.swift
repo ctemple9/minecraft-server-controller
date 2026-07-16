@@ -159,7 +159,7 @@ struct HeadlessScriptSheet: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         case .screen:
-            Text("Runs in a detached screen session. Reattach with: screen -r minecraft")
+            Text("The server runs in a persistent terminal session — closing this window won't stop it. Drop back in any time with: screen -r minecraft")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
