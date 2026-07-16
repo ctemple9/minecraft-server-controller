@@ -19,6 +19,10 @@ struct DetailsComponentsTabView: View {
     @State private var isShowingUpdateAllSheet = false
     @State private var isShowingClientExportSheet = false
 
+    @State private var showAllMods = false
+    @State private var showAllPlugins = false
+    private let modPreviewLimit = 20
+
     private var isBedrock: Bool {
         guard let s = viewModel.selectedServer else { return false }
         return viewModel.configServer(for: s)?.isBedrock ?? false
@@ -244,6 +248,8 @@ struct DetailsComponentsTabView: View {
             }
         }
         .task(id: selectedConfig?.id) {
+            showAllMods = false
+            showAllPlugins = false
             if isModded { viewModel.refreshDiscoveredMods() }
             else { viewModel.refreshDiscoveredPlugins() }
             // Resolve-once-with-cache: drives per-row update badges. No-op when current.
@@ -279,7 +285,8 @@ struct DetailsComponentsTabView: View {
 
     @ViewBuilder
     private var pluginRows: some View {
-        if viewModel.discoveredPlugins.isEmpty {
+        let plugins = viewModel.discoveredPlugins
+        if plugins.isEmpty {
             HStack(spacing: MSC.Spacing.sm) {
                 Spacer().frame(width: 52)
                 Text("No plugins installed.")
@@ -290,13 +297,32 @@ struct DetailsComponentsTabView: View {
             .padding(.horizontal, MSC.Spacing.md)
             .padding(.vertical, MSC.Spacing.sm + 1)
         } else {
-            ForEach(Array(viewModel.discoveredPlugins.enumerated()), id: \.element.id) { idx, entry in
+            let visible = (showAllPlugins || plugins.count <= modPreviewLimit)
+                ? plugins
+                : Array(plugins.prefix(modPreviewLimit))
+            ForEach(Array(visible.enumerated()), id: \.element.id) { idx, entry in
                 if idx > 0 {
                     Divider()
                         .padding(.leading, 52)
                         .opacity(0.55)
                 }
                 PluginListRow(entry: entry)
+            }
+            if !showAllPlugins && plugins.count > modPreviewLimit {
+                Divider()
+                    .padding(.leading, 52)
+                    .opacity(0.55)
+                Button {
+                    showAllPlugins = true
+                } label: {
+                    Label("Show all \(plugins.count) plugins", systemImage: "chevron.down")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.vertical, MSC.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -313,7 +339,8 @@ struct DetailsComponentsTabView: View {
 
     @ViewBuilder
     private var modRows: some View {
-        if viewModel.discoveredMods.isEmpty {
+        let mods = viewModel.discoveredMods
+        if mods.isEmpty {
             HStack(spacing: MSC.Spacing.sm) {
                 Spacer().frame(width: 52)
                 Text("No mods installed.")
@@ -324,13 +351,32 @@ struct DetailsComponentsTabView: View {
             .padding(.horizontal, MSC.Spacing.md)
             .padding(.vertical, MSC.Spacing.sm + 1)
         } else {
-            ForEach(Array(viewModel.discoveredMods.enumerated()), id: \.element.id) { idx, entry in
+            let visible = (showAllMods || mods.count <= modPreviewLimit)
+                ? mods
+                : Array(mods.prefix(modPreviewLimit))
+            ForEach(Array(visible.enumerated()), id: \.element.id) { idx, entry in
                 if idx > 0 {
                     Divider()
                         .padding(.leading, 52)
                         .opacity(0.55)
                 }
                 ModListRow(entry: entry)
+            }
+            if !showAllMods && mods.count > modPreviewLimit {
+                Divider()
+                    .padding(.leading, 52)
+                    .opacity(0.55)
+                Button {
+                    showAllMods = true
+                } label: {
+                    Label("Show all \(mods.count) mods", systemImage: "chevron.down")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, MSC.Spacing.md)
+                .padding(.vertical, MSC.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
