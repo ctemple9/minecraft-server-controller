@@ -70,6 +70,7 @@ struct MSCSettingsView: View {
 
     private let appearanceCardAnchorID            = "preferences.appearance"
     private let javaCardAnchorID                  = "preferences.java"
+    private let curseForgeCardAnchorID            = "preferences.curseForge"
     private let processManagementCardAnchorID     = "preferences.processManagement"
     private let remoteAccessCardAnchorID          = "preferences.remoteAccess"
     private let remoteAccessToggleAnchorID        = "preferences.remoteAccess.toggle"
@@ -95,8 +96,14 @@ struct MSCSettingsView: View {
             helpStep(
                 id: "preferences.general.java",
                 title: "Java affects how Java servers launch",
-                body: "Point MSC at the Java executable and add optional JVM flags. Most people leave flags blank unless intentionally tuning launch behavior.",
+                body: "Point MSC at the Java executable and add optional JVM flags. Use the Detect button to scan common install locations and choose from a list — no need to type a path by hand. Leave flags blank unless you know what you're tuning.",
                 anchorID: javaCardAnchorID
+            ),
+            helpStep(
+                id: "preferences.general.curseforge",
+                title: "CurseForge needs an API key to import modpacks",
+                body: "Paste your free CurseForge API key here to unlock CurseForge modpack importing. Get one from console.curseforge.com → API Keys — it takes under a minute. The key is stored in your Mac's Keychain, not in the config file.",
+                anchorID: curseForgeCardAnchorID
             ),
             helpStep(
                 id: "preferences.general.processManagement",
@@ -442,6 +449,8 @@ struct MSCSettingsView: View {
         }
         .pscCard()
         .frame(maxWidth: .infinity, alignment: .leading)
+        .id(curseForgeCardAnchorID)
+        .contextualHelpAnchor(curseForgeCardAnchorID)
     }
 
     /// Transitional toggle: run Bedrock servers in the native Virtualization.framework
