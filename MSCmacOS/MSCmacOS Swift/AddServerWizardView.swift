@@ -38,6 +38,12 @@ enum AddServerWizardPath {
     case fresh
 }
 
+// MARK: - Import kind
+
+enum ImportKind {
+    case undetermined, existingServer, modpack
+}
+
 // MARK: - Main view
 
 struct AddServerWizardView: View {
@@ -47,6 +53,7 @@ struct AddServerWizardView: View {
     // MARK: Navigation
     @State private var currentStep: Int = 1
     @State private var wizardPath: AddServerWizardPath = .importExisting
+    @State private var importKind: ImportKind = .undetermined
 
     // MARK: Import path
         @State private var sourceURL: URL?           = nil
@@ -318,6 +325,16 @@ struct AddServerWizardView: View {
     }
 
     private func stepLabel(_ step: Int) -> String {
+        if importKind == .modpack {
+            switch step {
+            case 1: return "Choose path"
+            case 2: return "Upload"
+            case 3: return "Network"
+            case 4: return "World"
+            case 5: return "Confirm"
+            default: return ""
+            }
+        }
         if wizardPath == .fresh && currentStep > 1 {
             if hasAddOnsStep {
                 switch step {
@@ -361,11 +378,11 @@ struct AddServerWizardView: View {
         } else if currentStep == 2 && wizardPath == .fresh {
             step2FreshConfigure
         } else if currentStep == 3 && wizardPath == .importExisting {
-            step3ImportReview
+            if importKind == .modpack { step3Network } else { step3ImportReview }
         } else if currentStep == 3 && wizardPath == .fresh {
             step3Network
         } else if currentStep == 4 && wizardPath == .importExisting {
-            step3Network
+            if importKind == .modpack { step4FreshWorld } else { step3Network }
         } else if currentStep == 4 && wizardPath == .fresh {
             step4FreshWorld
         } else if currentStep == 5 && hasAddOnsStep {
@@ -407,50 +424,164 @@ struct AddServerWizardView: View {
         }
     }
 
-    // MARK: - Step 2 (Import): Drop zone
+    // MARK: - Step 2 (Import): Drop zone / Modpack details
 
     private var step2ImportUpload: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Drop your server folder or archive")
-                    .font(MSC.Typography.pageTitle)
-                Text("MSC will scan it and read what it can find — nothing is copied until you confirm on the last step.")
-                    .font(MSC.Typography.caption)
-                    .foregroundStyle(MSC.Colors.caption)
-            }
-
-            if isScanning {
-                HStack(spacing: 10) {
-                    ProgressView().controlSize(.small)
-                    Text("Scanning server folder…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 60)
-
-            } else if let error = scanError {
-                VStack(spacing: MSC.Spacing.md) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.orange)
-                    Text(error)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                    Button("Try Again") {
-                        sourceURL = nil
-                        scanError = nil
-                        scannedInfo = nil
-                    }
-                    .buttonStyle(MSCSecondaryButtonStyle())
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-
+            if importKind == .modpack {
+                step2ModpackDetails
             } else {
-                dropZone
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Drop your server folder, archive, or modpack")
+                        .font(MSC.Typography.pageTitle)
+                    Text("Drop a server folder or .zip to import an existing server, or drop a .mrpack / CurseForge .zip to start from a modpack.")
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                }
+
+                if isScanning {
+                    HStack(spacing: 10) {
+                        ProgressView().controlSize(.small)
+                        Text("Scanning server folder…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 60)
+
+                } else if let error = scanError {
+                    VStack(spacing: MSC.Spacing.md) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Try Again") {
+                            sourceURL = nil
+                            scanError = nil
+                            scannedInfo = nil
+                        }
+                        .buttonStyle(MSCSecondaryButtonStyle())
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+
+                } else {
+                    dropZone
+                }
             }
+        }
+    }
+
+    // Shown on step 2 when a modpack is detected — merged upload+details page.
+    private var step2ModpackDetails: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Modpack detected")
+                    .font(MSC.Typography.pageTitle)
+                if !statusMessage.isEmpty {
+                    Text(statusMessage)
+                        .font(MSC.Typography.caption)
+                        .foregroundStyle(MSC.Colors.caption)
+                }
+            }
+
+            // Pack info — locked from metadata
+            VStack(spacing: 0) {
+                infoRow(key: "Pack", value: serverName.isEmpty ? "Unknown" : serverName)
+                if let entry = selectedVersionEntry {
+                    infoRow(key: "Version", value: versionSummary(entry))
+                }
+                infoRow(key: "Software", value: "\(selectedFlavor.displayName) · \(selectedCategory.displayName)")
+            }
+            .pscCard(padding: MSC.Spacing.sm)
+
+            // Server display name
+            VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                Text("Server Name")
+                    .font(MSC.Typography.sectionHeader)
+                TextField("Enter server name", text: $displayName)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            // Override escape hatch — collapsed by default
+            DisclosureGroup("Change loader/version…") {
+                VStack(alignment: .leading, spacing: MSC.Spacing.lg) {
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        Text("Server Software")
+                            .font(MSC.Typography.sectionHeader)
+                        ForEach(JavaServerFlavor.createFlowChoices(in: selectedCategory), id: \.self) { flavor in
+                            WizardFlavorCard(
+                                flavor: flavor,
+                                isSelected: selectedFlavor == flavor,
+                                isAvailable: implementedFlavors.contains(flavor)
+                            ) {
+                                if implementedFlavors.contains(flavor) {
+                                    selectedFlavor = flavor
+                                }
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                        Text("Version")
+                            .font(MSC.Typography.sectionHeader)
+                        Button {
+                            if availableVersions.isEmpty && !isLoadingVersions {
+                                isLoadingVersions = true
+                                Task {
+                                    let versions = (try? await ServerJarProvider.listVersions(for: selectedFlavor)) ?? []
+                                    await MainActor.run {
+                                        availableVersions = versions
+                                        isLoadingVersions = false
+                                        isShowingVersionPicker = true
+                                    }
+                                }
+                            } else {
+                                isShowingVersionPicker = true
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                if isLoadingVersions { ProgressView().controlSize(.mini) }
+                                Text(selectedVersionEntry.map { versionSummary($0) } ?? "Choose version\u{2026}")
+                                    .font(.subheadline)
+                                    .foregroundStyle(selectedVersionEntry != nil ? Color.accentColor : .primary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, MSC.Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                                    .fill(selectedVersionEntry != nil ? Color.accentColor.opacity(0.08) : Color(NSColor.controlBackgroundColor))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: MSC.Radius.md, style: .continuous)
+                                    .stroke(selectedVersionEntry != nil ? Color.accentColor : Color(NSColor.separatorColor),
+                                            lineWidth: selectedVersionEntry != nil ? 1.5 : 0.5)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        if let sv = selectedVersionEntry {
+                            Text("Pinned: \(versionSummary(sv))")
+                                .font(.caption).foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
+                .padding(.top, MSC.Spacing.sm)
+            }
+
+            Button("Choose a different file") {
+                importKind = .undetermined
+                sourceURL = nil
+                stagedAddOns.removeAll()
+                serverName = ""
+                selectedVersionEntry = nil
+                displayName = ""
+                statusMessage = ""
+            }
+            .buttonStyle(MSCSecondaryButtonStyle())
+            .controlSize(.small)
         }
     }
 
@@ -480,7 +611,7 @@ struct AddServerWizardView: View {
                     .foregroundStyle(dropTargeted ? Color.accentColor : .secondary)
 
                 VStack(spacing: 6) {
-                    Text("Drop server folder or archive here")
+                    Text("Drop server folder, archive, or modpack here")
                         .font(.system(size: 14, weight: .medium))
                     Text("or")
                         .font(.caption)
@@ -490,7 +621,7 @@ struct AddServerWizardView: View {
                 }
 
                 HStack(spacing: 8) {
-                    ForEach(["Folder", ".zip", ".tar.gz"], id: \.self) { label in
+                    ForEach(["Folder", ".zip", ".mrpack", ".tar.gz"], id: \.self) { label in
                         Text(label)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(MSC.Colors.caption)
@@ -512,12 +643,8 @@ struct AddServerWizardView: View {
                       let path = String(data: data, encoding: .utf8),
                       let url  = URL(string: path)
                 else { return }
-                let cleaned = url.standardizedFileURL
-                let zip     = cleaned.pathExtension.lowercased() == "zip"
                 Task { @MainActor in
-                    sourceURL   = cleaned
-                    isSourceZip = zip
-                    await performScan(cleaned, isZip: zip)
+                    await handleImportDrop(url.standardizedFileURL)
                 }
             }
             return true
@@ -1080,7 +1207,7 @@ struct AddServerWizardView: View {
     // Port fields + guide for Port Forwarding
     private var portForwardingSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            if wizardPath == .fresh && serverType == .java {
+            if (wizardPath == .fresh || importKind == .modpack) && serverType == .java {
                 HStack(spacing: MSC.Spacing.xl) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                         Text("Java Port (TCP)")
@@ -1114,7 +1241,7 @@ struct AddServerWizardView: View {
                     .font(.caption).foregroundStyle(.secondary)
 
             } else {
-                // Import path — port from scan
+                // Existing-server import — port from scan
                 HStack(spacing: MSC.Spacing.xl) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                         Text("Server Port")
@@ -1146,7 +1273,7 @@ struct AddServerWizardView: View {
     // Port fields + guide for playit.gg
     private var playitPortSection: some View {
         VStack(alignment: .leading, spacing: MSC.Spacing.md) {
-            if wizardPath == .fresh && serverType == .java {
+            if (wizardPath == .fresh || importKind == .modpack) && serverType == .java {
                 HStack(spacing: MSC.Spacing.xl) {
                     VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
                         Text("Local Port (TCP)")
@@ -1205,7 +1332,8 @@ struct AddServerWizardView: View {
     // Computed helpers for sheet context
     private var currentNetworkLocalPort: Int {
         if serverType == .java || wizardPath == .importExisting {
-            return Int(wizardPath == .importExisting ? importPort : javaPort) ?? 25565
+            let portStr = (wizardPath == .importExisting && importKind != .modpack) ? importPort : javaPort
+            return Int(portStr) ?? 25565
         }
         return Int(bedrockPort) ?? 19132
     }
@@ -1526,6 +1654,9 @@ struct AddServerWizardView: View {
     }
 
     private var postCreateHint: String {
+        if wizardPath == .importExisting && importKind == .modpack {
+            return "Your modpack's mods are installed. Start the server when you're ready to play."
+        }
         if selectedFlavor.category == .modded {
             return "Add mods in the Components tab before starting — world-gen mods must be present on first boot."
         }
@@ -1556,12 +1687,27 @@ struct AddServerWizardView: View {
                 Text("SUMMARY")
                     .font(MSC.Typography.sectionHeader)
                 VStack(spacing: 0) {
-                    if wizardPath == .importExisting, let info = scannedInfo {
+                    if wizardPath == .importExisting && importKind == .modpack {
+                        infoRow(key: "Method",       value: "Import modpack")
+                        infoRow(key: "Pack",         value: serverName.isEmpty ? "Unknown" : serverName)
+                        infoRow(key: "Software",     value: "\(selectedFlavor.displayName) · \(selectedCategory.displayName)")
+                        infoRow(key: "Version",      value: selectedVersionEntry.map { versionSummary($0) } ?? "Latest")
+                        infoRow(key: "Java Port",    value: javaPort)
+                        infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
+                        infoRow(key: "World source", value: worldSourceMode.rawValue)
+                        if worldSourceMode == .fresh {
+                            let wName = initialWorldName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            infoRow(key: "World name", value: wName.isEmpty ? serverName : wName)
+                        }
+                        if !stagedAddOns.isEmpty {
+                            infoRow(key: "Mods", value: "\(stagedAddOns.count) from pack")
+                        }
+                    } else if wizardPath == .importExisting, let info = scannedInfo {
                         infoRow(key: "Method",       value: "Import existing")
                         infoRow(key: "Server type",  value: info.serverType.displayName)
                         infoRow(key: "Port",         value: importPort.isEmpty ? "\(info.port)" : importPort)
                         infoRow(key: "Connectivity", value: enablePlayit ? "Tunnel (playit.gg)" : "Port Forwarding")
-                                                infoRow(key: "Max players",  value: importMaxPlayers.isEmpty ? "\(info.maxPlayers)" : importMaxPlayers)
+                        infoRow(key: "Max players",  value: importMaxPlayers.isEmpty ? "\(info.maxPlayers)" : importMaxPlayers)
                         infoRow(key: "Active world",
                                 value: selectedWorldName ?? info.defaultWorldName ?? "—")
                         if !info.worlds.isEmpty && info.worlds.count > 1 {
@@ -1683,6 +1829,10 @@ struct AddServerWizardView: View {
             return true
         case 2:
             if wizardPath == .importExisting {
+                if importKind == .modpack {
+                    return selectedVersionEntry != nil
+                        && !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                }
                 return scannedInfo != nil && !isScanning && scanError == nil
             } else {
                 let nameOk = !serverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -1694,14 +1844,23 @@ struct AddServerWizardView: View {
                 }
             }
         case 3:
-            // Network step (Fresh) or Review step (Import)
-            if wizardPath == .importExisting { return true }
-            // Fresh network step — validate port
+            // Network step (Fresh or Modpack) or Review step (existing Import)
+            if wizardPath == .importExisting {
+                if importKind == .modpack { return Int(javaPort) != nil }
+                return true
+            }
             if serverType == .java { return Int(javaPort) != nil }
             return Int(bedrockPort) != nil
         case 4:
-            // Network step (Import) or World step (Fresh)
+            // World step (Modpack or Fresh) or Network step (existing Import)
             if wizardPath == .importExisting {
+                if importKind == .modpack {
+                    switch worldSourceMode {
+                    case .fresh:     return true
+                    case .backupZip: return selectedBackupURL != nil
+                    case .folder:    return selectedWorldFolderURL != nil
+                    }
+                }
                 return Int(importPort) != nil
             }
             switch worldSourceMode {
@@ -1722,8 +1881,8 @@ struct AddServerWizardView: View {
     }
 
     private func advanceStep() {
-        // Pre-fill display name before reaching step 5
-        if currentStep == 3 && wizardPath == .importExisting {
+        // Pre-fill display name before reaching the confirm step
+        if currentStep == 3 && wizardPath == .importExisting && importKind != .modpack {
             if displayName.isEmpty, let url = sourceURL {
                 displayName = url.deletingPathExtension().lastPathComponent
                     .replacingOccurrences(of: "_", with: " ")
@@ -1733,6 +1892,10 @@ struct AddServerWizardView: View {
             }
         }
         if currentStep == 4 && wizardPath == .fresh && displayName.isEmpty {
+            displayName = serverName
+        }
+        // Modpack: displayName is entered on step 2; fallback in case it was left empty
+        if currentStep == 4 && wizardPath == .importExisting && importKind == .modpack && displayName.isEmpty {
             displayName = serverName
         }
         withAnimation(.easeInOut(duration: 0.18)) { currentStep += 1 }
@@ -1791,7 +1954,55 @@ struct AddServerWizardView: View {
 
         let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if wizardPath == .importExisting {
+        if wizardPath == .importExisting && importKind == .modpack {
+            // Modpack import: provision via createNewServer (same as Start Fresh Java)
+            let worldSource: AppViewModel.WorldSource
+            switch worldSourceMode {
+            case .fresh: worldSource = .fresh
+            case .backupZip:
+                guard let url = selectedBackupURL else {
+                    statusMessage = "No backup file selected."; isCreating = false; return
+                }
+                worldSource = .backupZip(url)
+            case .folder:
+                guard let url = selectedWorldFolderURL else {
+                    statusMessage = "No world folder selected."; isCreating = false; return
+                }
+                worldSource = .existingFolder(url)
+            }
+            let worldName = initialWorldName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let seedRaw   = initialWorldSeed.trimmingCharacters(in: .whitespacesAndNewlines)
+            let port      = Int(javaPort) ?? 25565
+            statusMessage = "Downloading \(selectedFlavor.displayName) and installing modpack…"
+            Task {
+                let ok = await viewModel.createNewServer(
+                    name: name,
+                    initialWorldName: worldName.isEmpty ? nil : worldName,
+                    jarSource: .downloadLatest,
+                    flavor: selectedFlavor,
+                    specificVersion: selectedVersionEntry,
+                    stagedAddOns: stagedAddOns,
+                    port: port,
+                    enableCrossPlay: false,
+                    crossPlayBedrockPort: nil,
+                    enablePlayit: enablePlayit,
+                    enableXboxBroadcast: false,
+                    difficulty: initialWorldDifficulty.rawValue,
+                    gamemode: initialWorldGamemode.rawValue,
+                    worldSeed: seedRaw.isEmpty ? nil : seedRaw,
+                    worldSource: worldSource
+                )
+                await MainActor.run {
+                    isCreating = false
+                    if ok { createSucceeded = true }
+                    else {
+                        statusMessage = viewModel.lastServerCreateError.map { "Failed to create server: \($0)" }
+                            ?? "Failed to create server."
+                    }
+                }
+            }
+
+        } else if wizardPath == .importExisting {
             guard let url = sourceURL, let info = scannedInfo else {
                 statusMessage = "Missing source file."; isCreating = false; return
             }
@@ -2003,17 +2214,36 @@ struct AddServerWizardView: View {
 
     private func browseForServerFolder() {
         let panel = NSOpenPanel()
-        panel.canChooseFiles       = true
-        panel.canChooseDirectories = true
+        panel.canChooseFiles          = true
+        panel.canChooseDirectories    = true
         panel.allowsMultipleSelection = false
-        panel.allowedFileTypes     = ["zip", ""]
-        panel.title                = "Choose Server Folder or .zip Archive"
-        panel.message              = "Select a server folder or .zip archive to import into MSC."
+        panel.allowedContentTypes     = [.folder, .zip,
+                                          UTType(filenameExtension: "mrpack") ?? .zip]
+        panel.title                   = "Choose Server Folder, .zip, or Modpack"
+        panel.message                 = "Select a server folder, .zip archive, or modpack (.mrpack / CurseForge .zip) to import."
         if panel.runModal() == .OK, let url = panel.url {
-            let zip = url.pathExtension.lowercased() == "zip"
+            Task { await handleImportDrop(url) }
+        }
+    }
+
+    @MainActor
+    private func handleImportDrop(_ url: URL) async {
+        let ext = url.pathExtension.lowercased()
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+
+        if ext == "mrpack" || (!isDir.boolValue && ext == "zip" && (try? AppViewModel.readCurseForgeMetadata(from: url)) != nil) {
+            importKind = .modpack
+            sourceURL = url
+            stagedAddOns.removeAll()
+            await processModpackURL(url)
+            if displayName.isEmpty { displayName = serverName }
+        } else {
+            importKind = .existingServer
+            let zip = ext == "zip"
             sourceURL   = url
             isSourceZip = zip
-            Task { await performScan(url, isZip: zip) }
+            await performScan(url, isZip: zip)
         }
     }
 

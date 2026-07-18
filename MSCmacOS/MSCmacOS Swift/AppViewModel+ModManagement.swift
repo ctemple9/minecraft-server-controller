@@ -716,7 +716,7 @@ extension AppViewModel {
                 for m in manualDownloads {
                     logAppMessage("[Modpack]   • \(m.modName) — \(m.fileName) — \(m.projectPageURL)")
                 }
-                pendingManualDownloads = PendingCFManualDownloads(items: manualDownloads)
+                pendingManualDownloads = PendingCFManualDownloads(items: manualDownloads, modsDir: modsDir)
             }
             refreshDiscoveredMods()
         }

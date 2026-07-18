@@ -202,13 +202,6 @@
 		9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020B0000000000000001 /* NeoForgeInstaller.swift */; };
 		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
 		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
-		9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */; };
-		9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02290000000000000001 /* CurseForgeModpack.swift */; };
-		9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022A0000000000000001 /* CurseForgeAPI.swift */; };
-		9AFE022B0000000000000002 /* JavaServerLaunchHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */; };
-		9AFE022C0000000000000002 /* CurseForgeManualDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */; };
-		9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */; };
-		9AFE02280000000000000002 /* TpsLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02280000000000000001 /* TpsLineParser.swift */; };
 		9AFE020E0000000000000002 /* AppViewModel+ModManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */; };
 		9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020F0000000000000001 /* AddonUpdateResolver.swift */; };
 		9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */; };
@@ -233,6 +226,13 @@
 		9AFE02230000000000000002 /* AppViewModel+APIWiringAddons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02230000000000000001 /* AppViewModel+APIWiringAddons.swift */; };
 		9AFE02240000000000000002 /* AppViewModel+APIWiringSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02240000000000000001 /* AppViewModel+APIWiringSettings.swift */; };
 		9AFE02250000000000000002 /* AppViewModel+APIWiringServerMgmt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02250000000000000001 /* AppViewModel+APIWiringServerMgmt.swift */; };
+		9AFE02260000000000000002 /* ModpackClientOnlyClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */; };
+		9AFE02270000000000000002 /* ModrinthSlugNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */; };
+		9AFE02280000000000000002 /* TpsLineParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02280000000000000001 /* TpsLineParser.swift */; };
+		9AFE02290000000000000002 /* CurseForgeModpack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02290000000000000001 /* CurseForgeModpack.swift */; };
+		9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022A0000000000000001 /* CurseForgeAPI.swift */; };
+		9AFE022B0000000000000002 /* JavaServerLaunchHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */; };
+		9AFE022C0000000000000002 /* CurseForgeManualDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -250,11 +250,6 @@
 		CAFED00E2F65AD6C00FB8246 /* AppViewModel+Playit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */; };
 		CAFED00F2F65AD6C00FB8246 /* PlayitSetupGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */; };
 		CAFED0112F65AD6C00FB8247 /* PlayitBinaryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFED0112F65AD6B00FB8247 /* PlayitBinaryManager.swift */; };
-		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
-		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
-		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
-		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
-		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
 		D1E900520000000000000011 /* RemoteAPITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000010 /* RemoteAPITestSupport.swift */; };
 		D1E900520000000000000021 /* HTTPParseRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000020 /* HTTPParseRequestTests.swift */; };
 		D1E900520000000000000031 /* ServerSettingsSchemaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000030 /* ServerSettingsSchemaTests.swift */; };
@@ -276,7 +271,22 @@
 		D1E900520000000000000107 /* PackManagedGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000106 /* PackManagedGuardTests.swift */; };
 		D1E900520000000000000109 /* CurseForgeModpackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E900520000000000000108 /* CurseForgeModpackTests.swift */; };
 		D1E90052000000000000010B /* HeadlessScriptGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E90052000000000000010A /* HeadlessScriptGeneratorTests.swift */; };
+		FE00000000000000000000A1 /* AppViewModel+ServerTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */; };
+		FE00000000000000000000B1 /* ServerTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000B2 /* ServerTransferView.swift */; };
+		FE00000000000000000000C1 /* ChunkerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000C2 /* ChunkerManager.swift */; };
+		FE00000000000000000000D1 /* AppViewModel+WorldConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */; };
+		FE00000000000000000000E1 /* WorldConversionWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE00000000000000000000E2 /* WorldConversionWizardView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D1E900512F6A100000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9AC210642EDE501200E7D326 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9AC2106B2EDE501200E7D326;
+			remoteInfo = Minecraft_Server_Controller;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		9A0B6EFB2F6F828E00CCA17C /* AddServerWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerWizardView.swift; sourceTree = "<group>"; };
@@ -476,13 +486,6 @@
 		9AFE020B0000000000000001 /* NeoForgeInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoForgeInstaller.swift; sourceTree = "<group>"; };
 		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
 		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
-		9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyClassifier.swift; sourceTree = "<group>"; };
-		9AFE02290000000000000001 /* CurseForgeModpack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpack.swift; sourceTree = "<group>"; };
-		9AFE022A0000000000000001 /* CurseForgeAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeAPI.swift; sourceTree = "<group>"; };
-		9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerLaunchHelper.swift; sourceTree = "<group>"; };
-		9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeManualDownloadSheet.swift; sourceTree = "<group>"; };
-		9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthSlugNormalizer.swift; sourceTree = "<group>"; };
-		9AFE02280000000000000001 /* TpsLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsLineParser.swift; sourceTree = "<group>"; };
 		9AFE020E0000000000000001 /* AppViewModel+ModManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ModManagement.swift"; sourceTree = "<group>"; };
 		9AFE020F0000000000000001 /* AddonUpdateResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddonUpdateResolver.swift; sourceTree = "<group>"; };
 		9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+AddonUpdates.swift"; sourceTree = "<group>"; };
@@ -507,6 +510,13 @@
 		9AFE02230000000000000001 /* AppViewModel+APIWiringAddons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringAddons.swift"; sourceTree = "<group>"; };
 		9AFE02240000000000000001 /* AppViewModel+APIWiringSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringSettings.swift"; sourceTree = "<group>"; };
 		9AFE02250000000000000001 /* AppViewModel+APIWiringServerMgmt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+APIWiringServerMgmt.swift"; sourceTree = "<group>"; };
+		9AFE02260000000000000001 /* ModpackClientOnlyClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModpackClientOnlyClassifier.swift; sourceTree = "<group>"; };
+		9AFE02270000000000000001 /* ModrinthSlugNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthSlugNormalizer.swift; sourceTree = "<group>"; };
+		9AFE02280000000000000001 /* TpsLineParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TpsLineParser.swift; sourceTree = "<group>"; };
+		9AFE02290000000000000001 /* CurseForgeModpack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpack.swift; sourceTree = "<group>"; };
+		9AFE022A0000000000000001 /* CurseForgeAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeAPI.swift; sourceTree = "<group>"; };
+		9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerLaunchHelper.swift; sourceTree = "<group>"; };
+		9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeManualDownloadSheet.swift; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -524,11 +534,6 @@
 		CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+Playit.swift"; sourceTree = "<group>"; };
 		CAFED00F2F65AD6B00FB8246 /* PlayitSetupGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitSetupGuideSheet.swift; sourceTree = "<group>"; };
 		CAFED0112F65AD6B00FB8247 /* PlayitBinaryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitBinaryManager.swift; sourceTree = "<group>"; };
-		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerTransferView.swift; sourceTree = "<group>"; };
-		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkerManager.swift; sourceTree = "<group>"; };
-		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
-		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldConversionWizardView.swift; sourceTree = "<group>"; };
 		D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Minecraft_Server_ControllerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1E900520000000000000010 /* RemoteAPITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteAPITestSupport.swift; sourceTree = "<group>"; };
 		D1E900520000000000000020 /* HTTPParseRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPParseRequestTests.swift; sourceTree = "<group>"; };
@@ -551,6 +556,11 @@
 		D1E900520000000000000106 /* PackManagedGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackManagedGuardTests.swift; sourceTree = "<group>"; };
 		D1E900520000000000000108 /* CurseForgeModpackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeModpackTests.swift; sourceTree = "<group>"; };
 		D1E90052000000000000010A /* HeadlessScriptGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessScriptGeneratorTests.swift; sourceTree = "<group>"; };
+		FE00000000000000000000A2 /* AppViewModel+ServerTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ServerTransfer.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000B2 /* ServerTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerTransferView.swift; sourceTree = "<group>"; };
+		FE00000000000000000000C2 /* ChunkerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChunkerManager.swift; sourceTree = "<group>"; };
+		FE00000000000000000000D2 /* AppViewModel+WorldConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+WorldConversion.swift"; sourceTree = "<group>"; };
+		FE00000000000000000000E2 /* WorldConversionWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldConversionWizardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -834,6 +844,25 @@
 			name = "Recovered References";
 			sourceTree = "<group>";
 		};
+		9AC210632EDE501200E7D326 = {
+			isa = PBXGroup;
+			children = (
+				9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */,
+				D1E900512F6A10000000000B /* MSCmacOSTests */,
+				9AC2106D2EDE501200E7D326 /* Products */,
+				9AAF274E2F6A003200F752CA /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+		9AC2106D2EDE501200E7D326 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */,
+				D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		D1E900512F6A10000000000B /* MSCmacOSTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -860,25 +889,6 @@
 				D1E90052000000000000010A /* HeadlessScriptGeneratorTests.swift */,
 			);
 			path = MSCmacOSTests;
-			sourceTree = "<group>";
-		};
-		9AC210632EDE501200E7D326 = {
-			isa = PBXGroup;
-			children = (
-				9A5632742F65AD6C00FB8246 /* MSCmacOS Swift */,
-				D1E900512F6A10000000000B /* MSCmacOSTests */,
-				9AC2106D2EDE501200E7D326 /* Products */,
-				9AAF274E2F6A003200F752CA /* Recovered References */,
-			);
-			sourceTree = "<group>";
-		};
-		9AC2106D2EDE501200E7D326 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				9AC2106C2EDE501200E7D326 /* Minecraft Server Controller.app */,
-				D1E900512F6A100000000002 /* Minecraft_Server_ControllerTests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1274,16 +1284,6 @@
 		};
 /* End PBXTargetDependency section */
 
-/* Begin PBXContainerItemProxy section */
-		D1E900512F6A100000000007 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 9AC210642EDE501200E7D326 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 9AC2106B2EDE501200E7D326;
-			remoteInfo = Minecraft_Server_Controller;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin XCBuildConfiguration section */
 		9AC210752EDE501500E7D326 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1430,7 +1430,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.14;
+				MARKETING_VERSION = 1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1469,7 +1469,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.14;
+				MARKETING_VERSION = 1.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

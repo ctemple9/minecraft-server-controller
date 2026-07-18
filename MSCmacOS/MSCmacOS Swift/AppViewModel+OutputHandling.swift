@@ -18,6 +18,13 @@ extension AppViewModel {
             return
         }
 
+        // Silently consume the multi-line `/spark tps` reply we auto-poll (its ~9
+        // lines would otherwise flood the console every few seconds). Captures the
+        // TPS values into the live stat. No-op for anything else.
+        if consumeSparkTpsLine(clean) {
+            return
+        }
+
         // Feed any registered console-line waiters (flush-consistent backups await
         // save-confirmation lines here). This is the single observation point — no
         // separate console parser is spun up for backups.
@@ -349,11 +356,69 @@ extension AppViewModel {
     private func parseTps(from line: String) {
         let clean = AppUtilities.sanitized(line)
         guard let sample = TpsLineParser.parse(clean) else { return }
+        recordTpsSample(sample)
+    }
+
+    private func recordTpsSample(_ sample: TpsLineParser.Sample) {
         latestTps1m = sample.t1
         latestTps5m = sample.t5
         latestTps15m = sample.t15
         tpsHistory1m.append(sample.t1)
         if tpsHistory1m.count > 30 { tpsHistory1m.removeFirst() }
+    }
+
+    /// Silently consumes the multi-line `/spark tps` reply we auto-poll on Fabric/
+    /// Quilt/Vanilla servers that bundle spark. spark prints ~9 lines (TPS header +
+    /// values, then tick-duration and CPU sections); left alone they'd spam the
+    /// console every poll, so — like `time query` — we swallow the whole block and
+    /// keep only the TPS values for the live stat. Returns true when `line` was part
+    /// of a block we requested, so the caller drops it before it reaches the console.
+    ///
+    /// The block is bounded by content (it ends after the CPU section's two value
+    /// lines) with a hard line cap as a safety net, and is only entered while
+    /// `expectingAutoSparkBlock` is set — so a user's manual `/spark tps` still
+    /// prints in full. spark emits the whole block synchronously on the server
+    /// thread, so no real console line can interleave mid-block.
+    private func consumeSparkTpsLine(_ clean: String) -> Bool {
+        if TpsLineParser.isSparkTpsHeader(clean) {
+            guard expectingAutoSparkBlock, !inSparkBlock else { return false }
+            inSparkBlock = true
+            expectSparkTpsValues = true
+            sparkCpuValuesRemaining = 0
+            sparkBlockGuard = 12
+            return true
+        }
+        guard inSparkBlock else { return false }
+
+        sparkBlockGuard -= 1
+        defer { if sparkBlockGuard <= 0 { endSparkBlock() } }
+
+        if expectSparkTpsValues {
+            if let sample = TpsLineParser.parseSparkValues(clean) {
+                recordTpsSample(sample)
+                expectSparkTpsValues = false
+            }
+            return true
+        }
+        if clean.contains("CPU usage from last 10s, 1m, 15m") {
+            sparkCpuValuesRemaining = 2   // one system + one process line follow
+            return true
+        }
+        if sparkCpuValuesRemaining > 0 {
+            sparkCpuValuesRemaining -= 1
+            if sparkCpuValuesRemaining == 0 { endSparkBlock() }
+            return true
+        }
+        // Tick-duration header/values and blank separators between sections.
+        return true
+    }
+
+    private func endSparkBlock() {
+        inSparkBlock = false
+        expectingAutoSparkBlock = false
+        expectSparkTpsValues = false
+        sparkCpuValuesRemaining = 0
+        sparkBlockGuard = 0
     }
 
     // MARK: - World time parsing

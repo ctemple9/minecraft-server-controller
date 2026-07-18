@@ -151,7 +151,17 @@ enum CurseForgeModpack {
     struct ManualDownload: Equatable {
         let modName: String
         let fileName: String
+        let fileID: Int
+        let slug: String?
         let projectPageURL: String
+
+        /// Direct per-file download URL (opens CF's ~5s countdown page for the exact
+        /// file — right loader/version baked in). Falls back to the project page when
+        /// the slug is unavailable.
+        var directDownloadURL: String {
+            guard let slug = slug, !slug.isEmpty else { return projectPageURL }
+            return "https://www.curseforge.com/minecraft/mc-mods/\(slug)/download/\(fileID)"
+        }
     }
 
     /// Assembles the manual-download list from the CF API responses for the blocked files.
@@ -167,7 +177,13 @@ enum CurseForgeModpack {
             let name = project?.name ?? file.displayName ?? file.fileName
             let page = project?.links?.websiteUrl
                 ?? "https://www.curseforge.com/minecraft/search?search=\(file.fileName)"
-            return ManualDownload(modName: name, fileName: file.fileName, projectPageURL: page)
+            return ManualDownload(
+                modName: name,
+                fileName: file.fileName,
+                fileID: file.id,
+                slug: project?.slug,
+                projectPageURL: page
+            )
         }
     }
 }

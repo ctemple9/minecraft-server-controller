@@ -144,6 +144,12 @@ extension AppViewModel {
             playerCountHistory.removeAll()
             clearBedrockPerformanceMetrics()
 
+            // Detect a bundled spark mod once per run so the TPS poll can fall back to
+            // `/spark tps` on flavors/versions with no built-in command (e.g. Fabric).
+            runningServerHasSpark = serverHasSparkMod(serverDir: cfgServer.serverDir)
+            expectingAutoSparkBlock = false
+            inSparkBlock = false
+
             lifecycle.resetForNewRun(serverId: cfgServer.id)
 
             lifecycle.startMetricsTimer(interval: 5) { [weak self] in
@@ -360,10 +366,40 @@ extension AppViewModel {
               let cfgServer = configServer(for: server) else { return }
         guard cfgServer.serverType == .java else { return }
         sendCommand("list", origin: .auto)
-        // Only poll TPS on flavors with a real built-in command. Sending a bare
-        // "tps" to Forge/Vanilla/Fabric spams "Unknown or incomplete command".
-        if let tpsCommand = cfgServer.javaFlavor.autoTpsCommand {
+        // Pick the TPS command by capability. Priority:
+        //   1. Loader-native — Paper `tps`, Forge/NeoForge `… tps`.
+        //   2. `/spark tps` when the spark mod is bundled (works on any MC version;
+        //      richest data). This is how Fabric/Quilt/Vanilla modpacks report TPS.
+        //   3. Vanilla `/tick query` on Fabric/Quilt/Vanilla 1.20.3+ without spark.
+        //   4. Nothing — sending an unsupported command would just spam "Unknown
+        //      or incomplete command", so we skip the poll.
+        let flavor = cfgServer.javaFlavor
+        let tpsCommand: String?
+        if flavor.autoTpsCommand == nil && runningServerHasSpark {
+            tpsCommand = "spark tps"
+        } else {
+            tpsCommand = flavor.tpsPollCommand(minecraftVersion: cfgServer.minecraftVersion)
+        }
+        if let tpsCommand {
+            // Arm the silent-consume path for our own spark reply block so its ~9
+            // lines never reach the console (a manual `/spark tps` still prints).
+            if tpsCommand == "spark tps" { expectingAutoSparkBlock = true }
             sendCommand(tpsCommand, origin: .auto)
+        }
+    }
+
+    /// True when the server's `mods/` folder contains the spark mod (`spark-*.jar`),
+    /// so `refreshPlayersAndTps` can poll `/spark tps` for a TPS reading. Checked once
+    /// per run at start; spark is bundled by most Fabric/Forge modpacks (e.g. ATM/ATF).
+    func serverHasSparkMod(serverDir: String) -> Bool {
+        let modsDir = URL(fileURLWithPath: serverDir, isDirectory: true)
+            .appendingPathComponent("mods", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: modsDir.path) else {
+            return false
+        }
+        return files.contains { name in
+            let lower = name.lowercased()
+            return lower.hasPrefix("spark-") && lower.hasSuffix(".jar")
         }
     }
 

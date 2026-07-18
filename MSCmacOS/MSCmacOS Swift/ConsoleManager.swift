@@ -312,8 +312,15 @@ final class ConsoleManager: ObservableObject {
     private func isLikelyAutoResponseLine(_ raw: String) -> Bool {
         let lower = raw.lowercased()
         if lower.contains("tps from last 1m, 5m, 15m") { return true }
-        // Forge/NeoForge `forge tps` reply: "Overall: … Mean tick time: X ms. Mean TPS: Y"
+        // Legacy Forge/NeoForge `forge tps` reply: "Overall: … Mean tick time: X ms. Mean TPS: Y"
         if lower.contains("mean tick time") && lower.contains("mean tps") { return true }
+        // Modern NeoForge (MC 1.21+) reply: "Overall: 20.000 TPS (0.354 ms/tick)"
+        if lower.contains("tps (") && lower.contains("ms/tick") { return true }
+        // Vanilla `tick query` reply (Fabric/Quilt/Vanilla 1.20.3+), sent as three
+        // lines: "Target tick rate: …", "Average time per tick: …", "Percentiles: …"
+        if lower.contains("average time per tick") { return true }
+        if lower.contains("target tick rate") { return true }
+        if lower.contains("percentiles: p50") { return true }
         if lower.contains("there are") && lower.contains("players online") { return true }
         return false
     }

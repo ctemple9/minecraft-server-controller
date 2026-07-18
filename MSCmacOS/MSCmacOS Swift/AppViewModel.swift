@@ -309,6 +309,22 @@ final class AppViewModel: ObservableObject {
     @Published var tpsHistory1m: [Double] = []
     @Published var playerCountHistory: [Int] = []
 
+    // MARK: - spark TPS (Fabric/Quilt/Vanilla fallback)
+
+    /// True when the running server bundles the `spark` mod, so `refreshPlayersAndTps`
+    /// polls `/spark tps` for a TPS reading on flavors with no built-in command
+    /// (and on Minecraft versions predating vanilla `/tick query`). Set at start.
+    var runningServerHasSpark: Bool = false
+    /// Transient state for silently consuming the multi-line `/spark tps` reply we
+    /// auto-poll (its TPS numbers arrive on the line AFTER the "TPS from last …"
+    /// header, followed by tick-duration/CPU sections we discard). Gated so a
+    /// user's manual `/spark tps` still prints in full. See `consumeSparkTpsLine`.
+    var expectingAutoSparkBlock: Bool = false
+    var inSparkBlock: Bool = false
+    var expectSparkTpsValues: Bool = false
+    var sparkCpuValuesRemaining: Int = 0
+    var sparkBlockGuard: Int = 0
+
     // MARK: - CPU / RAM
 
     @Published var serverCpuPercent: Double? = nil

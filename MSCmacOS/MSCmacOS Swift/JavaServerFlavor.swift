@@ -198,6 +198,34 @@ enum JavaServerFlavor: String, Codable, CaseIterable {
         }
     }
 
+    /// The console command MSC should poll for a live TPS sample, given the
+    /// server's Minecraft version. Loader-native commands (Paper `tps`, Forge /
+    /// NeoForge `… tps`) are version-independent, so they come straight from
+    /// `autoTpsCommand`. Vanilla, Fabric, and Quilt have no loader TPS command,
+    /// but Minecraft 1.20.3+ ships the vanilla `/tick query`, whose "Average time
+    /// per tick" line `TpsLineParser` converts into a TPS figure. Older versions
+    /// (and unknown versions) return nil so MSC skips the poll rather than
+    /// spamming "Unknown or incomplete command".
+    func tpsPollCommand(minecraftVersion: String?) -> String? {
+        if let native = autoTpsCommand { return native }
+        switch self {
+        case .vanilla, .fabric, .quilt:
+            return Self.supportsVanillaTickQuery(minecraftVersion) ? "tick query" : nil
+        default:
+            return nil
+        }
+    }
+
+    /// Whether the running server exposes the vanilla `/tick query` command,
+    /// added in Minecraft 1.20.3. Uses a numeric string compare so multi-digit
+    /// components order correctly (e.g. "1.20.10" > "1.20.3"). Unknown/empty
+    /// versions are treated as unsupported to avoid console spam.
+    static func supportsVanillaTickQuery(_ minecraftVersion: String?) -> Bool {
+        guard let v = minecraftVersion?.trimmingCharacters(in: .whitespaces),
+              !v.isEmpty else { return false }
+        return v.compare("1.20.3", options: .numeric) != .orderedAscending
+    }
+
     /// Highlighted as the recommended default within its category.
     var isRecommended: Bool { self == .paper || self == .fabric }
 
