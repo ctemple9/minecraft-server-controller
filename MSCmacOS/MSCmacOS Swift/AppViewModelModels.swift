@@ -291,7 +291,7 @@ enum ConsoleLevel: String, Hashable {
 }
 
 /// A structured console line with metadata used for display and filtering.
-struct ConsoleEntry: Identifiable, Hashable {
+struct ConsoleEntry: Identifiable, Hashable, Sendable {
     let id: UUID
     let raw: String
     let source: ConsoleSource

@@ -58,6 +58,9 @@ enum TpsLineParser {
     }
 
     static func parseForge(_ clean: String) -> Sample? {
+        // Cheap pre-guard: the regex requires this literal, so skip the compile+match on
+        // the overwhelming majority of (non-TPS) lines during a burst.
+        guard clean.contains("Mean tick time") else { return nil }
         let pattern = #"Overall:\s*Mean tick time:\s*[0-9.]+\s*ms\.?\s*Mean TPS:\s*([0-9.]+)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return nil
@@ -78,6 +81,9 @@ enum TpsLineParser {
     /// text, so `parseForge` can't see it. Anchoring on "Overall:" avoids matching
     /// the per-dimension lines ("minecraft:overworld: 20.000 TPS (…)").
     static func parseNeoForge(_ clean: String) -> Sample? {
+        // Cheap pre-guard: the regex anchors on "Overall:" … "TPS", so skip the compile+
+        // match on lines that can't match (all non-TPS burst lines, and per-dimension lines).
+        guard clean.contains("Overall:"), clean.contains("TPS") else { return nil }
         let pattern = #"Overall:\s*([0-9.]+)\s*TPS\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return nil
@@ -100,6 +106,9 @@ enum TpsLineParser {
     /// tick:" line specifically so the "Percentiles:" and "Target tick rate:"
     /// lines from the same command are ignored.
     static func parseVanillaTick(_ clean: String) -> Sample? {
+        // Cheap pre-guard: the regex requires this literal, so skip the compile+match on
+        // every line that isn't the vanilla tick-query reply.
+        guard clean.contains("Average time per tick") else { return nil }
         let pattern = #"Average time per tick:\s*([0-9.]+)\s*ms"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return nil

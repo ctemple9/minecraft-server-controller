@@ -14,13 +14,23 @@ final class ConsoleManager: ObservableObject {
 
     // Raw log store — not @Published. filteredEntries is the single SwiftUI trigger.
     var entries: [ConsoleEntry] = []
-    // Cached filtered view of entries. Updated in one shot after each batch or filter
-    // change so SwiftUI re-renders at most once per batch (~10×/s) instead of once
-    // per incoming line (potentially 1 000+/s during mod-loading bursts).
+    // Cached filtered view of entries. Extended incrementally (append-only) as batches
+    // arrive, and fully recomputed only when a filter/tab/search changes. This is the
+    // single SwiftUI trigger, so the console re-renders at most once per batch (~10×/s)
+    // instead of once per incoming line (potentially 1 000+/s during mod-loading bursts).
     @Published private(set) var filteredEntries: [ConsoleEntry] = []
 
+    // Parsed in-game chat feed (chat / advancements / join-leave) for the Overview card.
+    // Built incrementally as batches arrive — parsed off the main thread and appended here —
+    // so the card never re-scans the whole entries buffer on every render.
+    @Published private(set) var chatFeed: [ChatFeedMessage] = []
+    private let maxChatFeed = 80
+
+    // The buffer is trimmed back to `maxEntries` only once it grows past
+    // `maxEntries + trimSlack`, so the O(n) front-shift runs once per `trimSlack` lines
+    // instead of on every batch during a burst.
     private let maxEntries = 8_000
-    private var isBatching = false
+    private let trimSlack  = 2_000
 
     @Published var tab: ConsoleTab = .all {
         didSet { recomputeFilteredEntries() }
@@ -48,6 +58,14 @@ final class ConsoleManager: ObservableObject {
     private(set) var lastAutoCommandAt: Date? = nil
     private let autoAttributionWindowSeconds: TimeInterval = 2.0
 
+    /// Sendable snapshot of the state `ConsoleLineParser` needs, captured on the main
+    /// actor so a whole batch can be parsed off the main thread. See
+    /// `AppViewModel.drainConsoleBatch`.
+    var parseContext: ConsoleParseContext {
+        ConsoleParseContext(lastAutoCommandAt: lastAutoCommandAt,
+                            windowSeconds: autoAttributionWindowSeconds)
+    }
+
     // MARK: - Derived / computed
 
     /// All distinct tags observed so far, sorted case-insensitively.
@@ -55,7 +73,7 @@ final class ConsoleManager: ObservableObject {
         let tags = entries
             .compactMap { $0.tag?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .filter { isDisplayableTag($0) }
+            .filter { ConsoleLineParser.isDisplayableTag($0) }
         return Array(Set(tags)).sorted { $0.lowercased() < $1.lowercased() }
     }
 
@@ -114,32 +132,44 @@ final class ConsoleManager: ObservableObject {
 
     // MARK: - Entry appending
 
-    /// Append a single line. Safe to call at any time; respects batch mode.
+    /// Append a single raw line (used for controller/app messages, which arrive one at a
+    /// time and are low-frequency). Parses on the calling actor.
     func appendRaw(_ raw: String, source: ConsoleSource) {
-        entries.append(parseLine(raw, source: source))
-        if !isBatching {
-            capIfNeeded()
-            recomputeFilteredEntries()
+        let entry = ConsoleLineParser.parse(raw: raw, source: source,
+                                            lastAutoCommandAt: lastAutoCommandAt,
+                                            windowSeconds: autoAttributionWindowSeconds)
+        entries.append(entry)
+        appendMatchingToFiltered([entry])
+        trimIfNeeded()
+    }
+
+    /// Append a batch of entries that were parsed off the main thread. Appends them to the
+    /// store, extends the filtered view with any that pass the active filter, and trims the
+    /// buffer if it grew past its slack ceiling — all in one pass, so SwiftUI publishes at
+    /// most once for the whole batch.
+    func appendParsedBatch(_ parsed: [ConsoleEntry]) {
+        guard !parsed.isEmpty else { return }
+        entries.append(contentsOf: parsed)
+        appendMatchingToFiltered(parsed)
+        trimIfNeeded()
+    }
+
+    /// Append chat-feed messages parsed off-main for this batch, capped to the most recent
+    /// `maxChatFeed`. Publishes once for the batch; no-op (no publish) when empty — so a
+    /// burst of non-chat log lines doesn't re-render the Overview chat card.
+    func appendChatMessages(_ messages: [ChatFeedMessage]) {
+        guard !messages.isEmpty else { return }
+        chatFeed.append(contentsOf: messages)
+        if chatFeed.count > maxChatFeed {
+            chatFeed.removeFirst(chatFeed.count - maxChatFeed)
         }
-    }
-
-    /// Begin a batch: subsequent `appendRaw` calls accumulate without triggering
-    /// a filter recompute or SwiftUI update. Call `endBatch()` to commit.
-    func beginBatch() {
-        isBatching = true
-    }
-
-    /// End the batch: cap the buffer, recompute the filter once, and publish.
-    func endBatch() {
-        isBatching = false
-        capIfNeeded()
-        recomputeFilteredEntries()
     }
 
     /// Remove all entries (does not touch the remote API buffer; AppViewModel handles that).
     func clearEntries() {
         entries.removeAll()
-        recomputeFilteredEntries()
+        if !filteredEntries.isEmpty { filteredEntries.removeAll() }
+        if !chatFeed.isEmpty { chatFeed.removeAll() }
     }
 
     /// Record that an auto command was just sent, so the attribution window starts now.
@@ -147,41 +177,121 @@ final class ConsoleManager: ObservableObject {
         lastAutoCommandAt = Date()
     }
 
-    // MARK: - Buffer management
+    // MARK: - Buffer management & filtering
 
-    private func capIfNeeded() {
-        let overflow = entries.count - maxEntries
-        if overflow > 0 { entries.removeFirst(overflow) }
+    /// Trim the oldest entries once the buffer exceeds its slack ceiling, keeping the
+    /// O(n) front-shift amortized. Also drops the matching leading entries from the
+    /// filtered view — which is an in-order subsequence of `entries`, so the trimmed
+    /// ones are always a prefix of it.
+    private func trimIfNeeded() {
+        guard entries.count > maxEntries + trimSlack else { return }
+        let removeCount = entries.count - maxEntries
+        let trimmedIDs = Set(entries.prefix(removeCount).map(\.id))
+        entries.removeFirst(removeCount)
+
+        var filteredRemove = 0
+        for entry in filteredEntries {
+            if trimmedIDs.contains(entry.id) { filteredRemove += 1 } else { break }
+        }
+        if filteredRemove > 0 { filteredEntries.removeFirst(filteredRemove) }
     }
 
+    /// Extend `filteredEntries` with the subset of `newEntries` that pass the active
+    /// filter. No-op (and no @Published fire) when none match — which is exactly the
+    /// hideAuto + live-monitoring case, keeping the list steady while the user reads.
+    private func appendMatchingToFiltered(_ newEntries: [ConsoleEntry]) {
+        let term = normalizedSearchTerm()
+        let matching = newEntries.filter { passesFilter($0, term: term) }
+        guard !matching.isEmpty else { return }
+        filteredEntries.append(contentsOf: matching)
+    }
+
+    /// Full rescan — used only when a filter/tab/search control changes (user-driven and
+    /// infrequent), never on the per-batch append path.
     private func recomputeFilteredEntries() {
-        var items = entries
-        items = items.filter { matchesTabPreset($0, tab: tab) }
-        if !selectedSources.isEmpty {
-            items = items.filter { selectedSources.contains($0.source) }
-        }
-        if !selectedLevels.isEmpty {
-            items = items.filter { selectedLevels.contains($0.level) }
-        }
-        if !selectedTags.isEmpty {
-            items = items.filter { entry in
-                guard let tag = entry.tag else { return false }
-                return selectedTags.contains(tag)
-            }
-        }
-        if hideAuto {
-            items = items.filter { !$0.isAuto }
-        }
-        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if !term.isEmpty {
-            items = items.filter { $0.raw.lowercased().contains(term) }
-        }
+        let term = normalizedSearchTerm()
+        let items = entries.filter { passesFilter($0, term: term) }
+        // Only republish when the visible result actually changed, so filter toggles that
+        // don't alter the view don't churn the LazyVStack.
+        guard items != filteredEntries else { return }
         filteredEntries = items
     }
 
-    // MARK: - Line parsing (private)
+    private func normalizedSearchTerm() -> String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 
-    private func parseLine(_ raw: String, source: ConsoleSource) -> ConsoleEntry {
+    /// Single-entry predicate combining the tab preset, advanced filters (AND logic), and
+    /// search term. `term` is passed in pre-normalized so a full rescan doesn't re-trim and
+    /// re-lowercase it for every entry.
+    private func passesFilter(_ entry: ConsoleEntry, term: String) -> Bool {
+        if !matchesTabPreset(entry, tab: tab) { return false }
+        if !selectedSources.isEmpty, !selectedSources.contains(entry.source) { return false }
+        if !selectedLevels.isEmpty, !selectedLevels.contains(entry.level) { return false }
+        if !selectedTags.isEmpty {
+            guard let tag = entry.tag, selectedTags.contains(tag) else { return false }
+        }
+        if hideAuto, entry.isAuto { return false }
+        if !term.isEmpty, !entry.raw.lowercased().contains(term) { return false }
+        return true
+    }
+
+    // MARK: - Tab preset matching
+
+    private func matchesTabPreset(_ entry: ConsoleEntry, tab: ConsoleTab) -> Bool {
+        switch tab {
+        case .all, .custom:
+            return true
+
+        case .controller:
+            return entry.source == .controller
+
+        case .commands:
+            return entry.tag?.lowercased() == "command"
+
+        case .warnings:
+            if entry.level == .warn || entry.level == .error { return true }
+            let lower = entry.raw.lowercased()
+            return lower.contains(" exception") || lower.contains("java.lang.") || lower.contains("at ")
+
+        case .server:
+            guard entry.source == .server else { return false }
+            if let tag = entry.tag?.lowercased() { return isCoreServerTag(tag) }
+            return true
+
+        case .plugins:
+            guard entry.source == .server else { return false }
+            guard let tag = entry.tag?.lowercased() else { return false }
+            return !isCoreServerTag(tag)
+        }
+    }
+
+    private func isCoreServerTag(_ lowerTag: String) -> Bool {
+        let core = ["bootstrap", "minecraftserver", "paper", "server", "main"]
+        return core.contains(lowerTag)
+    }
+}
+
+// MARK: - ConsoleParseContext
+
+/// Immutable, Sendable snapshot of the auto-attribution state a line needs to be parsed.
+/// Captured on the main actor, then handed to `ConsoleLineParser` on a background queue.
+struct ConsoleParseContext: Sendable {
+    let lastAutoCommandAt: Date?
+    let windowSeconds: TimeInterval
+}
+
+// MARK: - ConsoleLineParser
+
+/// Pure, non-isolated line parser. Holds no state and touches no main-actor data, so it
+/// can run on a background queue to keep the heavy regex/tokenizing work off the RunLoop
+/// during mod-loading bursts. All inputs and outputs are Sendable value types.
+enum ConsoleLineParser {
+
+    static func parse(raw: String,
+                      source: ConsoleSource,
+                      lastAutoCommandAt: Date?,
+                      windowSeconds: TimeInterval) -> ConsoleEntry {
         let level = inferLevel(from: raw)
         let tag   = inferTag(from: raw, source: source)
 
@@ -190,7 +300,7 @@ final class ConsoleManager: ObservableObject {
         if raw.contains("[Auto →") || raw.contains("[Auto ->") {
             isAuto = true
         } else if isLikelyAutoResponseLine(raw), let t = lastAutoCommandAt {
-            if Date().timeIntervalSince(t) <= autoAttributionWindowSeconds {
+            if Date().timeIntervalSince(t) <= windowSeconds {
                 isAuto = true
             }
         }
@@ -198,7 +308,7 @@ final class ConsoleManager: ObservableObject {
         return ConsoleEntry(raw: raw, source: source, level: level, tag: tag, isAuto: isAuto)
     }
 
-    private func inferLevel(from raw: String) -> ConsoleLevel {
+    static func inferLevel(from raw: String) -> ConsoleLevel {
         let upper = raw.uppercased()
         if upper.contains(" ERROR") || upper.contains(" SEVERE") { return .error }
         if upper.contains(" WARN")                               { return .warn  }
@@ -207,7 +317,7 @@ final class ConsoleManager: ObservableObject {
         return .other
     }
 
-    private func inferTag(from raw: String, source: ConsoleSource) -> String? {
+    static func inferTag(from raw: String, source: ConsoleSource) -> String? {
         let tokens = extractBracketTokens(raw)
 
         if source == .controller {
@@ -235,7 +345,7 @@ final class ConsoleManager: ObservableObject {
         return nil
     }
 
-    private func sanitizeTag(_ rawTag: String?, source: ConsoleSource) -> String? {
+    static func sanitizeTag(_ rawTag: String?, source: ConsoleSource) -> String? {
         guard var tag = rawTag?.trimmingCharacters(in: .whitespacesAndNewlines), !tag.isEmpty else {
             return nil
         }
@@ -275,7 +385,7 @@ final class ConsoleManager: ObservableObject {
         return tag
     }
 
-    private func isDisplayableTag(_ tag: String) -> Bool {
+    static func isDisplayableTag(_ tag: String) -> Bool {
         let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
@@ -290,11 +400,11 @@ final class ConsoleManager: ObservableObject {
         return true
     }
 
-    private func looksLikePackageIdentifier(_ tag: String) -> Bool {
+    static func looksLikePackageIdentifier(_ tag: String) -> Bool {
         tag.contains(".") && !tag.contains(" ")
     }
 
-    private func humanizeTagComponent(_ component: String) -> String {
+    static func humanizeTagComponent(_ component: String) -> String {
         let cleaned = component
             .replacingOccurrences(of: "_", with: " ")
             .replacingOccurrences(of: "-", with: " ")
@@ -318,7 +428,7 @@ final class ConsoleManager: ObservableObject {
             .joined(separator: " ")
     }
 
-    private func extractBracketTokens(_ raw: String) -> [String] {
+    static func extractBracketTokens(_ raw: String) -> [String] {
         var out: [String] = []
         var current = ""
         var inBracket = false
@@ -341,11 +451,11 @@ final class ConsoleManager: ObservableObject {
         return out.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
-    private func looksLikeTimestampToken(_ tok: String) -> Bool {
+    static func looksLikeTimestampToken(_ tok: String) -> Bool {
         tok.contains(":") && tok.rangeOfCharacter(from: .decimalDigits) != nil
     }
 
-    private func isLikelyAutoResponseLine(_ raw: String) -> Bool {
+    static func isLikelyAutoResponseLine(_ raw: String) -> Bool {
         let lower = raw.lowercased()
         if lower.contains("tps from last 1m, 5m, 15m") { return true }
         // Legacy Forge/NeoForge `forge tps` reply: "Overall: … Mean tick time: X ms. Mean TPS: Y"
@@ -360,40 +470,4 @@ final class ConsoleManager: ObservableObject {
         if lower.contains("there are") && lower.contains("players online") { return true }
         return false
     }
-
-    // MARK: - Tab preset matching
-
-    private func matchesTabPreset(_ entry: ConsoleEntry, tab: ConsoleTab) -> Bool {
-        switch tab {
-        case .all, .custom:
-            return true
-
-        case .controller:
-            return entry.source == .controller
-
-        case .commands:
-            return entry.tag?.lowercased() == "command"
-
-        case .warnings:
-            if entry.level == .warn || entry.level == .error { return true }
-            let lower = entry.raw.lowercased()
-            return lower.contains(" exception") || lower.contains("java.lang.") || lower.contains("at ")
-
-        case .server:
-            guard entry.source == .server else { return false }
-            if let tag = entry.tag?.lowercased() { return isCoreServerTag(tag) }
-            return true
-
-        case .plugins:
-            guard entry.source == .server else { return false }
-            guard let tag = entry.tag?.lowercased() else { return false }
-            return !isCoreServerTag(tag)
-        }
-    }
-
-    private func isCoreServerTag(_ lowerTag: String) -> Bool {
-        let core = ["bootstrap", "minecraftserver", "paper", "server", "main"]
-        return core.contains(lowerTag)
-    }
 }
-

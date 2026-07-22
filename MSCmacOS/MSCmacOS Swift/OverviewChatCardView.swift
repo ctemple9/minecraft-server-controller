@@ -15,8 +15,8 @@ import SwiftUI
 
 // MARK: - Parsed chat message
 
-struct ChatFeedMessage: Identifiable {
-    enum Kind { case chat, advancement, join, leave }
+struct ChatFeedMessage: Identifiable, Sendable {
+    enum Kind: Sendable { case chat, advancement, join, leave }
     let id = UUID()
     let kind: Kind
     let player: String?
@@ -31,7 +31,9 @@ struct OverviewChatCardView: View {
     @ObservedObject var console: ConsoleManager
 
     private var messages: [ChatFeedMessage] {
-        ChatFeedParser.parse(console.entries)
+        // Prebuilt incrementally by ConsoleManager (parsed off-main as lines arrive), so
+        // this card no longer re-scans the whole entries buffer on every render.
+        console.chatFeed
     }
 
     var body: some View {
@@ -160,15 +162,12 @@ struct OverviewChatCardView: View {
 
 enum ChatFeedParser {
 
-    /// Scans recent console entries for chat-worthy lines.
-    static func parse(_ entries: [ConsoleEntry]) -> [ChatFeedMessage] {
-        var out: [ChatFeedMessage] = []
-        for entry in entries.suffix(500) where entry.source == .server {
-            if let msg = parseLine(entry.raw, time: entry.createdAt) {
-                out.append(msg)
-            }
-        }
-        return Array(out.suffix(80))
+    /// Parse a single console entry into a chat-feed message, if it is one. Only server
+    /// output carries chat / advancement / join-leave lines. Pure and non-isolated, so it
+    /// can run on the console parse queue off the main thread.
+    static func parseEntry(_ entry: ConsoleEntry) -> ChatFeedMessage? {
+        guard entry.source == .server else { return nil }
+        return parseLine(entry.raw, time: entry.createdAt)
     }
 
     private static func parseLine(_ raw: String, time: Date) -> ChatFeedMessage? {

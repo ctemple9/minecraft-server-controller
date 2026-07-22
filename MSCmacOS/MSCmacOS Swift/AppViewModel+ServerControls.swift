@@ -22,39 +22,56 @@ extension AppViewModel {
     }
 
     private func isFirstRun(for server: ConfigServer) -> Bool {
-        if server.hasEverStarted { return false }
-        // Install-step flavors (NeoForge) pre-create libraries/ etc. at *creation*
-        // time, so those can't be used as "already ran" signals — fall back to
-        // logs/ and world/ only. Otherwise a fresh NeoForge server would skip the
-        // first-run setup (auto-stop + settings sheet).
-        let ignoreLibraryArtifacts = server.javaFlavor.provisioningKind == .installStep
-        if hasFirstRunArtifactsOnDisk(serverDir: server.serverDir,
-                                      ignoreLibraryArtifacts: ignoreLibraryArtifacts) { return false }
+        // Initiate is complete only once the first-start sheet was actually shown. This is
+        // the authoritative signal: it is set precisely when initiation reaches ready and
+        // auto-stops (see presentInitiationCompleteSheet), and it survives world-slot moves.
+        // A run that crashes before ready (e.g. a missing mod) never sets it, so the next
+        // start correctly re-runs initiation instead of falling through to a normal start.
+        if server.hasShownFirstStartPopup { return false }
+        // Fallback for servers set up outside the initiate flow — imported servers, or
+        // servers created before the popup flag existed — which have a real world but no
+        // popup flag. A generated world means a real run already happened. A failed first
+        // run leaves only a logs/ crash log (no world), so this stays false and the server
+        // re-initiates. Deliberately does NOT count logs/, libraries/, or hasEverStarted,
+        // all of which a failed/aborted first run also produces.
+        if hasGeneratedWorldOnDisk(for: server) { return false }
         return true
     }
 
-    private func hasFirstRunArtifactsOnDisk(serverDir: String, ignoreLibraryArtifacts: Bool = false) -> Bool {
+    /// True when the server directory contains a generated world (Java `level.dat`, or a
+    /// Bedrock world with a `db/` folder) — evidence that a real run completed. Used only
+    /// as the import/legacy fallback in `isFirstRun`.
+    private func hasGeneratedWorldOnDisk(for server: ConfigServer) -> Bool {
         let fm = FileManager.default
-        let base = URL(fileURLWithPath: serverDir, isDirectory: true)
-        let logsDir = base.appendingPathComponent("logs", isDirectory: true)
-        var isDir: ObjCBool = false
-        if fm.fileExists(atPath: logsDir.path, isDirectory: &isDir), isDir.boolValue { return true }
-        if fm.fileExists(atPath: logsDir.appendingPathComponent("latest.log").path) { return true }
-        for worldName in ["world", "world_nether", "world_the_end"] {
-            let worldURL = base.appendingPathComponent(worldName, isDirectory: true)
-            var d: ObjCBool = false
-            if fm.fileExists(atPath: worldURL.path, isDirectory: &d), d.boolValue { return true }
+        let base = URL(fileURLWithPath: server.serverDir, isDirectory: true)
+
+        func containsLevelData(_ dir: URL) -> Bool {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { return false }
+            if fm.fileExists(atPath: dir.appendingPathComponent("level.dat").path) { return true }
+            if fm.fileExists(atPath: dir.appendingPathComponent("db", isDirectory: true).path) { return true }
+            return false
         }
-        if !ignoreLibraryArtifacts {
-            for dirName in ["cache", "libraries", "versions"] {
-                let url = base.appendingPathComponent(dirName, isDirectory: true)
-                var d: ObjCBool = false
-                if fm.fileExists(atPath: url.path, isDirectory: &d), d.boolValue { return true }
+
+        if server.isBedrock {
+            // Bedrock worlds live under worlds/<levelName>/.
+            let worldsDir = base.appendingPathComponent("worlds", isDirectory: true)
+            guard let entries = try? fm.contentsOfDirectory(at: worldsDir, includingPropertiesForKeys: nil) else {
+                return false
             }
+            return entries.contains { containsLevelData($0) }
         }
-        let geyserCfg = GeyserConfigManager.configURL(for: serverDir)
-        if fm.fileExists(atPath: geyserCfg.path) { return true }
-        return false
+
+        // Java worlds live at the server root: the default "world" (+ dimension folders) or
+        // a custom level-name. Check the defaults first, then any root subdirectory that
+        // holds a level.dat, so a custom level-name is still detected.
+        for name in ["world", "world_nether", "world_the_end"] {
+            if containsLevelData(base.appendingPathComponent(name, isDirectory: true)) { return true }
+        }
+        guard let entries = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: nil) else {
+            return false
+        }
+        return entries.contains { containsLevelData($0) }
     }
 
     func startServer() {

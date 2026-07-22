@@ -9,20 +9,26 @@ extension AppViewModel {
 
     // MARK: - Server output handling
 
-    func handleServerOutputLine(_ line: String) {
-        let clean = AppUtilities.sanitized(line)
+    /// Runs the per-line side effects for one server output line. Returns `true` when the
+    /// line was silently consumed (world-time / spark-TPS responses) and must NOT be shown
+    /// in the console; `commitConsoleBatch` uses this to drop consumed lines from the
+    /// display batch.
+    @discardableResult
+    func handleServerOutputLine(_ line: String, clean: String) -> Bool {
+        // `clean` (ANSI-stripped) is computed once off-main by the batch drain and passed
+        // in, so none of the per-line detectors below re-run the sanitize regex.
 
         // Silently consume time-query responses — zero console trace, pure state update.
         if isWorldTimeResponseLine(clean) {
-            parseWorldTime(from: line)
-            return
+            parseWorldTime(clean: clean)
+            return true
         }
 
         // Silently consume the multi-line `/spark tps` reply we auto-poll (its ~9
         // lines would otherwise flood the console every few seconds). Captures the
         // TPS values into the live stat. No-op for anything else.
         if consumeSparkTpsLine(clean) {
-            return
+            return true
         }
 
         // Feed any registered console-line waiters (flush-consistent backups await
@@ -52,7 +58,9 @@ extension AppViewModel {
             }
         }
 
-        console.appendRaw(line, source: .server)
+        // Note: the console display append is handled in batch by `commitConsoleBatch`
+        // via `console.appendParsedBatch` (parsed off the main thread). This method only
+        // runs the per-line side effects below.
         remoteAPIServer?.publishConsoleLine(source: "server", text: line)
 
         // Mirror Bedrock console output to logs/latest.log (BDS writes no log of its own).
@@ -80,12 +88,13 @@ extension AppViewModel {
             stopServer()
         }
 
-        parseTps(from: line)
-        parseFeaturedHealth(from: line)
-        parsePlayerList(from: line)
-        parseBedrockVersion(from: line)
-        parseBedrockPlayerEvent(from: line)
-        parseJavaPlayerEvent(from: line)
+        parseTps(clean: clean)
+        parseFeaturedHealth(clean: clean)
+        parsePlayerList(clean: clean)
+        parseBedrockVersion(clean: clean)
+        parseBedrockPlayerEvent(clean: clean)
+        parseJavaPlayerEvent(clean: clean)
+        return false
     }
 
     // MARK: - Bedrock console log file (rolling logs/latest.log)
@@ -118,19 +127,32 @@ extension AppViewModel {
     }
 
     /// Appends one console line to the open `logs/latest.log` (no-op if not open).
+    /// The disk write is dispatched to a serial background queue so it never blocks the
+    /// main thread during output bursts; the serial queue preserves line order and orders
+    /// the write ahead of any queued close.
     func appendBedrockLogLine(_ line: String) {
         guard let handle = bedrockLogHandle else { return }
         let text = line.hasSuffix("\n") ? line : line + "\n"
-        if let data = text.data(using: .utf8) { try? handle.write(contentsOf: data) }
+        guard let data = text.data(using: .utf8) else { return }
+        Self.bedrockLogQueue.async {
+            try? handle.write(contentsOf: data)
+        }
     }
 
-    /// Flushes and closes the Bedrock console log file (called on server stop).
+    /// Flushes and closes the Bedrock console log file (called on server stop). Detaches
+    /// the handle on the main actor, then flushes/closes on the same serial queue so it
+    /// runs after any writes still in flight.
     func closeBedrockLogFile() {
         guard let handle = bedrockLogHandle else { return }
-        try? handle.synchronize()
-        try? handle.close()
         bedrockLogHandle = nil
+        Self.bedrockLogQueue.async {
+            try? handle.synchronize()
+            try? handle.close()
+        }
     }
+
+    /// Serial queue that owns all writes/closes to the Bedrock `latest.log` handle.
+    private static let bedrockLogQueue = DispatchQueue(label: "com.msc.bedrock.log", qos: .utility)
 
     private func pruneRolledBedrockLogs(in logsDir: URL, keeping keep: Int) {
         let fm = FileManager.default
@@ -253,8 +275,7 @@ extension AppViewModel {
 
     // MARK: - Bedrock version parsing
 
-    private func parseBedrockVersion(from line: String) {
-        let clean = AppUtilities.sanitized(line)
+    private func parseBedrockVersion(clean: String) {
         guard clean.contains("Starting Minecraft Bedrock server version") else { return }
         if let range = clean.range(of: "version ") {
             let after = String(clean[range.upperBound...])
@@ -353,8 +374,7 @@ extension AppViewModel {
     /// value ("Overall: … Mean TPS: Y"). Forge lines clear the 5m/15m slots so the
     /// Performance tab renders one number rather than stale numbers from a prior
     /// Paper run. Parsing lives in the pure `TpsLineParser` seam for testability.
-    private func parseTps(from line: String) {
-        let clean = AppUtilities.sanitized(line)
+    private func parseTps(clean: String) {
         guard let sample = TpsLineParser.parse(clean) else { return }
         recordTpsSample(sample)
     }
@@ -437,9 +457,7 @@ extension AppViewModel {
     /// Parses responses to `time query gametime` and `time query day`.
     /// Content-aware: modern formats are identified by prefix so response order
     /// doesn't matter. Legacy "The time is X" still uses the positional queue.
-    private func parseWorldTime(from line: String) {
-        let clean = AppUtilities.sanitized(line)
-
+    private func parseWorldTime(clean: String) {
         // Paper 26+: "The game time is X tick(s)"  (time query gametime)
         if let range = clean.range(of: "The game time is ") {
             let tail = clean[range.upperBound...]
@@ -492,9 +510,8 @@ extension AppViewModel {
 
     /// Parses the response to `/data get entity <name> Health`, e.g.
     /// "camkage has the following entity data: 19.5f", for the featured player.
-    private func parseFeaturedHealth(from line: String) {
+    private func parseFeaturedHealth(clean: String) {
         guard let name = featuredPlayerName else { return }
-        let clean = AppUtilities.sanitized(line)
         guard clean.contains("\(name) has the following entity data:"),
               let r = clean.range(of: "entity data:") else { return }
         let tail = clean[r.upperBound...].trimmingCharacters(in: .whitespaces)
@@ -506,8 +523,7 @@ extension AppViewModel {
 
     // MARK: - Player list parsing
 
-    private func parsePlayerList(from line: String) {
-        let clean = AppUtilities.sanitized(line)
+    private func parsePlayerList(clean: String) {
         guard clean.lowercased().contains("players online") else { return }
         if let colonIndex = clean.lastIndex(of: ":") {
             let namesPart = clean[clean.index(after: colonIndex)...]
@@ -541,9 +557,7 @@ extension AppViewModel {
 
     // MARK: - Bedrock player event parsing
 
-    private func parseBedrockPlayerEvent(from line: String) {
-        let clean = AppUtilities.sanitized(line)
-
+    private func parseBedrockPlayerEvent(clean: String) {
         func extractIdentity(prefix: String) -> (name: String, xuid: String?)? {
             guard let range = clean.range(of: prefix) else { return nil }
             let after = String(clean[range.upperBound...])
@@ -607,8 +621,7 @@ extension AppViewModel {
 
     // MARK: - Java player event parsing
 
-    private func parseJavaPlayerEvent(from line: String) {
-        let clean = AppUtilities.sanitized(line)
+    private func parseJavaPlayerEvent(clean: String) {
         if let range = clean.range(of: " joined the game") {
             let before = String(clean[..<range.lowerBound])
             let name = before.split(whereSeparator: { $0.isWhitespace }).last.map(String.init) ?? ""

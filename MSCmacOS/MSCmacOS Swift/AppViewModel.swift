@@ -409,11 +409,21 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Console batch-drain timer
     // Lines arriving from the server process are pushed here from the background
-    // readabilityHandler thread, then drained every 100 ms in one main-actor pass.
-    // This prevents spawning one Task { @MainActor } per line during mod-loading
-    // bursts, which would saturate the main actor and beachball the UI.
+    // readabilityHandler thread, then drained every 100 ms. The heavy parse work runs
+    // off the main thread on `consoleParseQueue`; only the finished ConsoleEntry batch
+    // and the cheap per-line side-effect scan touch the main actor. This keeps the
+    // RunLoop free during mod-loading bursts that would otherwise beachball the UI.
     private let lineAccumulator = LineAccumulator()
     private var consoleBatchTimer: Timer?
+    // Serial so batches are parsed — and therefore committed to the console — in order.
+    private let consoleParseQueue = DispatchQueue(label: "com.msc.console.parse", qos: .userInitiated)
+    // Adaptive drain cadence: the timer polls every 100 ms, but during a heavy burst we
+    // actually commit only every ~250 ms so SwiftUI/AppKit aren't re-rendering a large,
+    // growing list 10×/s. Lines still all arrive — just batched wider while they flood in.
+    private var lastConsoleDrainAt = Date.distantPast
+    private let consoleBurstThreshold = 100          // pending lines that signal a burst
+    private let consoleBurstInterval: TimeInterval = 0.25
+    private let consoleNormalInterval: TimeInterval = 0.1
 
     let logicalCoreCount: Int = ProcessInfo.processInfo.activeProcessorCount
 
@@ -1247,11 +1257,59 @@ final class AppViewModel: ObservableObject {
     // MARK: - Console batch drain
 
     private func drainConsoleBatch() {
+        let pending = lineAccumulator.count
+        guard pending > 0 else { return }
+
+        // Throttle commits during a burst so the console list isn't re-rendered 10×/s while
+        // thousands of lines flood in. Below the burst threshold we stay at the full 100 ms
+        // cadence for responsiveness.
+        let minInterval = pending >= consoleBurstThreshold ? consoleBurstInterval : consoleNormalInterval
+        guard Date().timeIntervalSince(lastConsoleDrainAt) >= minInterval else { return }
+        lastConsoleDrainAt = Date()
+
         let lines = lineAccumulator.drain()
         guard !lines.isEmpty else { return }
-        console.beginBatch()
-        for line in lines { handleServerOutputLine(line) }
-        console.endBatch()
+
+        // Parse the whole batch off the main thread (the heavy regex/tokenizing work), and
+        // derive the chat-feed messages off-main too, then hop back to the main actor to run
+        // per-line side effects and append the finished entries. The serial queue + FIFO
+        // main hop keep batches in order.
+        let context = console.parseContext
+        consoleParseQueue.async { [weak self] in
+            let parsed = lines.map {
+                ConsoleLineParser.parse(raw: $0, source: .server,
+                                        lastAutoCommandAt: context.lastAutoCommandAt,
+                                        windowSeconds: context.windowSeconds)
+            }
+            // Strip ANSI once, off-main, so the per-line side-effect scan doesn't re-run
+            // the sanitize regex ~8× per line on the main thread.
+            let cleans = lines.map { AppUtilities.sanitized($0) }
+            let chatMessages = parsed.compactMap { ChatFeedParser.parseEntry($0) }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.commitConsoleBatch(rawLines: lines, cleans: cleans,
+                                             parsed: parsed, chatMessages: chatMessages)
+                }
+            }
+        }
+    }
+
+    /// Main-actor commit for a parsed batch: run the cheap per-line side-effect scan
+    /// (ready-state detection, backup waiters, TPS/player parsing, remote publish, Bedrock
+    /// log) for every line, then append the pre-parsed entries to the console in one
+    /// publish — skipping lines that were silently consumed (world-time / spark-TPS
+    /// responses), which must not appear in the console. Chat-feed messages were parsed
+    /// off-main and are appended in one publish too.
+    private func commitConsoleBatch(rawLines: [String], cleans: [String],
+                                    parsed: [ConsoleEntry], chatMessages: [ChatFeedMessage]) {
+        var toDisplay: [ConsoleEntry] = []
+        toDisplay.reserveCapacity(parsed.count)
+        for i in parsed.indices {
+            let consumed = handleServerOutputLine(rawLines[i], clean: cleans[i])
+            if !consumed { toDisplay.append(parsed[i]) }
+        }
+        console.appendParsedBatch(toDisplay)
+        console.appendChatMessages(chatMessages)
     }
 
     // MARK: - Console state forwarding (delegates to ConsoleManager)
@@ -1446,6 +1504,11 @@ private final class LineAccumulator: @unchecked Sendable {
 
     func push(_ line: String) {
         lock.withLock { buffer.append(line) }
+    }
+
+    /// Number of lines currently buffered (used to detect bursts before draining).
+    var count: Int {
+        lock.withLock { buffer.count }
     }
 
     func drain() -> [String] {
