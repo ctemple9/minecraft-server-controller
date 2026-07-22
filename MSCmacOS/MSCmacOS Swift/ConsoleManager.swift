@@ -12,13 +12,34 @@ final class ConsoleManager: ObservableObject {
 
     // MARK: - Published state (mirrors the original @Published vars on AppViewModel)
 
-    @Published var entries: [ConsoleEntry] = []
-    @Published var tab: ConsoleTab = .all
-    @Published var searchText: String = ""
-    @Published var selectedSources: Set<ConsoleSource> = []
-    @Published var selectedLevels: Set<ConsoleLevel> = []
-    @Published var selectedTags: Set<String> = []
-    @Published var hideAuto: Bool = false
+    // Raw log store — not @Published. filteredEntries is the single SwiftUI trigger.
+    var entries: [ConsoleEntry] = []
+    // Cached filtered view of entries. Updated in one shot after each batch or filter
+    // change so SwiftUI re-renders at most once per batch (~10×/s) instead of once
+    // per incoming line (potentially 1 000+/s during mod-loading bursts).
+    @Published private(set) var filteredEntries: [ConsoleEntry] = []
+
+    private let maxEntries = 8_000
+    private var isBatching = false
+
+    @Published var tab: ConsoleTab = .all {
+        didSet { recomputeFilteredEntries() }
+    }
+    @Published var searchText: String = "" {
+        didSet { recomputeFilteredEntries() }
+    }
+    @Published var selectedSources: Set<ConsoleSource> = [] {
+        didSet { recomputeFilteredEntries() }
+    }
+    @Published var selectedLevels: Set<ConsoleLevel> = [] {
+        didSet { recomputeFilteredEntries() }
+    }
+    @Published var selectedTags: Set<String> = [] {
+        didSet { recomputeFilteredEntries() }
+    }
+    @Published var hideAuto: Bool = false {
+        didSet { recomputeFilteredEntries() }
+    }
 
     // MARK: - Auto-attribution window (used during line parsing)
 
@@ -47,38 +68,6 @@ final class ConsoleManager: ObservableObject {
         return !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// Entries after applying the active tab preset + advanced filters + search text.
-    var filteredEntries: [ConsoleEntry] {
-        var items = entries
-
-        // 1) Tab preset
-        items = items.filter { matchesTabPreset($0, tab: tab) }
-
-        // 2) Advanced filters (AND logic)
-        if !selectedSources.isEmpty {
-            items = items.filter { selectedSources.contains($0.source) }
-        }
-        if !selectedLevels.isEmpty {
-            items = items.filter { selectedLevels.contains($0.level) }
-        }
-        if !selectedTags.isEmpty {
-            items = items.filter { entry in
-                guard let tag = entry.tag else { return false }
-                return selectedTags.contains(tag)
-            }
-        }
-        if hideAuto {
-            items = items.filter { !$0.isAuto }
-        }
-
-        // 3) Search
-        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if !term.isEmpty {
-            items = items.filter { $0.raw.lowercased().contains(term) }
-        }
-
-        return items
-    }
 
     // MARK: - Filter controls
 
@@ -125,22 +114,69 @@ final class ConsoleManager: ObservableObject {
 
     // MARK: - Entry appending
 
-    /// Parse a raw output line and append it as a structured ConsoleEntry.
-    /// Parse a raw output line and append it as a structured entry.
+    /// Append a single line. Safe to call at any time; respects batch mode.
     func appendRaw(_ raw: String, source: ConsoleSource) {
-        let parsed = parseLine(raw, source: source)
-        entries.append(parsed)
+        entries.append(parseLine(raw, source: source))
+        if !isBatching {
+            capIfNeeded()
+            recomputeFilteredEntries()
+        }
+    }
+
+    /// Begin a batch: subsequent `appendRaw` calls accumulate without triggering
+    /// a filter recompute or SwiftUI update. Call `endBatch()` to commit.
+    func beginBatch() {
+        isBatching = true
+    }
+
+    /// End the batch: cap the buffer, recompute the filter once, and publish.
+    func endBatch() {
+        isBatching = false
+        capIfNeeded()
+        recomputeFilteredEntries()
     }
 
     /// Remove all entries (does not touch the remote API buffer; AppViewModel handles that).
-    /// Remove all console entries.
     func clearEntries() {
         entries.removeAll()
+        recomputeFilteredEntries()
     }
 
     /// Record that an auto command was just sent, so the attribution window starts now.
     func markAutoCommand() {
         lastAutoCommandAt = Date()
+    }
+
+    // MARK: - Buffer management
+
+    private func capIfNeeded() {
+        let overflow = entries.count - maxEntries
+        if overflow > 0 { entries.removeFirst(overflow) }
+    }
+
+    private func recomputeFilteredEntries() {
+        var items = entries
+        items = items.filter { matchesTabPreset($0, tab: tab) }
+        if !selectedSources.isEmpty {
+            items = items.filter { selectedSources.contains($0.source) }
+        }
+        if !selectedLevels.isEmpty {
+            items = items.filter { selectedLevels.contains($0.level) }
+        }
+        if !selectedTags.isEmpty {
+            items = items.filter { entry in
+                guard let tag = entry.tag else { return false }
+                return selectedTags.contains(tag)
+            }
+        }
+        if hideAuto {
+            items = items.filter { !$0.isAuto }
+        }
+        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !term.isEmpty {
+            items = items.filter { $0.raw.lowercased().contains(term) }
+        }
+        filteredEntries = items
     }
 
     // MARK: - Line parsing (private)

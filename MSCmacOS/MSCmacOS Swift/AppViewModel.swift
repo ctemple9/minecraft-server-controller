@@ -406,6 +406,15 @@ final class AppViewModel: ObservableObject {
     var remoteAPIServer: RemoteAPIServer?
 
     var autoBackupTimer: Timer?
+
+    // MARK: - Console batch-drain timer
+    // Lines arriving from the server process are pushed here from the background
+    // readabilityHandler thread, then drained every 100 ms in one main-actor pass.
+    // This prevents spawning one Task { @MainActor } per line during mod-loading
+    // bursts, which would saturate the main actor and beachball the UI.
+    private let lineAccumulator = LineAccumulator()
+    private var consoleBatchTimer: Timer?
+
     let logicalCoreCount: Int = ProcessInfo.processInfo.activeProcessorCount
 
     /// Per-server timestamps of auto-restart attempts. Used by the crash-loop guard to
@@ -428,6 +437,13 @@ final class AppViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
+
+        // Drain the line accumulator every 100 ms. All lines collected since the
+        // last tick are processed in one synchronous pass on the main actor, so
+        // SwiftUI issues one re-render per batch instead of one per line.
+        consoleBatchTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.drainConsoleBatch() }
+        }
 
         // (M4a) Wire save-failure callback before any code that may call save().
         // Fires at most once per session (guard is in ConfigManager). Routing via
@@ -1048,10 +1064,11 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-        // Java backend output handlers
+        // Java backend output handlers — push into the accumulator (called on the
+        // readabilityHandler background thread). The consoleBatchTimer drains it
+        // every 100 ms in one main-actor pass instead of one Task per line.
         javaBackend.onOutputLine = { [weak self] line in
-            guard let self else { return }
-            Task { @MainActor in self.handleServerOutputLine(line) }
+            self?.lineAccumulator.push(line)
         }
 
         javaBackend.onDidTerminate = { [weak self] in
@@ -1101,10 +1118,9 @@ final class AppViewModel: ObservableObject {
             }
         }
 
-                        // Bedrock backend output handlers
+        // Bedrock backend output handlers — same accumulator as Java.
         bedrockBackend.onOutputLine = { [weak self] line in
-            guard let self else { return }
-            Task { @MainActor in self.handleServerOutputLine(line) }
+            self?.lineAccumulator.push(line)
         }
 
         bedrockBackend.onDidTerminate = { [weak self] in
@@ -1226,6 +1242,16 @@ final class AppViewModel: ObservableObject {
             OnboardingManager.shared.accentColor = resolved
             ContextualHelpManager.shared.accentColor = resolved
         }
+    }
+
+    // MARK: - Console batch drain
+
+    private func drainConsoleBatch() {
+        let lines = lineAccumulator.drain()
+        guard !lines.isEmpty else { return }
+        console.beginBatch()
+        for line in lines { handleServerOutputLine(line) }
+        console.endBatch()
     }
 
     // MARK: - Console state forwarding (delegates to ConsoleManager)
@@ -1406,6 +1432,28 @@ final class AppViewModel: ObservableObject {
     func clearConsole() {
         console.clearEntries()
         remoteAPIServer?.clearConsoleBuffer()
+    }
+}
+
+// MARK: - LineAccumulator
+
+/// Thread-safe buffer for console output lines.
+/// Written on the readabilityHandler background thread; drained on the main actor
+/// by consoleBatchTimer every 100 ms.
+private final class LineAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer: [String] = []
+
+    func push(_ line: String) {
+        lock.withLock { buffer.append(line) }
+    }
+
+    func drain() -> [String] {
+        lock.withLock {
+            guard !buffer.isEmpty else { return [] }
+            defer { buffer.removeAll(keepingCapacity: true) }
+            return buffer
+        }
     }
 }
 
