@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import zlib
 
 enum PlayerNBTReader {
 
@@ -30,29 +31,37 @@ enum PlayerNBTReader {
         return try? reader.readRootCompound()
     }
 
-    /// Decompresses GZIP data by writing to a temp file and running /usr/bin/gunzip -c.
+    /// Decompresses GZIP data using zlib (inflateInit2 with gzip auto-detect).
     private static func gunzip(_ data: Data) -> Data? {
-        let fm = FileManager.default
-        let tempURL = fm.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("gz")
-        do {
-            try data.write(to: tempURL, options: .atomic)
-            defer { try? fm.removeItem(at: tempURL) }
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/gunzip")
-            proc.arguments = ["-c", tempURL.path]
-            let out = Pipe()
-            proc.standardOutput = out
-            proc.standardError = Pipe()
-            try proc.run()
-            proc.waitUntilExit()
-            guard proc.terminationStatus == 0 else { return nil }
-            return out.fileHandleForReading.readDataToEndOfFile()
-        } catch {
-            try? fm.removeItem(at: tempURL)
-            return nil
+        var inBytes = [UInt8](data)
+        var stream = z_stream()
+        // 32 + MAX_WBITS tells zlib to auto-detect gzip/zlib wrapping
+        guard inflateInit2_(&stream, 32 + MAX_WBITS, ZLIB_VERSION,
+                            Int32(MemoryLayout<z_stream>.size)) == Z_OK else { return nil }
+        defer { inflateEnd(&stream) }
+
+        let chunkSize = 65536
+        var chunk = [Bytef](repeating: 0, count: chunkSize)
+        var output = Data()
+        var finalStatus: Int32 = Z_OK
+
+        inBytes.withUnsafeMutableBufferPointer { inBuf in
+            stream.next_in  = inBuf.baseAddress!
+            stream.avail_in = uInt(inBuf.count)
+            var status: Int32 = Z_OK
+            while status == Z_OK {
+                chunk.withUnsafeMutableBufferPointer { outBuf in
+                    stream.next_out  = outBuf.baseAddress!
+                    stream.avail_out = uInt(chunkSize)
+                    status = inflate(&stream, Z_NO_FLUSH)
+                }
+                let produced = chunkSize - Int(stream.avail_out)
+                if produced > 0 { output.append(contentsOf: chunk.prefix(produced)) }
+            }
+            finalStatus = status
         }
+
+        return finalStatus == Z_STREAM_END ? output : nil
     }
 
     // MARK: - Stats extraction

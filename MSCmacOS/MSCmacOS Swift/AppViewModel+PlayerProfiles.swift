@@ -398,7 +398,7 @@ extension AppViewModel {
         let path = playerProfiles[idx].datFilePath
 
         Task.detached(priority: .userInitiated) {
-            let (stats, inventory) = PlayerNBTReader.readAll(from: path)
+            let (stats, inventory) = await runOffMainThread { PlayerNBTReader.readAll(from: path) }
             await MainActor.run {
                 if let i = self.playerProfiles.firstIndex(where: { $0.uuid == uuid }) {
                     self.playerProfiles[i].stats = stats

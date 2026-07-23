@@ -50,10 +50,11 @@
 		9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0002F9A00000000AA01 /* HealthView.swift */; };
 		9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */; };
 		9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */; };
+		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
 		9AFE02000000000000000002 /* ConnectivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000001 /* ConnectivityView.swift */; };
 		9AFE02000000000000000004 /* MaintenanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000003 /* MaintenanceView.swift */; };
 		9AFE02000000000000000006 /* PerformanceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000005 /* PerformanceDetailView.swift */; };
-		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
+		9ATAB0010000000000000A02 /* ServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ATAB0010000000000000A01 /* ServerView.swift */; };
 		A11041E5020C4A20BA98F002 /* AllowlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11041E5020C4A20BA98F001 /* AllowlistView.swift */; };
 		B21042F6131D5B31CB99A002 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */; };
 		C31043A7242E6C42DCAAB002 /* CatalogBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31043A7242E6C42DCAAB001 /* CatalogBrowserView.swift */; };
@@ -62,7 +63,6 @@
 		F61056DA575H9F75GFD7E002 /* PlayitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61056DA575H9F75GFD7E001 /* PlayitView.swift */; };
 		G71067EB687J1I08JHB0E002 /* UsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G71067EB687J1I08JHB0E001 /* UsersView.swift */; };
 		H81068FC798K2J19KIC1F002 /* ComponentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = H81068FC798K2J19KIC1F001 /* ComponentsView.swift */; };
-		9ATAB0010000000000000A02 /* ServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ATAB0010000000000000A01 /* ServerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -111,10 +111,11 @@
 		9AB1C0002F9A00000000AA01 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsStatusStripView.swift; sourceTree = "<group>"; };
 		9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxAuthBanner.swift; sourceTree = "<group>"; };
+		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9AFE02000000000000000001 /* ConnectivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityView.swift; sourceTree = "<group>"; };
 		9AFE02000000000000000003 /* MaintenanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceView.swift; sourceTree = "<group>"; };
 		9AFE02000000000000000005 /* PerformanceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceDetailView.swift; sourceTree = "<group>"; };
-		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		9ATAB0010000000000000A01 /* ServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerView.swift; sourceTree = "<group>"; };
 		A11041E5020C4A20BA98F001 /* AllowlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllowlistView.swift; sourceTree = "<group>"; };
 		B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsView.swift; sourceTree = "<group>"; };
 		C31043A7242E6C42DCAAB001 /* CatalogBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogBrowserView.swift; sourceTree = "<group>"; };
@@ -123,7 +124,6 @@
 		F61056DA575H9F75GFD7E001 /* PlayitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitView.swift; sourceTree = "<group>"; };
 		G71067EB687J1I08JHB0E001 /* UsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsersView.swift; sourceTree = "<group>"; };
 		H81068FC798K2J19KIC1F001 /* ComponentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsView.swift; sourceTree = "<group>"; };
-		9ATAB0010000000000000A01 /* ServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -494,7 +494,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MSCRemoteiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -530,7 +530,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MSCRemoteiOS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

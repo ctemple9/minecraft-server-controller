@@ -50,6 +50,11 @@ struct MSCSettingsView: View {
     @State private var storageAppSupportBytes: Int64? = nil
     @State private var storageServersRootBytes: Int64? = nil
     @State private var storageIsLoading: Bool = false
+    // Config recovery
+    @State private var showRecoveryRestoreConfirm: Bool = false
+    @State private var pendingRestoreURL: URL? = nil
+    @State private var showRecoveryResult: Bool = false
+    @State private var recoveryResultMessage: String = ""
     // @State private var isShowingPlayitGuideFromSettings: Bool = false  // hidden — app handles playit setup in-flow
 
     // MARK: - Tab state
@@ -78,6 +83,7 @@ struct MSCSettingsView: View {
     private let remoteAccessPreferredHostAnchorID = "preferences.remoteAccess.preferredHost"
     private let remoteAccessActionsAnchorID       = "preferences.remoteAccess.actions"
     private let dataFoldersCardAnchorID           = "preferences.dataFolders"
+    private let configRecoveryCardAnchorID        = "preferences.configRecovery"
     private let storageCardAnchorID               = "preferences.storage"
     private let archiveCardAnchorID               = "preferences.archive"
     private let portsCardAnchorID                 = "preferences.ports"
@@ -304,7 +310,13 @@ struct MSCSettingsView: View {
             .padding(.vertical, MSC.Spacing.lg)
         }
         .frame(minWidth: 560, minHeight: 480)
-        .onAppear { loadSettings() }
+        .onAppear {
+            loadSettings()
+            if viewModel.openSettingsToDataTab {
+                selectedTab = .data
+                viewModel.openSettingsToDataTab = false
+            }
+        }
         .alert("Copied", isPresented: $showCopiedAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -346,6 +358,20 @@ struct MSCSettingsView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(resetFailureMessage)
+        }
+        .alert("Restore from backup?", isPresented: $showRecoveryRestoreConfirm) {
+            Button("Cancel", role: .cancel) { pendingRestoreURL = nil }
+            Button("Restore") {
+                if let url = pendingRestoreURL { performRestore(from: url) }
+                pendingRestoreURL = nil
+            }
+        } message: {
+            Text("Servers from the backup that are not already registered will be added to your list. Existing entries are not changed.")
+        }
+        .alert("Recovery", isPresented: $showRecoveryResult) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(recoveryResultMessage)
         }
         .contextualHelpHost(guideIDs: contextualHelpGuideIDs)
         // (U1) LAN-enable confirmation — separate Color.clear anchor per one-presentation-per-view rule
@@ -409,6 +435,7 @@ struct MSCSettingsView: View {
             remoteAccessCard
         case .data:
             dataFoldersCard
+            configRecoveryCard
             storageCard
             archiveCard
             portsCard
@@ -564,6 +591,45 @@ struct MSCSettingsView: View {
     private var archiveCard: some View {
         PreferencesArchiveSection(anchorID: archiveCardAnchorID)
             .environmentObject(viewModel)
+    }
+
+    private var configRecoveryCard: some View {
+        PreferencesConfigRecoverySection(
+            anchorID: configRecoveryCardAnchorID,
+            onRestoreFromBackup: { url in
+                pendingRestoreURL = url
+                showRecoveryRestoreConfirm = true
+            },
+            onRescanFolder: performRescan
+        )
+        .environmentObject(viewModel)
+    }
+
+    private func performRestore(from url: URL) {
+        let result = viewModel.restoreServersFromBackup(at: url)
+        if let err = result.error {
+            recoveryResultMessage = "Restore failed: \(err)"
+        } else if result.restored == 0 {
+            recoveryResultMessage = "All servers in the backup are already registered. Nothing to restore."
+        } else {
+            let skippedNote = result.skipped > 0 ? " (\(result.skipped) already present, skipped)" : ""
+            recoveryResultMessage = "\(result.restored) server\(result.restored == 1 ? "" : "s") restored from backup.\(skippedNote)"
+        }
+        showRecoveryResult = true
+    }
+
+    private func performRescan() {
+        Task.detached(priority: .userInitiated) {
+            let result = await MainActor.run { viewModel.rescanAndImportServers() }
+            await MainActor.run {
+                if result.added == 0 {
+                    recoveryResultMessage = "No new servers found in the server folder."
+                } else {
+                    recoveryResultMessage = "\(result.added) server\(result.added == 1 ? "" : "s") added from disk."
+                }
+                showRecoveryResult = true
+            }
+        }
     }
 
     // MARK: - Load

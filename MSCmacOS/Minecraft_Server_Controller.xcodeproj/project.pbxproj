@@ -199,7 +199,6 @@
 		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
 		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
 		9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020A0000000000000001 /* JavaRuntimeManager.swift */; };
-		9AFE022D0000000000000002 /* JavaInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022D0000000000000001 /* JavaInstaller.swift */; };
 		9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020B0000000000000001 /* NeoForgeInstaller.swift */; };
 		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
 		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
@@ -234,6 +233,8 @@
 		9AFE022A0000000000000002 /* CurseForgeAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022A0000000000000001 /* CurseForgeAPI.swift */; };
 		9AFE022B0000000000000002 /* JavaServerLaunchHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */; };
 		9AFE022C0000000000000002 /* CurseForgeManualDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */; };
+		9AFE022D0000000000000002 /* JavaInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022D0000000000000001 /* JavaInstaller.swift */; };
+		9AFE022E0000000000000002 /* AppViewModel+ConfigRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022E0000000000000001 /* AppViewModel+ConfigRecovery.swift */; };
 		BB020001AA0000000000001B /* PlayerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010001AA0000000000001A /* PlayerProfile.swift */; };
 		BB020002AA0000000000002B /* PlayerNBTReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010002AA0000000000002A /* PlayerNBTReader.swift */; };
 		BB020003AA0000000000003B /* PlayerDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB010003AA0000000000003A /* PlayerDataManager.swift */; };
@@ -484,7 +485,6 @@
 		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
 		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
 		9AFE020A0000000000000001 /* JavaRuntimeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeManager.swift; sourceTree = "<group>"; };
-		9AFE022D0000000000000001 /* JavaInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaInstaller.swift; sourceTree = "<group>"; };
 		9AFE020B0000000000000001 /* NeoForgeInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoForgeInstaller.swift; sourceTree = "<group>"; };
 		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
 		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
@@ -519,6 +519,8 @@
 		9AFE022A0000000000000001 /* CurseForgeAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeAPI.swift; sourceTree = "<group>"; };
 		9AFE022B0000000000000001 /* JavaServerLaunchHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerLaunchHelper.swift; sourceTree = "<group>"; };
 		9AFE022C0000000000000001 /* CurseForgeManualDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurseForgeManualDownloadSheet.swift; sourceTree = "<group>"; };
+		9AFE022D0000000000000001 /* JavaInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaInstaller.swift; sourceTree = "<group>"; };
+		9AFE022E0000000000000001 /* AppViewModel+ConfigRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppViewModel+ConfigRecovery.swift"; sourceTree = "<group>"; };
 		BB010001AA0000000000001A /* PlayerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerProfile.swift; sourceTree = "<group>"; };
 		BB010002AA0000000000002A /* PlayerNBTReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerNBTReader.swift; sourceTree = "<group>"; };
 		BB010003AA0000000000003A /* PlayerDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDataManager.swift; sourceTree = "<group>"; };
@@ -610,6 +612,7 @@
 				CAFED00E2F65AD6B00FB8246 /* AppViewModel+Playit.swift */,
 				9A5631EB2F65AD6C00FB8246 /* AppViewModel+ComponentsVersions.swift */,
 				9A5631EC2F65AD6C00FB8246 /* AppViewModel+ConfigHelpers.swift */,
+				9AFE022E0000000000000001 /* AppViewModel+ConfigRecovery.swift */,
 				9A5631ED2F65AD6C00FB8246 /* AppViewModel+FinderTools.swift */,
 				9A5631EE2F65AD6C00FB8246 /* AppViewModel+HealthCards.swift */,
 				9A5631EF2F65AD6C00FB8246 /* AppViewModel+Metrics.swift */,
@@ -1229,6 +1232,7 @@
 				9A5632FE2F65AD6D00FB8246 /* AppViewModel+ResourcePacks.swift in Sources */,
 				9A5632FF2F65AD6D00FB8246 /* ServerEditorDockerTab.swift in Sources */,
 				9A5633002F65AD6D00FB8246 /* AppViewModel+ConfigHelpers.swift in Sources */,
+				9AFE022E0000000000000002 /* AppViewModel+ConfigRecovery.swift in Sources */,
 				9A5633012F65AD6D00FB8246 /* PlayerSessionTimelineView.swift in Sources */,
 				9ADA84802F6CC8B50079CA9B /* CreateWorldSlotSheet.swift in Sources */,
 				BB020001AA0000000000001B /* PlayerProfile.swift in Sources */,
@@ -1420,7 +1424,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1434,7 +1438,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.16;
+				MARKETING_VERSION = 1.18;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;
@@ -1459,7 +1463,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1473,7 +1477,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 1.16;
+				MARKETING_VERSION = 1.18;
 				PRODUCT_BUNDLE_IDENTIFIER = com.camerontemple.MinecraftServerController;
 				PRODUCT_NAME = "Minecraft Server Controller";
 				REGISTER_APP_GROUPS = YES;

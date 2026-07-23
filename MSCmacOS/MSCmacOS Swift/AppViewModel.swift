@@ -353,6 +353,8 @@ final class AppViewModel: ObservableObject {
     @Published var duckdnsInput: String = ""
     @Published var cachedPublicIPAddress: String? = nil
     @Published var isShowingPreferences: Bool = false
+    /// When true, MSCSettingsView opens to the Data tab and clears this flag on appear.
+    @Published var openSettingsToDataTab: Bool = false
     @Published var isShowingAbout: Bool = false
     @Published var isShowingPrerequisites: Bool = false
     @Published var isShowingRouterPortForwardGuide: Bool = false

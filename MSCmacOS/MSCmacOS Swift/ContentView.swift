@@ -801,7 +801,11 @@ struct ContentView: View {
                     Alert(
                         title: Text(alert.title),
                         message: Text(alert.message),
-                        dismissButton: .default(Text("OK"))
+                        primaryButton: .default(Text("Recover in Settings…")) {
+                            viewModel.openSettingsToDataTab = true
+                            viewModel.isShowingPreferences  = true
+                        },
+                        secondaryButton: .cancel(Text("Dismiss"))
                     )
                 }
         }

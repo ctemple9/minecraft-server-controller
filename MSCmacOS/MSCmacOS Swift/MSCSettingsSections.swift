@@ -886,6 +886,136 @@ private struct StorageBarRow: View {
     }
 }
 
+// MARK: - Config Recovery Section
+
+struct PreferencesConfigRecoverySection: View {
+    let anchorID: String
+    let onRestoreFromBackup: (URL) -> Void
+    let onRescanFolder: () -> Void
+
+    @EnvironmentObject private var viewModel: AppViewModel
+
+    @State private var backups: [URL] = []
+    @State private var backupServerCounts: [URL: Int] = [:]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MSC.Spacing.md) {
+            Label("Config Recovery", systemImage: "arrow.counterclockwise.circle")
+                .font(MSC.Typography.cardTitle)
+                .foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("Use these tools if your server list was lost or corrupted. Recovery adds missing servers without removing any that are already registered.")
+                .font(MSC.Typography.caption)
+                .foregroundStyle(MSC.Colors.caption)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !backups.isEmpty {
+                VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
+                    Text("Backup Files")
+                        .font(MSC.Typography.captionBold)
+                        .foregroundStyle(MSC.Colors.caption)
+
+                    ForEach(backups, id: \.path) { backup in
+                        backupRow(backup)
+                    }
+                }
+            }
+
+            Divider().opacity(0.5)
+
+            VStack(alignment: .leading, spacing: MSC.Spacing.xs) {
+                Text("Rescan Server Folder")
+                    .font(MSC.Typography.captionBold)
+                    .foregroundStyle(MSC.Colors.caption)
+                Text("Walks \(viewModel.configManager.config.serversRoot) for server folders not already in the list and adds them.")
+                    .font(.caption2)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Rescan Folder…", action: onRescanFolder)
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+            }
+        }
+        .pscCard()
+        .id(anchorID)
+        .contextualHelpAnchor(anchorID)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear { loadBackups() }
+    }
+
+    private func loadBackups() {
+        backups = viewModel.findCorruptBackups()
+        for b in backups {
+            backupServerCounts[b] = viewModel.serverCountInBackup(at: b)
+        }
+    }
+
+    @ViewBuilder
+    private func backupRow(_ backup: URL) -> some View {
+        HStack(alignment: .top, spacing: MSC.Spacing.sm) {
+            Image(systemName: "doc.badge.clock")
+                .foregroundStyle(MSC.Colors.warning)
+                .font(.system(size: 13))
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(backupDateLabel(backup))
+                    .font(.system(size: 12, weight: .medium))
+                if let count = backupServerCounts[backup] {
+                    Text(count == 1 ? "1 server" : "\(count) servers")
+                        .font(.caption2)
+                        .foregroundStyle(MSC.Colors.caption)
+                }
+                Text(backup.lastPathComponent)
+                    .font(.caption2)
+                    .foregroundStyle(MSC.Colors.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer()
+
+            Button("Restore…") { onRestoreFromBackup(backup) }
+                .buttonStyle(MSCSecondaryButtonStyle())
+                .controlSize(.small)
+        }
+        .padding(MSC.Spacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                .fill(MSC.Colors.warning.opacity(0.07))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: MSC.Radius.sm, style: .continuous)
+                .stroke(MSC.Colors.warning.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func backupDateLabel(_ url: URL) -> String {
+        let name = url.lastPathComponent
+        // Extract the timestamp suffix: server_config_swift.json.corrupt-20260723-144255
+        let prefix = "server_config_swift.json.corrupt-"
+        guard name.hasPrefix(prefix) else { return "Backup" }
+        let suffix = String(name.dropFirst(prefix.count)) // "20260723-144255"
+        let parts  = suffix.split(separator: "-")
+        guard parts.count == 2, parts[0].count == 8, parts[1].count == 6 else {
+            return "Backup (\(suffix))"
+        }
+        let dateStr = String(parts[0]) // "20260723"
+        let timeStr = String(parts[1]) // "144255"
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyyMMdd-HHmmss"
+        if let date = fmt.date(from: "\(dateStr)-\(timeStr)") {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .short
+            return display.string(from: date)
+        }
+        return "Backup (\(suffix))"
+    }
+}
+
 // PreferencesLearnHelpSection — moved to ToolbarHelpPopover in ContentView
 // struct PreferencesLearnHelpSection: View {
 //     let onShowConceptGuide: () -> Void
