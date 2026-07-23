@@ -11,6 +11,7 @@ final class SettingsStore: ObservableObject {
         static let joinCardColorHex = "msc_remote_join_card_color"
         static let xboxGamertag     = "msc_remote_xbox_gamertag"
         static let accentColorHex   = "msc_remote_accent_color"
+        static let allowServerUpdates = "msc_remote_allow_server_updates"
     }
 
     static let accentPresets: [(name: String, hex: String)] = [
@@ -56,6 +57,9 @@ final class SettingsStore: ObservableObject {
     // Accent colour tint — drives MSCRemoteStyle.accent app-wide.
     @Published var accentColorHex: String
 
+    // Safety preference for update buttons that can change server behavior.
+    @Published var allowServerUpdates: Bool
+
     // MARK: - Init
 
     init() {
@@ -79,6 +83,7 @@ final class SettingsStore: ObservableObject {
         self.showJoinCard     = UserDefaults.standard.object(forKey: Keys.showJoinCard)     as? Bool   ?? false
         self.joinCardColorHex = UserDefaults.standard.string(forKey: Keys.joinCardColorHex) ?? "#2E6633"
         self.xboxGamertag     = UserDefaults.standard.string(forKey: Keys.xboxGamertag)     ?? ""
+        self.allowServerUpdates = UserDefaults.standard.object(forKey: Keys.allowServerUpdates) as? Bool ?? true
 
         let savedAccent = UserDefaults.standard.string(forKey: Keys.accentColorHex) ?? "#3EB489"
         self.accentColorHex = savedAccent
@@ -109,6 +114,10 @@ final class SettingsStore: ObservableObject {
         UserDefaults.standard.set(showJoinCard,     forKey: Keys.showJoinCard)
         UserDefaults.standard.set(joinCardColorHex, forKey: Keys.joinCardColorHex)
         UserDefaults.standard.set(xboxGamertag,     forKey: Keys.xboxGamertag)
+    }
+
+    func saveServerUpdatePreference() {
+        UserDefaults.standard.set(allowServerUpdates, forKey: Keys.allowServerUpdates)
     }
 
     // MARK: - Save / token management
@@ -263,6 +272,5 @@ final class SettingsStore: ObservableObject {
         return "http://\(trimmed)"
     }
 }
-
 
 

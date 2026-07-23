@@ -113,7 +113,7 @@ struct SetupWizardView: View {
     // Detection state
     @State private var javaStatus: JavaCheckStatus = .unknown
     @State private var tailscaleStatus: TailscaleCheckStatus = .unknown
-    @State private var isDownloadingJava = false
+    @State private var isShowingJavaInstaller = false
 
     // Xbox Broadcast
     @State private var xboxDownloadStatus: String? = nil
@@ -178,6 +178,12 @@ struct SetupWizardView: View {
         .frame(minWidth: 620, idealWidth: 680, minHeight: 540)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { prefill() }
+        .sheet(isPresented: $isShowingJavaInstaller) {
+            JavaInstallerSheet {
+                isShowingJavaInstaller = false
+                checkJavaOnPath()
+            }
+        }
     }
 
     // MARK: - Hero Header
@@ -799,27 +805,18 @@ struct SetupWizardView: View {
                             Text("No Java found on PATH. Install the current Temurin LTS, then click Check for Java again.")
                                 .font(.system(size: 13))
                                 .foregroundStyle(.secondary)
-                            if isDownloadingJava {
-                                HStack(spacing: 6) {
-                                    ProgressView().scaleEffect(0.65)
-                                    Text("Downloading installer\u{2026}")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.secondary)
+                            HStack(spacing: MSC.Spacing.sm) {
+                                Button("Install Java\u{2026}") {
+                                    isShowingJavaInstaller = true
                                 }
-                            } else {
-                                HStack(spacing: MSC.Spacing.sm) {
-                                    Button("Install Java (Temurin LTS)") {
-                                        downloadAndInstallJava()
-                                    }
-                                    .controlSize(.mini)
-                                    .buttonStyle(.borderedProminent)
-                                    Button("Manual Download \u{2192}") {
-                                        openTemurin21DownloadPage()
-                                    }
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.orange)
-                                    .buttonStyle(.plain)
+                                .controlSize(.mini)
+                                .buttonStyle(.borderedProminent)
+                                Button("Manual Download \u{2192}") {
+                                    openTemurin21DownloadPage()
                                 }
+                                .font(.system(size: 13))
+                                .foregroundStyle(.orange)
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -1362,50 +1359,6 @@ struct SetupWizardView: View {
     private func openTemurin21DownloadPage() {
         guard let url = URL(string: "https://adoptium.net/temurin/releases/?package=jdk&os=mac") else { return }
         NSWorkspace.shared.open(url)
-    }
-
-    private func downloadAndInstallJava() {
-        isDownloadingJava = true
-        Task {
-            defer { Task { @MainActor in isDownloadingJava = false } }
-            do {
-                #if arch(arm64)
-                let arch = "aarch64"
-                #else
-                let arch = "x64"
-                #endif
-
-                let releasesURL = URL(string: "https://api.adoptium.net/v3/info/available_releases")!
-                let (relData, _) = try await URLSession.shared.data(from: releasesURL)
-                let ltsVersion: Int
-                if let relJson = try JSONSerialization.jsonObject(with: relData) as? [String: Any],
-                   let v = relJson["most_recent_lts"] as? Int {
-                    ltsVersion = v
-                } else {
-                    ltsVersion = 21
-                }
-
-                let assetsURLString = "https://api.adoptium.net/v3/assets/latest/\(ltsVersion)/hotspot?os=mac&image_type=jdk&vendor=eclipse&architecture=\(arch)"
-                let (assetData, _) = try await URLSession.shared.data(from: URL(string: assetsURLString)!)
-                guard let assets = try JSONSerialization.jsonObject(with: assetData) as? [[String: Any]],
-                      let first = assets.first,
-                      let binary = first["binary"] as? [String: Any],
-                      let installer = binary["installer"] as? [String: Any],
-                      let pkgURLString = installer["link"] as? String,
-                      let pkgURL = URL(string: pkgURLString) else {
-                    await MainActor.run { openTemurin21DownloadPage() }
-                    return
-                }
-
-                let (tempURL, _) = try await URLSession.shared.download(from: pkgURL)
-                let destURL = FileManager.default.temporaryDirectory.appendingPathComponent(pkgURL.lastPathComponent)
-                try? FileManager.default.removeItem(at: destURL)
-                try FileManager.default.moveItem(at: tempURL, to: destURL)
-                await MainActor.run { NSWorkspace.shared.open(destURL) }
-            } catch {
-                await MainActor.run { openTemurin21DownloadPage() }
-            }
-        }
     }
 
     // MARK: - Xbox Broadcast Download

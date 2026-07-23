@@ -136,7 +136,7 @@ final class AppConfigRoundTripTests: XCTestCase {
             serverDir: "/tmp/servers/test",
             paperJarPath: "/tmp/servers/test/paper.jar",
             minRamGB: 2,
-            maxRamGB: 8
+            maxRamGB: 4.5
         )
         // Optional / backwards-compat fields
         server.bedrockPort          = 19132

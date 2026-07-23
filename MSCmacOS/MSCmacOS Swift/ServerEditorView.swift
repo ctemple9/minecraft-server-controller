@@ -145,8 +145,8 @@ struct ServerEditorView: View {
         let dirEmpty  = data.serverDir.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if nameEmpty || dirEmpty { return true }
         if data.serverType == .java {
-            if Int(data.minRamGB) ?? 0 <= 0 { return true }
-            if Int(data.maxRamGB) ?? 0 <= 0 { return true }
+            if Double(data.minRamGB) ?? 0 <= 0 { return true }
+            if Double(data.maxRamGB) ?? 0 <= 0 { return true }
         }
         return false
     }

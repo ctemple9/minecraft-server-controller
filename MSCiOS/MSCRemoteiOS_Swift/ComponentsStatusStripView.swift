@@ -77,12 +77,13 @@ struct ComponentsStatusStripView: View {
     }
 
     private func dotColor(for component: ComponentStatusDTO) -> Color {
-        guard component.installedBuild != nil else { return MSCRemoteStyle.textTertiary }
+        guard component.isInstalled else { return MSCRemoteStyle.textTertiary }
         return component.isUpToDate ? MSCRemoteStyle.success : Color.orange
     }
 
     private func componentStatusWord(for component: ComponentStatusDTO) -> String {
-        guard component.installedBuild != nil else { return "not installed" }
+        guard component.isInstalled else { return "not installed" }
+        if !component.isUpdatable { return "installed" }
         return component.isUpToDate ? "up to date" : "update available"
     }
 }

@@ -297,6 +297,7 @@ final class AppViewModel: ObservableObject {
     // MARK: - JAR libraries
 
     @Published var xboxBroadcastJarItems: [JarLibraryItem] = []
+    @Published var isXboxBroadcastJarDownloading: Bool = false
 
     // MARK: - Players / TPS
 
@@ -369,8 +370,8 @@ final class AppViewModel: ObservableObject {
         return "TPS – 1m: \(fmt(latestTps1m))  •  5m: \(fmt(latestTps5m))  •  15m: \(fmt(latestTps15m))"
     }
 
-    /// Max RAM (in GB) for the currently selected server, if known.
-    var currentServerMaxRamGB: Int? {
+    /// Max RAM (in GB, possibly fractional) for the currently selected server, if known.
+    var currentServerMaxRamGB: Double? {
         guard let server = selectedServer,
               let cfg = configServer(for: server) else { return nil }
         return cfg.maxRam
@@ -580,7 +581,7 @@ final class AppViewModel: ObservableObject {
                     let cfg = self.configManager.config
                     let activeType = cfg.servers.first(where: { $0.id == cfg.activeServerId })?.serverType
                     let isBedrock = activeType == .bedrock
-                    let maxMB = self.performanceRamLimitGBForSelectedServer.map { Double($0) * 1024.0 }
+                    let maxMB = self.performanceRamLimitGBForSelectedServer.map { $0 * 1024.0 }
                     return RemoteAPIServer.PerformanceSnapshotDTO(
                         ts: ts,
                         tps1m: isBedrock ? nil : self.latestTps1m,
@@ -705,22 +706,30 @@ final class AppViewModel: ObservableObject {
                 guard let self else {
                     return RemoteAPIServer.ComponentsStatusDTO(components: [], restartRequiredToApply: false)
                 }
-                let (activeDir, isRunning, effectivePaperURL): (String?, Bool, URL?) = await MainActor.run {
+                let ctx: (dir: String, flavor: JavaServerFlavor, mc: String?, loader: String?, paperURL: URL?)? = await MainActor.run {
                     let cfg = self.configManager.config
-                    let activeServer = cfg.servers.first(where: { $0.id == cfg.activeServerId })
-                    return (activeServer?.serverDir, self.isServerRunning, activeServer.flatMap { self.effectivePaperJarURL(for: $0) })
+                    guard let activeServer = cfg.servers.first(where: { $0.id == cfg.activeServerId }) else { return nil }
+                    return (activeServer.serverDir, activeServer.javaFlavor,
+                            activeServer.minecraftVersion, activeServer.loaderVersion,
+                            self.effectivePaperJarURL(for: activeServer))
                 }
-                guard let dir = activeDir else {
+                let isRunning = await MainActor.run { self.isServerRunning }
+                guard let ctx else {
                     return RemoteAPIServer.ComponentsStatusDTO(components: [], restartRequiredToApply: false)
                 }
+                let dir = ctx.dir
+                let flavor = ctx.flavor
+                let effectivePaperURL = ctx.paperURL
                 let dirURL = URL(fileURLWithPath: dir, isDirectory: true)
                 let pluginsURL = dirURL.appendingPathComponent("plugins", isDirectory: true)
                 let hasPlugins = FileManager.default.fileExists(atPath: pluginsURL.path)
 
-                // Resolve installed Paper version: sidecar → filename parse → jar present
+                // Resolve installed Paper version: sidecar → filename parse → jar present.
+                // Only meaningful for the actual Paper flavor; other flavors' launcher jars
+                // don't carry a Paper build number and must not be parsed as such.
                 var paperInstalled: PaperJarVersion? = nil
                 let paperJarURL: URL? = effectivePaperURL
-                if effectivePaperURL != nil {
+                if flavor == .paper, effectivePaperURL != nil {
                     if let sidecar = PaperVersionSidecarManager.read(fromServerDirectory: dirURL) {
                         paperInstalled = PaperJarVersion(mcVersion: sidecar.mcVersion, build: sidecar.build)
                     } else if let url = effectivePaperURL {
@@ -746,8 +755,9 @@ final class AppViewModel: ObservableObject {
                     }
                 }
 
-                // Fetch latest versions concurrently
-                async let latestPaper = try? PaperDownloader.fetchLatestMetadata()
+                // Fetch latest versions concurrently. The Paper build API only applies to
+                // the Paper flavor — Fabric/Vanilla/Forge/… are versioned via Change Version.
+                async let latestPaper = flavor == .paper ? (try? PaperDownloader.fetchLatestMetadata()) : nil
                 async let latestGeyser = hasPlugins ? (try? PluginDownloader.fetchLatestGeyserBuildInfo()) : nil
                 async let latestFloodgate = hasPlugins ? (try? PluginDownloader.fetchLatestFloodgateBuildInfo()) : nil
 
@@ -755,23 +765,69 @@ final class AppViewModel: ObservableObject {
 
                 var components: [RemoteAPIServer.ComponentStatusDTO] = []
 
-                // Paper
-                let paperLatestBuild = pMeta.map { $0.build }
-                let paperLatestVer = pMeta.map { $0.version }
-                let paperUpToDate: Bool
-                if let inst = paperInstalled?.build, let latest = paperLatestBuild {
-                    paperUpToDate = inst >= latest
-                } else {
-                    paperUpToDate = paperInstalled == nil && paperLatestBuild == nil
+                // MARK: Primary server component — reflects the active flavor, not always Paper.
+                let flavorName = flavor.displayName
+                // Human-friendly "installed" line for non-Paper flavors, e.g. "1.21.1 · 0.16.5".
+                func flavorInstalledLabel() -> String {
+                    var parts: [String] = []
+                    if let mc = ctx.mc?.trimmingCharacters(in: .whitespaces), !mc.isEmpty { parts.append(mc) }
+                    if let lv = ctx.loader?.trimmingCharacters(in: .whitespaces), !lv.isEmpty { parts.append(lv) }
+                    return parts.isEmpty ? "Installed" : parts.joined(separator: " · ")
                 }
-                if paperJarURL != nil || paperLatestBuild != nil {
+
+                if flavor == .paper {
+                    // Paper keeps full build-based update tracking.
+                    let paperLatestBuild = pMeta.map { $0.build }
+                    let paperLatestVer = pMeta.map { $0.version }
+                    let paperUpToDate: Bool
+                    if let inst = paperInstalled?.build, let latest = paperLatestBuild {
+                        paperUpToDate = inst >= latest
+                    } else {
+                        paperUpToDate = paperInstalled == nil && paperLatestBuild == nil
+                    }
+                    if paperJarURL != nil || paperLatestBuild != nil {
+                        let label = paperInstalled.map { "\($0.mcVersion) · build \($0.build)" }
+                        components.append(RemoteAPIServer.ComponentStatusDTO(
+                            name: flavorName,
+                            installedBuild: paperInstalled?.build,
+                            latestBuild: paperLatestBuild,
+                            installedVersion: paperInstalled?.mcVersion,
+                            latestVersion: paperLatestVer,
+                            isUpToDate: paperUpToDate,
+                            installedLabel: label,
+                            updatable: true
+                        ))
+                    }
+                } else if flavor.provisioningKind == .installStep {
+                    // Forge / NeoForge launch from a generated args file, not a single jar.
+                    let argsExists: Bool
+                    switch flavor {
+                    case .neoforge: argsExists = NeoForgeInstaller.findArgsFile(in: dirURL, specificVersion: ctx.loader) != nil
+                    case .forge:    argsExists = ForgeInstaller.findArgsFile(in: dirURL, mcVersion: ctx.mc, forgeVersion: ctx.loader) != nil
+                    default:        argsExists = false
+                    }
                     components.append(RemoteAPIServer.ComponentStatusDTO(
-                        name: "Paper",
-                        installedBuild: paperInstalled?.build,
-                        latestBuild: paperLatestBuild,
-                        installedVersion: paperInstalled?.mcVersion,
-                        latestVersion: paperLatestVer,
-                        isUpToDate: paperUpToDate
+                        name: flavorName,
+                        installedBuild: nil,
+                        latestBuild: nil,
+                        installedVersion: ctx.mc,
+                        latestVersion: nil,
+                        isUpToDate: argsExists,
+                        installedLabel: argsExists ? flavorInstalledLabel() : nil,
+                        updatable: false
+                    ))
+                } else {
+                    // Vanilla / Purpur / Pufferfish / Fabric / Quilt — a single downloaded jar.
+                    let jarPresent = paperJarURL != nil
+                    components.append(RemoteAPIServer.ComponentStatusDTO(
+                        name: flavorName,
+                        installedBuild: nil,
+                        latestBuild: nil,
+                        installedVersion: ctx.mc,
+                        latestVersion: nil,
+                        isUpToDate: jarPresent,
+                        installedLabel: jarPresent ? flavorInstalledLabel() : nil,
+                        updatable: false
                     ))
                 }
 

@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// P6: the iOS add-on browser. Searches the Mac's Modrinth catalog (filtered to the
+/// P6: the iOS mod browser. Searches the Mac's Modrinth catalog (filtered to the
 /// active server's loader + Minecraft version by the server) and installs the latest
 /// compatible version into the server's add-on folder. Presented as a sheet from the
-/// Health tab's Add-ons card; on dismiss the caller refreshes so new add-ons appear.
+/// Server tab's Mods card; on dismiss the caller refreshes so new mods appear.
 struct CatalogBrowserView: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
@@ -31,7 +31,7 @@ struct CatalogBrowserView: View {
         switch response?.addonKind {
         case "plugin": return "plugins"
         case "mod":    return "mods"
-        default:       return "add-ons"
+        default:       return "mods"
         }
     }
 
@@ -264,8 +264,8 @@ struct CatalogBrowserView: View {
         let message: String
         switch note {
         case "no_active_server": message = "No active server. Select a server first."
-        case "not_supported":    message = "This server type doesn't support installable add-ons."
-        default:                 message = "Add-ons aren't available for this server."
+        case "not_supported":    message = "This server type doesn't support installable mods."
+        default:                 message = "Mods aren't available for this server."
         }
         return VStack(spacing: MSCRemoteStyle.spaceMD) {
             Image(systemName: "shippingbox")

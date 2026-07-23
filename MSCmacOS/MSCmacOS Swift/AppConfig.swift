@@ -72,25 +72,38 @@ enum ServerType: String, Codable, CaseIterable {
 
 // Java server flavor / category model lives in JavaServerFlavor.swift (M0).
 
+extension Double {
+    /// Human-friendly label for a RAM-in-GB value: whole numbers drop the decimal
+    /// (4.0 → "4"), fractional values keep it (4.5 → "4.5").
+    var ramGBLabel: String { String(format: "%g", self) }
+}
+
 struct ConfigServer: Codable, Identifiable {
 
     var id: String
     var displayName: String
     var serverDir: String
     var paperJarPath: String
-    var minRamGB: Int
-    var maxRamGB: Int
+    /// RAM allocation in GB. Fractional values are allowed (e.g. 4.5) so users can
+    /// tune headroom finely; they are converted to whole MB for the JVM/VM flags.
+    var minRamGB: Double
+    var maxRamGB: Double
 
     // Convenience aliases (AppViewModel references minRam/maxRam in a few places)
-    var minRam: Int {
+    var minRam: Double {
         get { minRamGB }
         set { minRamGB = newValue }
     }
 
-    var maxRam: Int {
+    var maxRam: Double {
         get { maxRamGB }
         set { maxRamGB = newValue }
     }
+
+    /// Min heap in whole MB, for the `-Xms` JVM flag. Rounds a fractional GB value.
+    var minRamMB: Int { Int((minRamGB * 1024).rounded()) }
+    /// Max heap in whole MB, for `-Xmx` / Docker `--memory` / VM memory. Rounds a fractional GB value.
+    var maxRamMB: Int { Int((maxRamGB * 1024).rounded()) }
 
     /// Persisted last-known Bedrock/Geyser port (nil = unknown/unset).
     var bedrockPort: Int? = nil
@@ -328,8 +341,10 @@ extension ConfigServer {
         displayName = try c.decode(String.self, forKey: .displayName)
         serverDir   = try c.decode(String.self, forKey: .serverDir)
         paperJarPath = try c.decode(String.self, forKey: .paperJarPath)
-        minRamGB    = try c.decode(Int.self, forKey: .minRamGB)
-        maxRamGB    = try c.decode(Int.self, forKey: .maxRamGB)
+        // Stored as GB. Older configs wrote whole-number ints (e.g. 4); JSON decodes
+        // those into Double transparently, so no migration is needed.
+        minRamGB    = try c.decode(Double.self, forKey: .minRamGB)
+        maxRamGB    = try c.decode(Double.self, forKey: .maxRamGB)
 
         // Optional / backwards-compatible fields — use decodeIfPresent with a safe default.
         bedrockPort            = try c.decodeIfPresent(Int.self,    forKey: .bedrockPort)

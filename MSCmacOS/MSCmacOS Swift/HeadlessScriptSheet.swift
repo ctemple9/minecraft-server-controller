@@ -13,8 +13,8 @@ struct HeadlessScriptSheet: View {
     @Binding var isPresented: Bool
 
     // Java options
-    @State private var minRamGB: Int
-    @State private var maxRamGB: Int
+    @State private var minRamGB: Double
+    @State private var maxRamGB: Double
     @State private var wrapMode: HeadlessWrapMode = .none
     @State private var includeXboxBroadcast: Bool
     private var hasXboxBroadcastJar: Bool {
@@ -30,8 +30,8 @@ struct HeadlessScriptSheet: View {
     init(config: ConfigServer, isPresented: Binding<Bool>) {
         self.config = config
         self._isPresented = isPresented
-        _minRamGB = State(initialValue: max(1, config.minRamGB))
-        _maxRamGB = State(initialValue: max(1, config.maxRamGB))
+        _minRamGB = State(initialValue: max(1.0, config.minRamGB))
+        _maxRamGB = State(initialValue: max(1.0, config.maxRamGB))
         // includeXboxBroadcast is seeded in onAppear once we have viewModel
         _includeXboxBroadcast = State(initialValue: config.xboxBroadcastEnabled)
     }
@@ -244,14 +244,14 @@ struct HeadlessScriptSheet: View {
 
     // MARK: - RAM stepper helper
 
-    private func ramStepper(label: String, value: Binding<Int>) -> some View {
+    private func ramStepper(label: String, value: Binding<Double>) -> some View {
         HStack(spacing: MSC.Spacing.sm) {
             Text(label)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-            Stepper("\(value.wrappedValue) GB", value: value, in: 1...64)
+            Stepper("\(value.wrappedValue.ramGBLabel) GB", value: value, in: 1...64, step: 0.5)
                 .labelsHidden()
-            Text("\(value.wrappedValue) GB")
+            Text("\(value.wrappedValue.ramGBLabel) GB")
                 .font(.system(size: 12, weight: .medium))
                 .frame(width: 48, alignment: .leading)
         }

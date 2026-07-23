@@ -56,8 +56,180 @@ extension AppViewModel {
                 if self.isServerRunning, cfg.activeServerId == trimmedId {
                     return RemoteAPIServer.ServerDeleteResultDTO(success: false, message: "server_running", serverId: trimmedId)
                 }
-                self.deleteServer(withId: trimmedId)
+                do {
+                    try self.deleteServerFromDisk(withId: trimmedId)
+                } catch {
+                    self.logAppMessage("[Server] Remote: failed to delete server folder: \(error.localizedDescription)")
+                    return RemoteAPIServer.ServerDeleteResultDTO(success: false, message: "delete_failed", serverId: trimmedId)
+                }
                 return RemoteAPIServer.ServerDeleteResultDTO(success: true, message: "ok", serverId: trimmedId)
+            }
+        }
+
+        let createServerProvider: (RemoteAPIServer.ServerCreateRequestDTO) async -> RemoteAPIServer.ServerCreateResultDTO = { [weak self] req in
+            guard let self else {
+                return RemoteAPIServer.ServerCreateResultDTO(success: false, message: "not_available")
+            }
+            let name = req.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else {
+                return RemoteAPIServer.ServerCreateResultDTO(success: false, message: "name_required")
+            }
+            let typeRaw = req.serverType?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let serverType: ServerType
+            if let typeRaw, !typeRaw.isEmpty {
+                guard let parsed = ServerType(rawValue: typeRaw) else {
+                    return RemoteAPIServer.ServerCreateResultDTO(success: false, message: "invalid_server_type")
+                }
+                serverType = parsed
+            } else {
+                serverType = .java
+            }
+
+            func trimmedOrNil(_ value: String?) -> String? {
+                let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return trimmed.isEmpty ? nil : trimmed
+            }
+            let difficulty = trimmedOrNil(req.difficulty) ?? "normal"
+            let gamemode = trimmedOrNil(req.gamemode) ?? "survival"
+            let worldName = trimmedOrNil(req.worldName)
+            let worldSeed = trimmedOrNil(req.worldSeed)
+            let requestedVersionId = trimmedOrNil(req.versionId)
+            let requestedMinecraftVersion = trimmedOrNil(req.minecraftVersion)
+            let requestedLoaderVersion = trimmedOrNil(req.loaderVersion)
+            let supportedJavaFlavors: Set<JavaServerFlavor> = [.paper, .purpur, .vanilla, .fabric, .neoforge, .forge]
+            let requestedJavaFlavor = trimmedOrNil(req.javaFlavor)?.lowercased()
+            let javaFlavor: JavaServerFlavor
+            if let requestedJavaFlavor {
+                guard let parsed = JavaServerFlavor(rawValue: requestedJavaFlavor),
+                      supportedJavaFlavors.contains(parsed) else {
+                    return RemoteAPIServer.ServerCreateResultDTO(success: false, message: "invalid_java_flavor")
+                }
+                javaFlavor = parsed
+            } else {
+                javaFlavor = .paper
+            }
+            let specificJavaVersion: ServerVersionEntry?
+            if let requestedVersionId, requestedVersionId != "__latest__" {
+                let mcVersion = requestedMinecraftVersion ?? requestedVersionId
+                specificJavaVersion = ServerVersionEntry(
+                    id: requestedVersionId,
+                    displayLabel: mcVersion,
+                    mcVersion: mcVersion,
+                    loaderVersion: requestedLoaderVersion,
+                    buildLabel: nil,
+                    isStable: true
+                )
+            } else {
+                specificJavaVersion = nil
+            }
+            let before = await MainActor.run { Set(self.configManager.config.servers.map(\.id)) }
+
+            let ok: Bool
+            switch serverType {
+            case .java:
+                let supportsCrossPlay = javaFlavor.category == .standard && javaFlavor != .vanilla
+                let enableJavaCrossPlay = supportsCrossPlay && (req.enableCrossPlay ?? false)
+                ok = await self.createNewServer(
+                    name: name,
+                    initialWorldName: worldName,
+                    jarSource: .downloadLatest,
+                    flavor: javaFlavor,
+                    specificVersion: specificJavaVersion,
+                    port: req.port ?? 25565,
+                    enableCrossPlay: enableJavaCrossPlay,
+                    crossPlayBedrockPort: enableJavaCrossPlay ? (req.crossPlayBedrockPort ?? 19132) : nil,
+                    enablePlayit: req.enablePlayit ?? false,
+                    enableXboxBroadcast: enableJavaCrossPlay && (req.enableXboxBroadcast ?? false),
+                    difficulty: difficulty,
+                    gamemode: gamemode,
+                    worldSeed: worldSeed,
+                    worldSource: .fresh,
+                    javaPath: trimmedOrNil(req.javaPath)
+                )
+            case .bedrock:
+                ok = await self.createNewBedrockServer(
+                    name: name,
+                    initialWorldName: worldName,
+                    dockerImage: trimmedOrNil(req.dockerImage) ?? "itzg/minecraft-bedrock-server",
+                    bedrockVersion: trimmedOrNil(req.bedrockVersion) ?? requestedVersionId ?? "LATEST",
+                    port: req.port ?? 19132,
+                    maxPlayers: req.maxPlayers ?? 10,
+                    enablePlayit: req.enablePlayit ?? false,
+                    enableXboxBroadcast: req.enableXboxBroadcast ?? false,
+                    difficulty: difficulty,
+                    gamemode: gamemode,
+                    worldSeed: worldSeed,
+                    worldSource: .fresh
+                )
+            }
+
+            guard ok else {
+                let error = await MainActor.run { self.lastServerCreateError ?? "create_failed" }
+                return RemoteAPIServer.ServerCreateResultDTO(success: false, message: error)
+            }
+
+            return await MainActor.run {
+                let created = self.configManager.config.servers.first(where: { !before.contains($0.id) })
+                    ?? self.configManager.config.activeServerId.flatMap { id in self.configManager.config.servers.first(where: { $0.id == id }) }
+                if req.acceptEula == true, let created, created.serverType == .java {
+                    do {
+                        try EULAManager.writeAcceptedEULA(in: created.serverDir)
+                        if self.selectedServer?.id == created.id {
+                            self.eulaAccepted = true
+                        }
+                    } catch {
+                        self.logAppMessage("[Server] Remote: failed to accept EULA for \"\(created.displayName)\": \(error.localizedDescription)")
+                        return RemoteAPIServer.ServerCreateResultDTO(success: false, message: "eula_write_failed", serverId: created.id, serverName: created.displayName)
+                    }
+                }
+                if let maxPlayers = req.maxPlayers, let created, created.serverType == .java {
+                    var props = ServerPropertiesManager.readProperties(serverDir: created.serverDir)
+                    props["max-players"] = String(maxPlayers)
+                    try? ServerPropertiesManager.writeProperties(props, to: created.serverDir)
+                }
+                var createWarnings: [String] = []
+                if let created, created.xboxBroadcastEnabled {
+                    let jarPath = self.configManager.config.xboxBroadcastJarPath ?? ""
+                    if jarPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        createWarnings.append("xbox_broadcast_jar_not_configured")
+                    }
+                }
+                return RemoteAPIServer.ServerCreateResultDTO(
+                    success: true,
+                    message: "created",
+                    serverId: created?.id,
+                    serverName: created?.displayName,
+                    warnings: createWarnings.isEmpty ? nil : createWarnings
+                )
+            }
+        }
+
+        let acceptEULAProvider: (RemoteAPIServer.ServerEULARequestDTO) async -> RemoteAPIServer.ServerEULAResultDTO = { [weak self] req in
+            guard let self else {
+                return RemoteAPIServer.ServerEULAResultDTO(success: false, message: "not_available")
+            }
+            let serverId = req.serverId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !serverId.isEmpty else {
+                return RemoteAPIServer.ServerEULAResultDTO(success: false, message: "missing_server_id")
+            }
+            return await MainActor.run {
+                guard let server = self.configManager.config.servers.first(where: { $0.id == serverId }) else {
+                    return RemoteAPIServer.ServerEULAResultDTO(success: false, message: "server_not_found", serverId: serverId)
+                }
+                guard server.serverType == .java else {
+                    return RemoteAPIServer.ServerEULAResultDTO(success: false, message: "unsupported_server_type", serverId: serverId)
+                }
+                do {
+                    try EULAManager.writeAcceptedEULA(in: server.serverDir)
+                    if self.selectedServer?.id == serverId {
+                        self.eulaAccepted = true
+                    }
+                    self.logAppMessage("[Server] Remote: accepted EULA for \"\(server.displayName)\".")
+                    return RemoteAPIServer.ServerEULAResultDTO(success: true, message: "ok", serverId: serverId, accepted: true)
+                } catch {
+                    self.logAppMessage("[Server] Remote: failed to accept EULA for \"\(server.displayName)\": \(error.localizedDescription)")
+                    return RemoteAPIServer.ServerEULAResultDTO(success: false, message: "eula_write_failed", serverId: serverId, accepted: false)
+                }
             }
         }
 
@@ -405,6 +577,8 @@ extension AppViewModel {
         }
         server.renameServerProvider = renameServerProvider
         server.deleteServerProvider = deleteServerProvider
+        server.createServerProvider = createServerProvider
+        server.acceptEULAProvider = acceptEULAProvider
         server.templatesProvider = templatesProvider
         server.templateMutationProvider = templateMutationProvider
         server.serverImportScanProvider = serverImportScanProvider

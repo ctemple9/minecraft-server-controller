@@ -58,7 +58,7 @@ final class RemoteAPIServer {
     private let postRateLimitMax: Int = 10
     private let postRateLimitWindowSeconds: TimeInterval = 5.0
 
-    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install", "/components/version", "/allowlist", "/settings", "/backups/config", "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair", "/health/repair", "/playit/start", "/playit/stop", "/duckdns", "/config/geyser", "/users", "/users/revoke", "/users/update"]
+    static let rateLimitedPOSTPaths: Set<String> = ["/command", "/start", "/stop", "/active-server", "/servers/rename", "/servers/delete", "/servers/create", "/servers/eula", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install", "/components/version", "/allowlist", "/settings", "/backups/config", "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair", "/health/repair", "/playit/start", "/playit/stop", "/duckdns", "/config/geyser", "/config/ram", "/config/java-runtime", "/broadcast/download-jar", "/users", "/users/revoke", "/users/update"]
 
     // Auth failure rate limiting (kept on `queue`)
     private var authFailCountByIP: [String: FixedWindowCounter] = [:]
@@ -123,6 +123,12 @@ final class RemoteAPIServer {
     }
     var deleteServerProvider: (_ serverId: String) async -> ServerDeleteResultDTO = { _ in
         ServerDeleteResultDTO(success: false, message: "not_available")
+    }
+    var createServerProvider: (_ request: ServerCreateRequestDTO) async -> ServerCreateResultDTO = { _ in
+        ServerCreateResultDTO(success: false, message: "not_available")
+    }
+    var acceptEULAProvider: (_ request: ServerEULARequestDTO) async -> ServerEULAResultDTO = { _ in
+        ServerEULAResultDTO(success: false, message: "not_available")
     }
     var templatesProvider: () async -> TemplatesResponseDTO = {
         TemplatesResponseDTO(note: "not_available")
@@ -194,6 +200,29 @@ final class RemoteAPIServer {
     var versionsProvider: () async -> VersionsResponseDTO = {
         VersionsResponseDTO(supportsVersions: false, note: "not_available")
     }
+    /// Available versions for the create-server flow before a server exists (GET /versions/create).
+    var createVersionsProvider: (_ serverType: String?, _ javaFlavor: String?) async -> VersionsResponseDTO = { _, _ in
+        VersionsResponseDTO(supportsVersions: false, note: "not_available")
+    }
+    /// Detected Java runtimes on the Mac (GET /java-runtimes).
+    var javaRuntimesProvider: () async -> JavaRuntimesResponseDTO = {
+        JavaRuntimesResponseDTO(runtimes: [])
+    }
+    /// Current MCXboxBroadcast JAR install status (GET /broadcast/jar-status).
+    var broadcastJarStatusProvider: () async -> BroadcastJarStatusDTO = {
+        BroadcastJarStatusDTO(installed: false, downloading: false, filename: nil)
+    }
+    /// Download or update the MCXboxBroadcast JAR from GitHub (POST /broadcast/download-jar).
+    var downloadBroadcastJarProvider: () async -> BroadcastJarDownloadResultDTO = {
+        BroadcastJarDownloadResultDTO(success: false, message: "not_available", filename: nil)
+    }
+
+    /// Current global Java executable path (GET /config/java-runtime).
+    var getJavaConfigProvider: () async -> JavaConfigResponseDTO = {
+        JavaConfigResponseDTO(executablePath: nil)
+    }
+    /// Update the global Java executable path (POST /config/java-runtime).
+    var setJavaConfigProvider: (_ executablePath: String?) async -> Bool = { _ in false }
     /// Downloads / installs a chosen version for the active server (POST /components/version).
     var changeVersionProvider: (_ versionId: String, _ loaderVersion: String?) async -> VersionChangeResultDTO = { _, _ in
         VersionChangeResultDTO(success: false, message: "not_available", requiresRestart: false)
@@ -267,6 +296,9 @@ final class RemoteAPIServer {
     // Geyser config (P13)
     var geyserConfigProvider: () async -> GeyserConfigResponseDTO = { GeyserConfigResponseDTO(note: "not_available") }
     var updateGeyserConfigProvider: (_ address: String?, _ port: Int?) async -> GeyserConfigUpdateResultDTO = { _, _ in GeyserConfigUpdateResultDTO(success: false, message: "not_available") }
+    // RAM allocation (/config/ram)
+    var ramConfigProvider: () async -> RAMConfigResponseDTO = { RAMConfigResponseDTO() }
+    var updateRAMConfigProvider: (_ minRamGB: Double?, _ maxRamGB: Double?) async -> RAMConfigUpdateResultDTO = { _, _ in RAMConfigUpdateResultDTO(success: false, message: "not_available") }
     var backupItemsProvider:       () -> BackupsResponseDTO    = { BackupsResponseDTO(backups: []) }
     var createBackupNowProvider:   () -> Void                  = { }
     var restoreBackupProvider:     (String) -> Bool            = { _ in false }

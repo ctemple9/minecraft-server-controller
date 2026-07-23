@@ -34,11 +34,11 @@ extension DetailsPerformanceTabView {
         return String(format: "%.0f%%", v)
     }
 
-    func formatRam(_ mb: Double?, maxGB: Int?) -> String {
+    func formatRam(_ mb: Double?, maxGB: Double?) -> String {
         guard let mb = mb else { return "--" }
 
         if let maxGB = maxGB {
-            let maxMB = Double(maxGB) * 1024.0
+            let maxMB = maxGB * 1024.0
             return String(format: "%.1f / %.0f MB", mb, maxMB)
         } else {
             return String(format: "%.1f MB", mb)

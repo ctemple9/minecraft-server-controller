@@ -59,7 +59,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var playitStatusResponse: PlayitStatusResponseDTO? = nil
     @Published var duckdnsResponse: DuckDNSStatusResponseDTO? = nil
     @Published var geyserConfigResponse: GeyserConfigResponseDTO? = nil
-    @Published var templatesResponse: TemplatesResponseDTO? = nil
+    @Published var ramConfigResponse: RAMConfigResponseDTO? = nil
     @Published var serverImportScanResponse: ServerImportScanResponseDTO? = nil
     @Published var serverFilesResponse: ServerFilesResponseDTO? = nil
     @Published var serverFileReadResponse: ServerFileReadResponseDTO? = nil
@@ -210,7 +210,8 @@ final class DashboardViewModel: ObservableObject {
             servers = servers.map { server in
                 guard server.id == serverId else { return server }
                 return ServerDTO(id: server.id, name: newName, directory: server.directory,
-                                 serverType: server.serverType, gamePort: server.gamePort,
+                                 serverType: server.serverType, javaFlavor: server.javaFlavor,
+                                 gamePort: server.gamePort,
                                  hostAddress: server.hostAddress)
             }
             return nil
@@ -234,53 +235,94 @@ final class DashboardViewModel: ObservableObject {
         }
     }
 
-    func fetchTemplates(baseURL: URL, token: String) async {
-        updateCredentials(baseURL: baseURL, token: token)
-        do {
-            templatesResponse = try await requireClient().getTemplates()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    func exportServerTemplate(baseURL: URL, token: String, serverId: String?, includePlugins: Bool) async -> String? {
+    func createFreshServer(baseURL: URL, token: String, name: String, serverType: ServerType,
+                           javaFlavor: RemoteJavaServerFlavor?, selectedVersion: VersionEntryDTO?, port: Int,
+                           maxPlayers: Int?, enableCrossPlay: Bool, crossPlayBedrockPort: Int,
+                           enablePlayit: Bool, enableXboxBroadcast: Bool, difficulty: String, gamemode: String,
+                           worldName: String?, worldSeed: String?, acceptEula: Bool,
+                           bedrockVersion: String?, dockerImage: String?,
+                           javaPath: String? = nil) async -> (error: String?, warnings: [String]?) {
         updateCredentials(baseURL: baseURL, token: token)
         errorMessage = nil
         do {
-            let result = try await requireClient().exportServerTemplate(serverId: serverId, includePlugins: includePlugins)
-            guard result.success else { return friendlyServerManagementError(result.message) }
-            if let templates = result.templates { templatesResponse = templates }
-            return nil
-        } catch {
-            errorMessage = error.localizedDescription
-            return error.localizedDescription
-        }
-    }
-
-    func createServerFromTemplate(baseURL: URL, token: String, name: String, templateId: String, port: Int,
-                                  enableCrossPlay: Bool, crossPlayBedrockPort: Int, enablePlayit: Bool,
-                                  difficulty: String, gamemode: String, worldName: String?,
-                                  worldSeed: String?, acceptEula: Bool) async -> String? {
-        updateCredentials(baseURL: baseURL, token: token)
-        errorMessage = nil
-        do {
-            let result = try await requireClient().createServerFromTemplate(
+            let result = try await requireClient().createFreshServer(
                 name: name,
-                templateId: templateId,
+                serverType: serverType,
+                javaFlavor: javaFlavor,
+                selectedVersion: selectedVersion,
                 port: port,
+                maxPlayers: maxPlayers,
                 enableCrossPlay: enableCrossPlay,
                 crossPlayBedrockPort: crossPlayBedrockPort,
                 enablePlayit: enablePlayit,
+                enableXboxBroadcast: enableXboxBroadcast,
                 difficulty: difficulty,
                 gamemode: gamemode,
                 worldName: worldName,
                 worldSeed: worldSeed,
-                acceptEula: acceptEula
+                acceptEula: acceptEula,
+                bedrockVersion: bedrockVersion,
+                dockerImage: dockerImage,
+                javaPath: javaPath
             )
-            guard result.success else { return friendlyServerManagementError(result.message) }
-            if let templates = result.templates { templatesResponse = templates }
+            guard result.success else { return (friendlyServerManagementError(result.message), nil) }
             if let fetched = try? await requireClient().getServers() { servers = fetched }
             if let fetchedStatus = try? await requireClient().getStatus() { status = fetchedStatus }
+            return (nil, result.warnings)
+        } catch {
+            errorMessage = error.localizedDescription
+            return (error.localizedDescription, nil)
+        }
+    }
+
+    func fetchBroadcastJarStatus(baseURL: URL, token: String) async -> BroadcastJarStatusDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return nil }
+        return try? await client.getBroadcastJarStatus()
+    }
+
+    func triggerBroadcastJarDownload(baseURL: URL, token: String) async -> BroadcastJarDownloadResultDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return nil }
+        return try? await client.downloadBroadcastJar()
+    }
+
+    func fetchJavaRuntimes(baseURL: URL, token: String) async -> JavaRuntimesResponseDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return nil }
+        return try? await client.getJavaRuntimes()
+    }
+
+    func fetchJavaConfig(baseURL: URL, token: String) async -> JavaConfigResponseDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return nil }
+        return try? await client.getJavaConfig()
+    }
+
+    func applyJavaConfig(baseURL: URL, token: String, executablePath: String?) async -> Bool {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return false }
+        do {
+            try await client.setJavaConfig(executablePath: executablePath)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func fetchCreateVersions(baseURL: URL, token: String, serverType: ServerType,
+                             javaFlavor: RemoteJavaServerFlavor?) async -> VersionsResponseDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        guard let client = try? requireClient() else { return nil }
+        return try? await client.getCreateVersions(serverType: serverType, javaFlavor: javaFlavor)
+    }
+
+    func acceptServerEULA(baseURL: URL, token: String, serverId: String) async -> String? {
+        updateCredentials(baseURL: baseURL, token: token)
+        errorMessage = nil
+        do {
+            let result = try await requireClient().acceptServerEULA(serverId: serverId)
+            guard result.success else { return friendlyServerManagementError(result.message) }
             return nil
         } catch {
             errorMessage = error.localizedDescription
@@ -348,14 +390,18 @@ final class DashboardViewModel: ObservableObject {
     private func friendlyServerManagementError(_ message: String) -> String {
         switch message {
         case "name_required": return "Enter a server name."
-        case "template_required": return "Choose a server JAR template."
-        case "template_not_found": return "That template is no longer available."
+        case "invalid_server_type": return "Choose Java or Bedrock."
+        case "invalid_java_flavor": return "Choose a supported Java server type."
+        case "create_failed": return "The Mac could not create the server. Check the Mac console."
         case "missing_source_path": return "Enter a path on the Mac."
         case "source_not_found": return "The Mac could not find that path."
         case "backup_path_required": return "Enter a backup path before replacing all servers."
         case "display_name_required": return "Enter a server name."
         case "server_not_found": return "That server no longer exists."
         case "server_running": return "Stop the server before deleting it."
+        case "delete_failed": return "The Mac could not delete that server folder."
+        case "unsupported_server_type": return "EULA acceptance is only needed for Java servers."
+        case "eula_write_failed": return "The Mac could not write eula.txt."
         case "not_available": return "This Mac has not enabled server management yet."
         default: return message
         }
@@ -745,6 +791,35 @@ final class DashboardViewModel: ObservableObject {
         } catch { return nil }
     }
 
+    // MARK: - RAM allocation (/config/ram)
+
+    func fetchRAMConfig(baseURL: URL, token: String) async {
+        updateCredentials(baseURL: baseURL, token: token)
+        ramConfigResponse = try? await (try requireClient()).getRAMConfig()
+    }
+
+    /// Saves a new RAM allocation. Admin-only endpoint; returns nil on failure.
+    /// On success the local `ramConfigResponse` is patched with the clamped values.
+    func updateRAMConfig(minRamGB: Double?, maxRamGB: Double?, baseURL: URL, token: String) async -> RAMConfigUpdateResultDTO? {
+        updateCredentials(baseURL: baseURL, token: token)
+        do {
+            let result = try await requireClient().updateRAMConfig(minRamGB: minRamGB, maxRamGB: maxRamGB)
+            if result.success, let prev = ramConfigResponse {
+                ramConfigResponse = RAMConfigResponseDTO(
+                    serverName: prev.serverName,
+                    serverType: prev.serverType,
+                    minRamGB: result.minRamGB ?? prev.minRamGB,
+                    maxRamGB: result.maxRamGB ?? prev.maxRamGB,
+                    physicalRAMGB: prev.physicalRAMGB,
+                    recommendedMaxGB: prev.recommendedMaxGB,
+                    serverRunning: prev.serverRunning,
+                    hasActiveServer: prev.hasActiveServer
+                )
+            }
+            return result
+        } catch { return nil }
+    }
+
     // MARK: - Diagnostics (health + startup problems)
 
     func fetchHealth(baseURL: URL, token: String) async {
@@ -778,7 +853,7 @@ final class DashboardViewModel: ObservableObject {
 
     private func healthRepairErrorText(_ code: String) -> String {
         switch code {
-        case "server_running":     return "Stop the server before repairing add-ons."
+        case "server_running":     return "Stop the server before repairing mods."
         case "no_active_server":   return "No active server."
         case "problem_not_found":  return "That problem is no longer listed."
         case "action_unavailable": return "That fix isn't available for this problem."

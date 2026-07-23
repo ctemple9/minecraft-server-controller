@@ -48,7 +48,7 @@ var generalTab: some View {
         SEBlockHeader(title: data.serverType == .java ? "Memory" : "Memory Limit")
         if data.serverType == .java {
             SEBlock {
-                SERow(label: "Minimum RAM", hint: "-Xms Java flag") {
+                SERow(label: "Minimum RAM", hint: "-Xms Java flag · decimals OK (e.g. 4.5)") {
                     HStack(spacing: 4) {
                         TextField("2", text: $data.minRamGB)
                             .textFieldStyle(.roundedBorder)
@@ -57,7 +57,7 @@ var generalTab: some View {
                     }
                 }
                 Divider().padding(.leading, MSC.Spacing.md - 1)
-                SERow(label: "Maximum RAM", hint: "-Xmx Java flag") {
+                SERow(label: "Maximum RAM", hint: "-Xmx Java flag · decimals OK (e.g. 4.5)") {
                     HStack(spacing: 4) {
                         TextField("4", text: $data.maxRamGB)
                             .textFieldStyle(.roundedBorder)

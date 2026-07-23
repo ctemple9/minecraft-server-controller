@@ -25,10 +25,10 @@ extension AppViewModel {
         selectedServerIsBedrock ? bedrockMemoryUsedMB : serverRamMB
     }
 
-    var performanceRamLimitGBForSelectedServer: Int? {
+    var performanceRamLimitGBForSelectedServer: Double? {
         guard selectedServerIsBedrock else { return currentServerMaxRamGB }
         guard let limitMB = bedrockMemoryLimitMB, limitMB > 0 else { return nil }
-        return max(1, Int((limitMB / 1024.0).rounded()))
+        return max(1.0, limitMB / 1024.0)
     }
 
     var bedrockLoad1mAverage: Double? { rollingAverage(from: bedrockCpuHistory, sampleCount: 12) }

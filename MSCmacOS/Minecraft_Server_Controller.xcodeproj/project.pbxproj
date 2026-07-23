@@ -199,6 +199,7 @@
 		9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02080000000000000001 /* JavaServerFlavor.swift */; };
 		9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02090000000000000001 /* ServerJarProviders.swift */; };
 		9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020A0000000000000001 /* JavaRuntimeManager.swift */; };
+		9AFE022D0000000000000002 /* JavaInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE022D0000000000000001 /* JavaInstaller.swift */; };
 		9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020B0000000000000001 /* NeoForgeInstaller.swift */; };
 		9AFE020C0000000000000002 /* ModrinthBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020C0000000000000001 /* ModrinthBrowserView.swift */; };
 		9AFE020D0000000000000002 /* ModJarMetadataParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE020D0000000000000001 /* ModJarMetadataParser.swift */; };
@@ -483,6 +484,7 @@
 		9AFE02080000000000000001 /* JavaServerFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaServerFlavor.swift; sourceTree = "<group>"; };
 		9AFE02090000000000000001 /* ServerJarProviders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerJarProviders.swift; sourceTree = "<group>"; };
 		9AFE020A0000000000000001 /* JavaRuntimeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaRuntimeManager.swift; sourceTree = "<group>"; };
+		9AFE022D0000000000000001 /* JavaInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JavaInstaller.swift; sourceTree = "<group>"; };
 		9AFE020B0000000000000001 /* NeoForgeInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeoForgeInstaller.swift; sourceTree = "<group>"; };
 		9AFE020C0000000000000001 /* ModrinthBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModrinthBrowserView.swift; sourceTree = "<group>"; };
 		9AFE020D0000000000000001 /* ModJarMetadataParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModJarMetadataParser.swift; sourceTree = "<group>"; };
@@ -723,6 +725,7 @@
 				9AFE02080000000000000001 /* JavaServerFlavor.swift */,
 				9AFE02090000000000000001 /* ServerJarProviders.swift */,
 				9AFE020A0000000000000001 /* JavaRuntimeManager.swift */,
+				9AFE022D0000000000000001 /* JavaInstaller.swift */,
 				9AFE020B0000000000000001 /* NeoForgeInstaller.swift */,
 				9AFE020F0000000000000001 /* AddonUpdateResolver.swift */,
 				9AFE02100000000000000001 /* AppViewModel+AddonUpdates.swift */,
@@ -1184,6 +1187,7 @@
 				9AFE02080000000000000002 /* JavaServerFlavor.swift in Sources */,
 				9AFE02090000000000000002 /* ServerJarProviders.swift in Sources */,
 				9AFE020A0000000000000002 /* JavaRuntimeManager.swift in Sources */,
+				9AFE022D0000000000000002 /* JavaInstaller.swift in Sources */,
 				9AFE020B0000000000000002 /* NeoForgeInstaller.swift in Sources */,
 				9AFE020F0000000000000002 /* AddonUpdateResolver.swift in Sources */,
 				9AFE02100000000000000002 /* AppViewModel+AddonUpdates.swift in Sources */,
@@ -1416,7 +1420,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1455,7 +1459,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6898622Y3Y;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;

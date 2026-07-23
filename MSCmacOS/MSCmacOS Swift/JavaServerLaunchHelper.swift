@@ -20,12 +20,16 @@ struct JavaServerLaunchConfig {
 
 enum JavaServerLaunchHelper {
 
+    /// Convert a possibly-fractional GB heap size into whole MB for JVM flags.
+    /// Single source of truth so ServerProcessManager and this helper can't drift.
+    static func megabytes(fromGB gb: Double) -> Int { Int((gb * 1024).rounded()) }
+
     static func resolve(
         config: ConfigServer,
         appConfig: AppConfig,
         serverDirURL: URL,
-        minRamGB: Int,
-        maxRamGB: Int,
+        minRamGB: Double,
+        maxRamGB: Double,
         findNeoForgeArgsFile: (URL, String?) -> String? =
             { NeoForgeInstaller.findArgsFile(in: $0, specificVersion: $1) },
         findForgeArgsFile: (URL, String?, String?) -> String? =
@@ -39,8 +43,8 @@ enum JavaServerLaunchHelper {
 
         // 2. JVM flags — must stay byte-identical to ServerProcessManager.startServer.
         var flags: [String] = [
-            "-Xms\(minRamGB)G",
-            "-Xmx\(maxRamGB)G",
+            "-Xms\(megabytes(fromGB: minRamGB))M",
+            "-Xmx\(megabytes(fromGB: maxRamGB))M",
             "-Djna.nosys=true",
             "-Djna.nounpack=true",
             "-Djline.terminal=dumb",

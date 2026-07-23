@@ -30,21 +30,21 @@ struct DetectedJavaRuntime: Identifiable, Hashable, Sendable {
 enum JavaRuntimeManager {
 
     /// The Java major version a given Minecraft version needs to run.
-    /// Conservative mapping; unknown / new-scheme versions assume the current LTS (21).
+    /// Conservative mapping; unknown versions assume the current requirement (Java 25).
     static func requiredJavaMajor(forMinecraftVersion version: String?) -> Int {
         guard let version, let first = version.split(separator: ".").compactMap({ Int($0) }).first else {
-            return 21   // unknown → assume newest
+            return 25   // unknown → assume newest
         }
         if first == 1 {
-            // Classic "1.x" scheme.
+            // Classic "1.x" scheme (up to 1.21.x, the last before year-based numbering).
             let parts = version.split(separator: ".").compactMap { Int($0) }
             let minor = parts.count > 1 ? parts[1] : 0
-            if minor >= 21 { return 21 }   // 1.21+  → Java 21
-            if minor >= 17 { return 17 }   // 1.17–1.20 → Java 17
+            if minor >= 21 { return 21 }   // 1.20.5 / 1.21.x → Java 21
+            if minor >= 17 { return 17 }   // 1.17–1.20.4 → Java 17
             return 8                        // ≤1.16 → Java 8
         }
-        // New-scheme releases (e.g. 26.x) → current LTS.
-        return 21
+        // Year-based scheme (2026+): Minecraft 26.1 is the first to require Java 25.
+        return 25
     }
 
     /// Detects the major version of a `java` binary by running `-version` and

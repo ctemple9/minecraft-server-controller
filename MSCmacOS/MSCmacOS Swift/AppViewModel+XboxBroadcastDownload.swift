@@ -107,44 +107,66 @@ extension AppViewModel {
 
     /// Download the latest MCXboxBroadcastStandalone.jar into the library folder,
     /// using the GitHub release tag as part of the filename (e.g. MCXboxBroadcastStandalone-v3.0.2.jar).
+    /// Fires and forgets for the macOS UI; shows an error dialog on failure.
     func downloadOrUpdateXboxBroadcastJar() {
-        let libraryDir = xboxBroadcastJarLibraryURL
-
         Task.detached { [weak self] in
             guard let self else { return }
-            let fm = FileManager.default
-
-            do {
-                try fm.createDirectory(at: libraryDir, withIntermediateDirectories: true)
-            } catch {
-                await MainActor.run { self.logAppMessage("[Broadcast] Failed to create library folder: \(error.localizedDescription)") }
-                return
-            }
-
-            let tempURL = libraryDir.appendingPathComponent("MCXboxBroadcastStandalone-downloading.jar")
-
-            do {
-                let tag = try await XboxBroadcastDownloader.downloadStandaloneJar(to: tempURL)
-                let version = tag?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown"
-                let finalName = "MCXboxBroadcastStandalone-\(version).jar"
-                let finalURL = libraryDir.appendingPathComponent(finalName)
-
-                if fm.fileExists(atPath: finalURL.path) { try fm.removeItem(at: finalURL) }
-                try fm.moveItem(at: tempURL, to: finalURL)
-
+            let result = await self.downloadXboxBroadcastJarCore()
+            if !result.success {
                 await MainActor.run {
-                    self.configManager.setXboxBroadcastJarPath(finalURL.path)
-                    self.logAppMessage("[Broadcast] Downloaded \(finalName).")
-                    self.loadXboxBroadcastJars()
-                    self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
-                }
-            } catch {
-                try? fm.removeItem(at: tempURL)
-                await MainActor.run {
-                    self.logAppMessage("[Broadcast] Download failed: \(error.localizedDescription)")
-                    self.showError(title: "XboxBroadcast Download Failed", message: error.localizedDescription)
+                    self.showError(title: "XboxBroadcast Download Failed", message: result.message)
                 }
             }
+        }
+    }
+
+    /// Blocking async download used by both the macOS UI (via Task.detached above) and
+    /// the Remote API handler. Sets isXboxBroadcastJarDownloading for the duration.
+    func downloadXboxBroadcastJarCore() async -> RemoteAPIServer.BroadcastJarDownloadResultDTO {
+        let alreadyDownloading = await MainActor.run { () -> Bool in
+            if self.isXboxBroadcastJarDownloading { return true }
+            self.isXboxBroadcastJarDownloading = true
+            return false
+        }
+        guard !alreadyDownloading else {
+            return RemoteAPIServer.BroadcastJarDownloadResultDTO(success: false, message: "already_downloading", filename: nil)
+        }
+        defer {
+            Task { @MainActor in self.isXboxBroadcastJarDownloading = false }
+        }
+
+        let libraryDir = xboxBroadcastJarLibraryURL
+        let fm = FileManager.default
+
+        do {
+            try fm.createDirectory(at: libraryDir, withIntermediateDirectories: true)
+        } catch {
+            await MainActor.run { self.logAppMessage("[Broadcast] Failed to create library folder: \(error.localizedDescription)") }
+            return RemoteAPIServer.BroadcastJarDownloadResultDTO(success: false, message: error.localizedDescription, filename: nil)
+        }
+
+        let tempURL = libraryDir.appendingPathComponent("MCXboxBroadcastStandalone-downloading.jar")
+
+        do {
+            let tag = try await XboxBroadcastDownloader.downloadStandaloneJar(to: tempURL)
+            let version = tag?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown"
+            let finalName = "MCXboxBroadcastStandalone-\(version).jar"
+            let finalURL = libraryDir.appendingPathComponent(finalName)
+
+            if fm.fileExists(atPath: finalURL.path) { try fm.removeItem(at: finalURL) }
+            try fm.moveItem(at: tempURL, to: finalURL)
+
+            await MainActor.run {
+                self.configManager.setXboxBroadcastJarPath(finalURL.path)
+                self.logAppMessage("[Broadcast] Downloaded \(finalName).")
+                self.loadXboxBroadcastJars()
+                self.refreshComponentsSnapshotLocalAndTemplate(clearOnline: false)
+            }
+            return RemoteAPIServer.BroadcastJarDownloadResultDTO(success: true, message: "downloaded", filename: finalName)
+        } catch {
+            try? fm.removeItem(at: tempURL)
+            await MainActor.run { self.logAppMessage("[Broadcast] Download failed: \(error.localizedDescription)") }
+            return RemoteAPIServer.BroadcastJarDownloadResultDTO(success: false, message: error.localizedDescription, filename: nil)
         }
     }
 }

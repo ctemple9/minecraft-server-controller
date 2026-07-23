@@ -110,6 +110,74 @@ extension AppViewModel {
                 return RemoteAPIServer.DuckDNSUpdateResultDTO(success: true, hostname: self.configManager.config.duckdnsHostname)
             }
         }
+        // RAM allocation (/config/ram)
+        server.ramConfigProvider = { [weak self] in
+            await MainActor.run { [weak self] in
+                guard let self else { return RemoteAPIServer.RAMConfigResponseDTO() }
+                let physGB = Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024))
+                let recommended = Swift.max(1, Int(Double(physGB) * 0.6))
+                let cfg = self.configManager.config
+                guard let s = cfg.servers.first(where: { $0.id == cfg.activeServerId }) else {
+                    return RemoteAPIServer.RAMConfigResponseDTO(
+                        physicalRAMGB: physGB, recommendedMaxGB: recommended, hasActiveServer: false)
+                }
+                return RemoteAPIServer.RAMConfigResponseDTO(
+                    serverName: s.displayName,
+                    serverType: s.isBedrock ? "bedrock" : "java",
+                    minRamGB: s.minRamGB,
+                    maxRamGB: s.maxRamGB,
+                    physicalRAMGB: physGB,
+                    recommendedMaxGB: recommended,
+                    serverRunning: self.isServerRunning,
+                    hasActiveServer: true)
+            }
+        }
+        server.updateRAMConfigProvider = { [weak self] minGB, maxGB in
+            await MainActor.run { [weak self] in
+                guard let self else {
+                    return RemoteAPIServer.RAMConfigUpdateResultDTO(success: false, message: "not_available")
+                }
+                let cfg = self.configManager.config
+                guard let idx = cfg.servers.firstIndex(where: { $0.id == cfg.activeServerId }) else {
+                    return RemoteAPIServer.RAMConfigUpdateResultDTO(success: false, message: "no_active_server")
+                }
+                let physGB = Double(Int(ProcessInfo.processInfo.physicalMemory / (1024 * 1024 * 1024)))
+                // Round to one decimal place to keep stored values clean.
+                func round1(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+
+                if self.configManager.config.servers[idx].isBedrock {
+                    // Bedrock: only the fixed VM memory limit. 0 = app default (2 GB).
+                    if let mx = maxGB {
+                        var v = Swift.max(0, mx)
+                        if physGB > 0 { v = Swift.min(physGB, v) }
+                        self.configManager.config.servers[idx].maxRamGB = round1(v)
+                    }
+                } else {
+                    // Java: -Xms / -Xmx. Enforce 0.5 ≤ min ≤ max ≤ physical.
+                    var newMin = self.configManager.config.servers[idx].minRamGB
+                    var newMax = self.configManager.config.servers[idx].maxRamGB
+                    if let mn = minGB { newMin = mn }
+                    if let mx = maxGB { newMax = mx }
+                    newMin = Swift.max(0.5, newMin)
+                    newMax = Swift.max(0.5, newMax)
+                    if physGB > 0 {
+                        newMin = Swift.min(physGB, newMin)
+                        newMax = Swift.min(physGB, newMax)
+                    }
+                    newMax = Swift.max(newMin, newMax)   // max must be ≥ min
+                    self.configManager.config.servers[idx].minRamGB = round1(newMin)
+                    self.configManager.config.servers[idx].maxRamGB = round1(newMax)
+                }
+                self.configManager.save()
+                let updated = self.configManager.config.servers[idx]
+                return RemoteAPIServer.RAMConfigUpdateResultDTO(
+                    success: true,
+                    minRamGB: updated.minRamGB,
+                    maxRamGB: updated.maxRamGB,
+                    restartRequired: self.isServerRunning,
+                    message: "saved")
+            }
+        }
         // Geyser config (P13)
         server.geyserConfigProvider = { [weak self] in
             await MainActor.run { [weak self] in

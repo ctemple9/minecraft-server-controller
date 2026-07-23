@@ -27,6 +27,16 @@ struct ResourcePacksView: View {
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
     private var resolvedToken: String? { settings.resolvedToken() }
     private var isAdmin: Bool { vm.connectedRole == "admin" }
+    private var activeServer: ServerDTO? {
+        if let activeId = vm.status?.activeServerId,
+           let server = vm.servers.first(where: { $0.id == activeId }) {
+            return server
+        }
+        return vm.servers.first
+    }
+    private var supportsGeyserPacks: Bool {
+        activeServer?.supportsJavaBedrockCrossPlay ?? true
+    }
 
     var body: some View {
         NavigationStack {
@@ -152,13 +162,13 @@ struct ResourcePacksView: View {
                     activeURLBanner(activeUrl, require: r.requirePack)
                 }
 
-                if r.packs.isEmpty && !r.isGeyserAvailable {
+                if r.packs.isEmpty && !(r.isGeyserAvailable && supportsGeyserPacks) {
                     emptyState(isJava: r.isJava)
                 } else {
                     if !r.packs.isEmpty || r.isJava {
                         packsSection(packs: r.packs, isJava: r.isJava)
                     }
-                    if r.isGeyserAvailable {
+                    if r.isGeyserAvailable && supportsGeyserPacks {
                         geyserSection(packs: r.geyserPacks)
                     }
                 }

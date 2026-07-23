@@ -8,6 +8,7 @@ struct DashboardStatusCard: View {
     let now: Date
     let refreshAction: () -> Void
     var connectivity: ConnectivityResponseDTO? = nil
+    var connectivityAction: (() -> Void)? = nil
 
     private var uptimeString: String? {
         guard isRunning, let start = serverStartedAt else { return nil }
@@ -88,7 +89,23 @@ struct DashboardStatusCard: View {
                 Divider()
                     .background(MSCRemoteStyle.borderSubtle)
                     .padding(.vertical, MSCRemoteStyle.spaceSM)
-                ConnectivityBadge(connectivity: connectivity, showDetail: false)
+                if let connectivityAction {
+                    Button(action: connectivityAction) {
+                        HStack(spacing: MSCRemoteStyle.spaceSM) {
+                            ConnectivityBadge(connectivity: connectivity, showDetail: false)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Connectivity")
+                    .accessibilityHint("Opens Settings")
+                } else {
+                    ConnectivityBadge(connectivity: connectivity, showDetail: false)
+                }
             }
 
             Spacer(minLength: 0)

@@ -117,7 +117,7 @@ extension AppViewModel {
                 let mb = rssKB / 1024.0
                 ramMB = mb
                 if let maxRamGB = maxRamGB {
-                    let maxMB = Double(maxRamGB) * 1024.0
+                    let maxMB = maxRamGB * 1024.0
                     if maxMB > 0 { fraction = mb / maxMB }
                 }
             }

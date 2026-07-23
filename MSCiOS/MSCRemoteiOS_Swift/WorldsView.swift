@@ -14,7 +14,7 @@ struct WorldsView: View {
     @State private var toastMessage: String? = nil
 
     // World management (P9)
-    @State private var showCreateSheet: Bool = false
+    @Binding var showCreateSheet: Bool
     @State private var slotToRename: WorldSlotDTO? = nil
     @State private var renameText: String = ""
     @State private var slotToReplace: WorldSlotDTO? = nil     // destination; source picked in a dialog
@@ -46,72 +46,53 @@ struct WorldsView: View {
     private var isRepairing: Bool { vm.worldsResponse?.isRepairing == true }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                MSCRemoteStyle.bgBase.ignoresSafeArea()
+        ZStack {
+            MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        worldSlotsCard
-                        backupsCard
-                        backupScheduleCard
-                    }
-                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                    .padding(.top, MSCRemoteStyle.spaceMD)
-                    .padding(.bottom, MSCRemoteStyle.spaceLG)
-                    .frame(maxWidth: MSCRemoteStyle.contentMaxWidth)
-                    .frame(maxWidth: .infinity)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: MSCRemoteStyle.spaceLG) {
+                    worldSlotsCard
+                    backupsCard
+                    backupScheduleCard
                 }
-                .refreshable { await refresh() }
+                .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                .padding(.top, MSCRemoteStyle.spaceMD)
+                .padding(.bottom, MSCRemoteStyle.spaceLG)
+                .frame(maxWidth: MSCRemoteStyle.contentMaxWidth)
+                .frame(maxWidth: .infinity)
+            }
+            .refreshable { await refresh() }
 
-                if let toast = toastMessage {
-                    VStack {
-                        Spacer()
-                        Text(toast)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                            .padding(.vertical, MSCRemoteStyle.spaceMD)
-                            .background(MSCRemoteStyle.bgElevated)
-                            .clipShape(Capsule())
-                            .padding(.bottom, MSCRemoteStyle.spaceLG)
-                    }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: toast)
+            if let toast = toastMessage {
+                VStack {
+                    Spacer()
+                    Text(toast)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                        .padding(.vertical, MSCRemoteStyle.spaceMD)
+                        .background(MSCRemoteStyle.bgElevated)
+                        .clipShape(Capsule())
+                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                 }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: toast)
             }
-            .navigationTitle("Worlds")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                if isAdmin {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showCreateSheet = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .foregroundStyle(MSCRemoteStyle.accent)
-                        }
-                        .disabled(!isPaired || isMutating)
-                    }
-                }
-            }
-            .task(id: isPaired) {
-                guard isPaired else { return }
-                await refresh()
-            }
-            // Each presentation is isolated onto its own hidden anchor view. SwiftUI reliably
-            // supports only ~one presentation modifier per view; stacking a sheet + several
-            // alerts/dialogs on the same node triggers an AttributeGraph re-evaluation loop that
-            // freezes the main thread (and eventually crashes). One-per-anchor avoids that.
-            .background(createSheetAnchor)
-            .background(renameAlertAnchor)
-            .background(replaceDialogAnchor)
-            .background(repairAlertAnchor)
-            .background(activateAlertAnchor)
-            .background(restoreAlertAnchor)
         }
+        .task(id: isPaired) {
+            guard isPaired else { return }
+            await refresh()
+        }
+        // Each presentation is isolated onto its own hidden anchor view. SwiftUI reliably
+        // supports only ~one presentation modifier per view; stacking a sheet + several
+        // alerts/dialogs on the same node triggers an AttributeGraph re-evaluation loop that
+        // freezes the main thread (and eventually crashes). One-per-anchor avoids that.
+        .background(createSheetAnchor)
+        .background(renameAlertAnchor)
+        .background(replaceDialogAnchor)
+        .background(repairAlertAnchor)
+        .background(activateAlertAnchor)
+        .background(restoreAlertAnchor)
     }
 
     // MARK: - Isolated presentation anchors

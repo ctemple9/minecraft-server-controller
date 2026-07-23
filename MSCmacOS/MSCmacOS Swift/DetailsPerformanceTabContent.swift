@@ -104,8 +104,8 @@ extension DetailsPerformanceTabView {
                             value: formatRamCompact(ramMB, maxGB: maxRamGB),
                             status: ramHealthStatus(ramMB, maxGB: maxRamGB),
                             subtitle: isBedrock
-                                ? (maxRamGB.map { "of \($0) GB \(useVM ? "VM" : "Docker") limit" } ?? bedrockRuntimeLabel)
-                                : (maxRamGB.map { "of \($0) GB" } ?? "Heap"),
+                                ? (maxRamGB.map { "of \($0.ramGBLabel) GB \(useVM ? "VM" : "Docker") limit" } ?? bedrockRuntimeLabel)
+                                : (maxRamGB.map { "of \($0.ramGBLabel) GB" } ?? "Heap"),
                             icon: "memorychip"
                         )
                     }

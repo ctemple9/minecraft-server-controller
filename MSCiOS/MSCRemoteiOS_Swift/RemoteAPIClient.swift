@@ -201,37 +201,62 @@ final class RemoteAPIClient {
                               as: ServerDeleteResultDTO.self)
     }
 
-    func getTemplates() async throws -> TemplatesResponseDTO {
-        try await get(path: "/templates", query: [:], as: TemplatesResponseDTO.self)
-    }
-
-    func exportServerTemplate(serverId: String?, includePlugins: Bool) async throws -> TemplateMutationResultDTO {
-        try await post(path: "/templates",
-                       body: TemplateMutationRequest(action: "exportServer", serverId: serverId,
-                                                     name: nil, templateId: nil, port: nil,
-                                                     enableCrossPlay: nil, crossPlayBedrockPort: nil,
-                                                     enablePlayit: nil, difficulty: nil, gamemode: nil,
-                                                     worldName: nil, worldSeed: nil, acceptEula: nil,
-                                                     includePlugins: includePlugins),
-                       as: TemplateMutationResultDTO.self,
+    func createFreshServer(name: String, serverType: ServerType, javaFlavor: RemoteJavaServerFlavor?,
+                           selectedVersion: VersionEntryDTO?, port: Int, maxPlayers: Int?,
+                           enableCrossPlay: Bool, crossPlayBedrockPort: Int, enablePlayit: Bool,
+                           enableXboxBroadcast: Bool, difficulty: String, gamemode: String,
+                           worldName: String?, worldSeed: String?, acceptEula: Bool,
+                           bedrockVersion: String?, dockerImage: String?,
+                           javaPath: String? = nil) async throws -> ServerCreateResultDTO {
+        try await post(path: "/servers/create",
+                       body: ServerCreateRequest(name: name, serverType: serverType.rawValue,
+                                                 javaFlavor: javaFlavor?.rawValue,
+                                                 port: port, maxPlayers: maxPlayers,
+                                                 enableCrossPlay: enableCrossPlay,
+                                                 crossPlayBedrockPort: crossPlayBedrockPort,
+                                                 enablePlayit: enablePlayit,
+                                                 enableXboxBroadcast: enableXboxBroadcast,
+                                                 difficulty: difficulty, gamemode: gamemode,
+                                                 worldName: worldName, worldSeed: worldSeed,
+                                                 versionId: selectedVersion?.id,
+                                                 minecraftVersion: selectedVersion?.mcVersion,
+                                                 loaderVersion: selectedVersion?.loaderVersion,
+                                                 acceptEula: acceptEula,
+                                                 bedrockVersion: bedrockVersion ?? (serverType == .bedrock ? selectedVersion?.id : nil),
+                                                 dockerImage: dockerImage,
+                                                 javaPath: javaPath),
+                       as: ServerCreateResultDTO.self,
                        urlSession: installSession)
     }
 
-    func createServerFromTemplate(name: String, templateId: String, port: Int, enableCrossPlay: Bool,
-                                  crossPlayBedrockPort: Int, enablePlayit: Bool, difficulty: String,
-                                  gamemode: String, worldName: String?, worldSeed: String?,
-                                  acceptEula: Bool) async throws -> TemplateMutationResultDTO {
-        try await post(path: "/templates",
-                       body: TemplateMutationRequest(action: "createServer", serverId: nil,
-                                                     name: name, templateId: templateId, port: port,
-                                                     enableCrossPlay: enableCrossPlay,
-                                                     crossPlayBedrockPort: crossPlayBedrockPort,
-                                                     enablePlayit: enablePlayit,
-                                                     difficulty: difficulty, gamemode: gamemode,
-                                                     worldName: worldName, worldSeed: worldSeed,
-                                                     acceptEula: acceptEula, includePlugins: nil),
-                       as: TemplateMutationResultDTO.self,
+    func getBroadcastJarStatus() async throws -> BroadcastJarStatusDTO {
+        try await get(path: "/broadcast/jar-status", query: [:], as: BroadcastJarStatusDTO.self)
+    }
+
+    func downloadBroadcastJar() async throws -> BroadcastJarDownloadResultDTO {
+        try await post(path: "/broadcast/download-jar", body: EmptyBody(), as: BroadcastJarDownloadResultDTO.self,
                        urlSession: installSession)
+    }
+
+    func getJavaRuntimes() async throws -> JavaRuntimesResponseDTO {
+        try await get(path: "/java-runtimes", query: [:], as: JavaRuntimesResponseDTO.self)
+    }
+
+    func getJavaConfig() async throws -> JavaConfigResponseDTO {
+        try await get(path: "/config/java-runtime", query: [:], as: JavaConfigResponseDTO.self)
+    }
+
+    func setJavaConfig(executablePath: String?) async throws {
+        let body = JavaConfigSetRequest(executablePath: executablePath)
+        _ = try await post(path: "/config/java-runtime", body: body, as: JavaConfigResponseDTO.self)
+    }
+
+    func acceptServerEULA(serverId: String) async throws -> ServerEULAResultDTO {
+        let trimmed = serverId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw RemoteAPIError.network("Missing server id.") }
+        return try await post(path: "/servers/eula",
+                              body: ServerEULARequest(serverId: trimmed),
+                              as: ServerEULAResultDTO.self)
     }
 
     func scanServerImport(sourcePath: String, importKind: String) async throws -> ServerImportScanResponseDTO {
@@ -350,6 +375,14 @@ final class RemoteAPIClient {
 
     func getVersions() async throws -> VersionsResponseDTO {
         try await get(path: "/versions", query: [:], as: VersionsResponseDTO.self)
+    }
+
+    func getCreateVersions(serverType: ServerType, javaFlavor: RemoteJavaServerFlavor?) async throws -> VersionsResponseDTO {
+        var query = ["serverType": serverType.rawValue]
+        if serverType == .java, let javaFlavor {
+            query["javaFlavor"] = javaFlavor.rawValue
+        }
+        return try await get(path: "/versions/create", query: query, as: VersionsResponseDTO.self)
     }
 
     /// Changes the server JAR / version. Uses the install session because the Mac downloads
@@ -643,6 +676,19 @@ final class RemoteAPIClient {
         return try await post(path: "/config/geyser", body: Body(address: address, port: port), as: GeyserConfigUpdateResultDTO.self)
     }
 
+    // MARK: - RAM allocation (/config/ram)
+
+    func getRAMConfig() async throws -> RAMConfigResponseDTO {
+        try await get(path: "/config/ram", query: [:], as: RAMConfigResponseDTO.self)
+    }
+
+    func updateRAMConfig(minRamGB: Double?, maxRamGB: Double?) async throws -> RAMConfigUpdateResultDTO {
+        struct Body: Encodable { let minRamGB: Double?; let maxRamGB: Double? }
+        return try await post(path: "/config/ram",
+                              body: Body(minRamGB: minRamGB, maxRamGB: maxRamGB),
+                              as: RAMConfigUpdateResultDTO.self)
+    }
+
     /// Triggers a repair action ("update" | "install" | "disable" | "delete") for a problem.
     func repairHealthProblem(problemId: String, action: String) async throws -> HealthRepairResultDTO {
         struct Body: Encodable { let problemId: String; let action: String }
@@ -707,21 +753,31 @@ final class RemoteAPIClient {
         let serverId: String
     }
 
-    private struct TemplateMutationRequest: Encodable {
-        let action: String
-        let serverId: String?
+    private struct ServerCreateRequest: Encodable {
         let name: String?
-        let templateId: String?
+        let serverType: String?
+        let javaFlavor: String?
         let port: Int?
+        let maxPlayers: Int?
         let enableCrossPlay: Bool?
         let crossPlayBedrockPort: Int?
         let enablePlayit: Bool?
+        let enableXboxBroadcast: Bool?
         let difficulty: String?
         let gamemode: String?
         let worldName: String?
         let worldSeed: String?
+        let versionId: String?
+        let minecraftVersion: String?
+        let loaderVersion: String?
         let acceptEula: Bool?
-        let includePlugins: Bool?
+        let bedrockVersion: String?
+        let dockerImage: String?
+        let javaPath: String?
+    }
+
+    private struct ServerEULARequest: Encodable {
+        let serverId: String
     }
 
     private struct ServerImportRequest: Encodable {

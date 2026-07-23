@@ -38,8 +38,8 @@ enum HeadlessScriptGenerator {
     static func javaScript(
         config: ConfigServer,
         appConfig: AppConfig,
-        minRamGB: Int,
-        maxRamGB: Int,
+        minRamGB: Double,
+        maxRamGB: Double,
         wrapMode: HeadlessWrapMode,
         includeXboxBroadcast: Bool
     ) -> String {
@@ -180,8 +180,8 @@ enum HeadlessScriptGenerator {
             ("--restart=\(dockerRestart.dockerFlag)", nil),
         ]
 
-        if config.maxRamGB > 0 {
-            runArgs.append(("--memory", "\(config.maxRamGB)g"))
+        if config.maxRamMB > 0 {
+            runArgs.append(("--memory", "\(config.maxRamMB)m"))
         }
 
         if let version = config.bedrockVersion,

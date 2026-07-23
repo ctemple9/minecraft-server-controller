@@ -1,6 +1,20 @@
 import SwiftUI
 
+enum HealthSection {
+    case connectivity
+    case maintenance
+
+    var title: String {
+        switch self {
+        case .connectivity: return "Connectivity"
+        case .maintenance:  return "Diagnostics & Maintenance"
+        }
+    }
+}
+
 struct HealthView: View {
+    let section: HealthSection
+
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
     @Environment(\.openURL) private var openURL
@@ -29,6 +43,12 @@ struct HealthView: View {
     @State private var isGeyserSaving: Bool = false
     @State private var geyserToast: String? = nil
 
+    // Memory (RAM) inline editor
+    @State private var ramMinInput: Double = 0
+    @State private var ramMaxInput: Double = 0
+    @State private var isRAMSaving: Bool = false
+    @State private var ramToast: String? = nil
+
     // Diagnostics (P10)
     @State private var expandedHealthCards: Set<String> = []
     @State private var expandedProblems: Set<String> = []
@@ -38,62 +58,85 @@ struct HealthView: View {
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
     private var resolvedToken: String? { settings.resolvedToken() }
     private var isPaired: Bool { resolvedBaseURL != nil && resolvedToken != nil }
+    private var activeServer: ServerDTO? {
+        if let activeId = vm.status?.activeServerId,
+           let server = vm.servers.first(where: { $0.id == activeId }) {
+            return server
+        }
+        return vm.servers.first
+    }
+    private var activeServerType: ServerType {
+        activeServer?.resolvedServerType ?? vm.status?.resolvedServerType ?? .java
+    }
+    private var supportsJavaBedrockCrossPlay: Bool {
+        activeServerType == .java && (activeServer?.resolvedJavaFlavor ?? .paper).supportsCrossPlay
+    }
+    private var supportsXboxBroadcastSettings: Bool {
+        activeServerType == .bedrock || supportsJavaBedrockCrossPlay
+    }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                MSCRemoteStyle.bgBase.ignoresSafeArea()
+        ZStack {
+            MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: MSCRemoteStyle.spaceLG) {
+            VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: MSCRemoteStyle.spaceLG) {
+                        switch section {
+                        case .connectivity:
+                            playitCard
+                            if supportsXboxBroadcastSettings {
+                                broadcastCard
+                            }
+                            duckDNSCard
+                            if supportsJavaBedrockCrossPlay {
+                                geyserCard
+                            }
+                        case .maintenance:
                             diagnosticsCard
                             startupProblemsCard
-                            componentsNavCard
-                            serverToolsCard
-                            playitCard
-                            broadcastCard
-                            duckDNSCard
-                            geyserCard
+                            memoryCard
                         }
-                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                        .padding(.top, MSCRemoteStyle.spaceMD)
-                        .padding(.bottom, MSCRemoteStyle.spaceLG)
                     }
-                    .refreshable { await refresh(); await refreshHealthCards() }
-                    footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
+                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                    .padding(.top, MSCRemoteStyle.spaceMD)
+                    .padding(.bottom, MSCRemoteStyle.spaceLG)
                 }
+                .refreshable { await refreshForSection(includeHeavyDiagnostics: true) }
+                footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
             }
-            .navigationTitle("Health")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .task(id: isPaired) {
-                guard isPaired else { return }
-                // Initial fetch on appear
-                await refresh()
-                await refreshHealthCards()   // heavy diagnostics — appear + pull only, not in the poll loop
-                // Keep polling the light data while this tab is visible
+        }
+        .navigationTitle(section.title)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task(id: isPaired) {
+            guard isPaired else { return }
+            switch section {
+            case .connectivity:
+                await refreshConnectivity()
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
                     guard !Task.isCancelled else { break }
-                    await refresh()
+                    await refreshConnectivity()
                 }
+            case .maintenance:
+                await refreshMaintenance()
+                await refreshHealthCards()
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { Task { await refresh() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                            .animation(isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default, value: isRefreshing)
-                    }
-                    .disabled(isRefreshing)
-                }
-            }
-            .background(serverFilesSheetAnchor)
-            .background(clientExportSheetAnchor)
-            .background(componentsSheetAnchor)
         }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button { Task { await refreshForSection(includeHeavyDiagnostics: true) } } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                        .animation(isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                }
+                .disabled(isRefreshing)
+            }
+        }
+        .background(playitSheetAnchor)
+        .background(problemDeleteDialogAnchor)
     }
 
     // MARK: - Components Nav Card (U2)
@@ -116,7 +159,7 @@ struct HealthView: View {
                         Text("Manage Components")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(MSCRemoteStyle.textPrimary)
-                        Text("Add-ons, server version, and resource packs.")
+                        Text("Mods, server version, and resource packs.")
                             .font(.system(size: 12))
                             .foregroundStyle(MSCRemoteStyle.textSecondary)
                     }
@@ -291,15 +334,68 @@ struct HealthView: View {
             .disabled(!isPaired)
         }
         .mscCard()
-        .sheet(isPresented: $showPlayitTunnel, onDismiss: {
-            if let baseURL = resolvedBaseURL, let token = resolvedToken {
-                Task { await vm.fetchPlayitStatus(baseURL: baseURL, token: token) }
+    }
+
+    private var playitSheetAnchor: some View {
+        Color.clear
+            .sheet(isPresented: $showPlayitTunnel, onDismiss: {
+                if let baseURL = resolvedBaseURL, let token = resolvedToken {
+                    Task { await vm.fetchPlayitStatus(baseURL: baseURL, token: token) }
+                }
+            }) {
+                PlayitView()
+                    .environmentObject(settings)
+                    .environmentObject(vm)
             }
-        }) {
-            PlayitView()
-                .environmentObject(settings)
-                .environmentObject(vm)
+    }
+
+    private var problemDeleteDialogAnchor: some View {
+        Color.clear
+            .confirmationDialog(
+                problemToDelete.map { "Delete \($0.offenderName)?" } ?? "Delete add-on?",
+                isPresented: Binding(get: { problemToDelete != nil }, set: { if !$0 { problemToDelete = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let p = problemToDelete { Task { await performRepair(p, action: "delete") } }
+                    problemToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { problemToDelete = nil }
+            } message: {
+                Text("The add-on's JAR will be permanently removed from the server.")
+            }
+    }
+
+    private func refreshForSection(includeHeavyDiagnostics: Bool) async {
+        switch section {
+        case .connectivity:
+            await refreshConnectivity()
+        case .maintenance:
+            await refreshMaintenance()
+            if includeHeavyDiagnostics {
+                await refreshHealthCards()
+            }
         }
+    }
+
+    private func refreshConnectivity() async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        isRefreshing = true
+        async let c: () = vm.fetchComponentsAndBroadcast(baseURL: baseURL, token: token)
+        async let t: () = vm.fetchPlayitStatus(baseURL: baseURL, token: token)
+        async let d: () = vm.fetchDuckDNS(baseURL: baseURL, token: token)
+        async let g: () = vm.fetchGeyserConfig(baseURL: baseURL, token: token)
+        _ = await (c, t, d, g)
+        isRefreshing = false
+    }
+
+    private func refreshMaintenance() async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        isRefreshing = true
+        async let p: () = vm.fetchHealthProblems(baseURL: baseURL, token: token)
+        async let r: () = vm.fetchRAMConfig(baseURL: baseURL, token: token)
+        _ = await (p, r)
+        isRefreshing = false
     }
 
     // MARK: - Broadcast Card
@@ -420,7 +516,8 @@ struct HealthView: View {
         async let t: () = vm.fetchPlayitStatus(baseURL: baseURL, token: token)
         async let d: () = vm.fetchDuckDNS(baseURL: baseURL, token: token)
         async let g: () = vm.fetchGeyserConfig(baseURL: baseURL, token: token)
-        _ = await (c, p, t, d, g)
+        async let r: () = vm.fetchRAMConfig(baseURL: baseURL, token: token)
+        _ = await (c, p, t, d, g, r)
         isRefreshing = false
     }
 
@@ -547,12 +644,12 @@ struct HealthView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(MSCRemoteStyle.warning)
                         .font(.system(size: 13))
-                    MSCSectionHeader(title: resp.isSoftFail ? "Add-ons Failed to Load" : "Server Couldn't Start")
+                    MSCSectionHeader(title: resp.isSoftFail ? "Mods Failed to Load" : "Server Couldn't Start")
                 }
                 .padding(.bottom, 4)
 
                 Text(resp.isSoftFail
-                     ? "The server started, but \(resp.problems.count) add-on\(resp.problems.count == 1 ? "" : "s") didn't load. Fix them, then restart."
+                     ? "The server started, but \(resp.problems.count) mod\(resp.problems.count == 1 ? "" : "s") didn't load. Fix them, then restart."
                      : "\(resp.problems.count) \(resp.problems.count == 1 ? "problem" : "problems") stopped this server from starting.")
                     .font(.system(size: 12))
                     .foregroundStyle(MSCRemoteStyle.textSecondary)
@@ -588,19 +685,6 @@ struct HealthView: View {
             }
             .mscCard()
             .animation(.easeInOut(duration: 0.2), value: updateToast)
-            .confirmationDialog(
-                problemToDelete.map { "Delete \($0.offenderName)?" } ?? "Delete add-on?",
-                isPresented: Binding(get: { problemToDelete != nil }, set: { if !$0 { problemToDelete = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let p = problemToDelete { Task { await performRepair(p, action: "delete") } }
-                    problemToDelete = nil
-                }
-                Button("Cancel", role: .cancel) { problemToDelete = nil }
-            } message: {
-                Text("The add-on's JAR will be permanently removed from the server.")
-            }
         }
     }
 
@@ -1015,6 +1099,194 @@ struct HealthView: View {
         }
     }
 
+    // MARK: - Memory (RAM) Card
+
+    @ViewBuilder
+    private var memoryCard: some View {
+        if isPaired, let ram = vm.ramConfigResponse, ram.hasActiveServer {
+            let isAdmin = vm.connectedRole != "guest"
+            let physCap = Double(max(1, ram.physicalRAMGB))
+
+            VStack(alignment: .leading, spacing: 0) {
+                MSCSectionHeader(title: "Memory")
+                    .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+                // Host RAM context
+                HStack(spacing: 6) {
+                    Image(systemName: "memorychip")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    Text(ram.physicalRAMGB > 0
+                         ? "\(ram.physicalRAMGB) GB installed · \(ram.recommendedMaxGB) GB recommended max"
+                         : "Adjust the RAM allocated to this server.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+                if isAdmin {
+                    if ram.isBedrock {
+                        ramStepperRow(label: "Memory Limit",
+                                      subtitle: ramMaxInput == 0 ? "Default (2 GB)" : "Fixed VM memory",
+                                      value: $ramMaxInput, range: 0...physCap, step: 0.5)
+                    } else {
+                        ramStepperRow(label: "Minimum", subtitle: "-Xms",
+                                      value: $ramMinInput, range: 0.5...physCap, step: 0.5)
+                        Divider().background(MSCRemoteStyle.borderSubtle)
+                            .padding(.vertical, MSCRemoteStyle.spaceSM)
+                        ramStepperRow(label: "Maximum", subtitle: "-Xmx",
+                                      value: $ramMaxInput, range: 0.5...physCap, step: 0.5)
+                    }
+
+                    // Guidance / warnings
+                    if !ram.isBedrock && ramMaxInput < ramMinInput {
+                        ramNote("Maximum will be raised to match the minimum on save.",
+                                icon: "arrow.up.circle", color: MSCRemoteStyle.warning)
+                    }
+                    if ram.recommendedMaxGB > 0 && ramMaxInput > Double(ram.recommendedMaxGB) {
+                        ramNote("Above \(ram.recommendedMaxGB) GB can starve macOS — use with care.",
+                                icon: "exclamationmark.triangle", color: MSCRemoteStyle.warning)
+                    }
+                    if ram.serverRunning {
+                        ramNote("Server is running — changes apply after the next restart.",
+                                icon: "arrow.clockwise", color: MSCRemoteStyle.textTertiary)
+                    }
+
+                    Button {
+                        Task { await saveRAM(ram) }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isRAMSaving {
+                                ProgressView().scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            Text(isRAMSaving ? "Saving…" : "Save Memory")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 38)
+                        .foregroundStyle((isRAMSaving || !ramHasChanges(ram)) ? MSCRemoteStyle.textTertiary : .white)
+                        .background((isRAMSaving || !ramHasChanges(ram)) ? MSCRemoteStyle.bgElevated : MSCRemoteStyle.accent)
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isRAMSaving || !isPaired || !ramHasChanges(ram))
+                    .padding(.top, MSCRemoteStyle.spaceMD)
+                } else {
+                    // Read-only for guests
+                    if ram.isBedrock {
+                        ramReadRow("Memory Limit", ram.maxRamGB == 0 ? "Default (2 GB)" : "\(gbLabel(ram.maxRamGB)) GB")
+                    } else {
+                        ramReadRow("Minimum", "\(gbLabel(ram.minRamGB)) GB")
+                        Divider().background(MSCRemoteStyle.borderSubtle).padding(.vertical, MSCRemoteStyle.spaceSM)
+                        ramReadRow("Maximum", "\(gbLabel(ram.maxRamGB)) GB")
+                    }
+                }
+
+                if let toast = ramToast {
+                    Text(toast)
+                        .font(.system(size: 11))
+                        .foregroundStyle(MSCRemoteStyle.success)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, MSCRemoteStyle.spaceMD)
+                        .transition(.opacity)
+                }
+            }
+            .mscCard()
+            .task(id: ramSeedKey(ram)) {
+                ramMinInput = ram.minRamGB
+                ramMaxInput = ram.maxRamGB
+            }
+            .animation(.easeInOut(duration: 0.2), value: ramToast)
+        }
+    }
+
+    private func ramStepperRow(label: String, subtitle: String?,
+                               value: Binding<Double>, range: ClosedRange<Double>, step: Double) -> some View {
+        HStack(spacing: MSCRemoteStyle.spaceMD) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(MSCRemoteStyle.textPrimary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+            }
+            Spacer()
+            Text("\(gbLabel(value.wrappedValue)) GB")
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .foregroundStyle(MSCRemoteStyle.accent)
+                .frame(minWidth: 62, alignment: .trailing)
+            Stepper("", value: value, in: range, step: step)
+                .labelsHidden()
+        }
+    }
+
+    private func ramReadRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundStyle(MSCRemoteStyle.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundStyle(MSCRemoteStyle.textPrimary)
+        }
+    }
+
+    private func ramNote(_ text: String, icon: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundStyle(color)
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(color)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, MSCRemoteStyle.spaceMD)
+    }
+
+    /// Formats a GB value, dropping the decimal for whole numbers (4.0 → "4", 4.5 → "4.5").
+    private func gbLabel(_ value: Double) -> String { String(format: "%g", value) }
+
+    /// `.task(id:)` key — re-seeds the steppers only when the server or its stored values change,
+    /// so the 5s poll can't stomp an in-progress edit.
+    private func ramSeedKey(_ ram: RAMConfigResponseDTO) -> String {
+        "\(ram.serverName)|\(ram.serverType)|\(ram.minRamGB)|\(ram.maxRamGB)"
+    }
+
+    private func ramHasChanges(_ ram: RAMConfigResponseDTO) -> Bool {
+        if ram.isBedrock { return ramMaxInput != ram.maxRamGB }
+        return ramMinInput != ram.minRamGB || ramMaxInput != ram.maxRamGB
+    }
+
+    private func saveRAM(_ ram: RAMConfigResponseDTO) async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        isRAMSaving = true
+        let result = await vm.updateRAMConfig(
+            minRamGB: ram.isBedrock ? nil : ramMinInput,
+            maxRamGB: ramMaxInput,
+            baseURL: baseURL, token: token
+        )
+        isRAMSaving = false
+        let ok = result?.success == true
+        if ok { hapticSuccess() } else { hapticError() }
+        withAnimation {
+            ramToast = ok
+                ? (result?.restartRequired == true ? "Saved — restart to apply" : "Saved")
+                : "Save failed"
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation { ramToast = nil }
+        }
+    }
+
     // MARK: - Save actions (P13)
 
     private func saveDuckDNS() async {
@@ -1058,7 +1330,7 @@ struct HealthView: View {
 
 // MARK: - Server Files Sheet (P16)
 
-private struct ServerFilesRemoteSheet: View {
+struct ServerFilesRemoteSheet: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
@@ -1374,12 +1646,12 @@ private struct ServerFilePreviewSheet: View {
 
 // MARK: - Client Export Sheet (P16)
 
-private struct ClientExportSharePayload: Identifiable {
+struct ClientExportSharePayload: Identifiable {
     let id = UUID()
     let items: [Any]
 }
 
-private struct ClientExportRemoteSheet: View {
+struct ClientExportRemoteSheet: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
@@ -1665,7 +1937,7 @@ private struct ClientExportRemoteSheet: View {
     }
 }
 
-private func remotePrimaryButton(title: String, icon: String, enabled: Bool, isLoading: Bool, action: @escaping () -> Void) -> some View {
+func remotePrimaryButton(title: String, icon: String, enabled: Bool, isLoading: Bool, action: @escaping () -> Void) -> some View {
     Button(action: action) {
         HStack(spacing: MSCRemoteStyle.spaceSM) {
             if isLoading {

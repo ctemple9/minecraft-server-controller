@@ -92,17 +92,18 @@ extension RemoteAPIServer {
 
     // Routes that require admin role — guests get 403 on these.
     private static let adminOnlyPOSTPaths: Set<String> = [
-        "/command", "/active-server", "/servers/rename", "/servers/delete", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install",
+        "/command", "/active-server", "/servers/rename", "/servers/delete", "/servers/create", "/servers/eula", "/servers/import", "/templates", "/players/skin-override", "/players/hidden", "/components/update", "/components/remove", "/components/install",
         "/components/version",
         "/broadcast/credentials", "/broadcast/start", "/broadcast/stop",
         "/broadcast/restart", "/broadcast/autostart", "/broadcast/auth-prompt/dismiss",
+        "/broadcast/download-jar",
         "/worlds/activate", "/worlds/create", "/worlds/rename", "/worlds/replace", "/worlds/repair",
         "/backups/now", "/backups/restore", "/backups/config",
         "/allowlist", "/settings",
         "/resourcepacks/activate", "/resourcepacks/seturl", "/resourcepacks/toggle", "/resourcepacks/remove",
         "/health/repair",
         "/playit/start", "/playit/stop",
-        "/duckdns", "/config/geyser",
+        "/duckdns", "/config/geyser", "/config/ram", "/config/java-runtime",
         // Named-user management — owner admin token only (named tokens can never manage users)
         "/users", "/users/revoke", "/users/update"
     ]
@@ -123,6 +124,8 @@ extension RemoteAPIServer {
         // settings — server configuration files
         "/settings": "settings",
         "/config/geyser": "settings",
+        "/config/ram": "settings",
+        "/config/java-runtime": "settings",
         "/duckdns": "settings",
         "/backups/config": "settings",
         "/health/repair": "settings",
@@ -150,12 +153,15 @@ extension RemoteAPIServer {
         "/broadcast/credentials": "broadcast",
         "/broadcast/autostart": "broadcast",
         "/broadcast/auth-prompt/dismiss": "broadcast",
+        "/broadcast/download-jar": "broadcast",
         // networking — tunnel agent control
         "/playit/start": "networking",
         "/playit/stop": "networking",
         // fleet — server list management
         "/servers/rename": "fleet",
         "/servers/delete": "fleet",
+        "/servers/create": "fleet",
+        "/servers/eula": "fleet",
         "/servers/import": "fleet",
         "/templates": "fleet",
     ]
@@ -165,7 +171,7 @@ extension RemoteAPIServer {
     // Also referenced by the DEBUG registry assertions below.
     // KEEP IN SYNC with every case in respond(to:clientFD:) and allRouterHandledPaths.
     static let knownPathsCanonical: Set<String> = [
-        "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates",
+        "/servers", "/servers/rename", "/servers/delete", "/servers/create", "/servers/eula", "/servers/import", "/templates",
         "/status", "/performance",
         "/players", "/players/skin-override", "/players/hidden", "/players/profiles",
         "/allowlist", "/session-log",
@@ -174,10 +180,10 @@ extension RemoteAPIServer {
         "/components", "/components/update", "/components/remove", "/components/install",
         "/components/version", "/addons", "/components/client-export",
         "/files", "/files/read",
-        "/catalog/search", "/versions",
+        "/catalog/search", "/versions", "/java-runtimes",
         "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart",
         "/broadcast/credentials", "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
-        "/broadcast/autostart", "/me",
+        "/broadcast/autostart", "/broadcast/jar-status", "/broadcast/download-jar", "/me",
         "/watchdog/status", "/watchdog/enable", "/watchdog/disable",
         "/worlds", "/worlds/activate", "/worlds/create", "/worlds/rename",
         "/worlds/replace", "/worlds/repair",
@@ -188,7 +194,7 @@ extension RemoteAPIServer {
         "/health", "/health/problems", "/health/repair",
         "/connectivity",
         "/playit", "/playit/start", "/playit/stop",
-        "/duckdns", "/config/geyser",
+        "/duckdns", "/config/geyser", "/config/ram", "/config/java-runtime",
         "/users", "/users/revoke", "/users/update",
     ]
 
@@ -201,7 +207,7 @@ extension RemoteAPIServer {
     // Keep this in sync with every case arm in respond(to:clientFD:).
     private static let allRouterHandledPaths: Set<String> = [
         // fleet
-        "/servers", "/servers/rename", "/servers/delete", "/servers/import", "/templates",
+        "/servers", "/servers/rename", "/servers/delete", "/servers/create", "/servers/eula", "/servers/import", "/templates",
         // status & performance
         "/status", "/performance",
         // server lifecycle
@@ -220,7 +226,7 @@ extension RemoteAPIServer {
         // files
         "/files", "/files/read",
         // catalog & versions
-        "/catalog/search", "/versions",
+        "/catalog/search", "/versions", "/java-runtimes",
         // resource packs
         "/resourcepacks", "/resourcepacks/activate", "/resourcepacks/seturl",
         "/resourcepacks/toggle", "/resourcepacks/remove",
@@ -229,7 +235,7 @@ extension RemoteAPIServer {
         // broadcast
         "/broadcast/status", "/broadcast/start", "/broadcast/stop", "/broadcast/restart",
         "/broadcast/credentials", "/broadcast/auth-prompt", "/broadcast/auth-prompt/dismiss",
-        "/broadcast/autostart",
+        "/broadcast/autostart", "/broadcast/jar-status", "/broadcast/download-jar",
         // token identity
         "/me",
         // worlds
@@ -239,8 +245,8 @@ extension RemoteAPIServer {
         "/connectivity",
         // playit
         "/playit", "/playit/start", "/playit/stop",
-        // DuckDNS & Geyser
-        "/duckdns", "/config/geyser",
+        // DuckDNS & Geyser & RAM & Java config
+        "/duckdns", "/config/geyser", "/config/ram", "/config/java-runtime",
         // health / diagnostics
         "/health", "/health/problems", "/health/repair",
         // backups
@@ -540,6 +546,7 @@ extension RemoteAPIServer {
                     name: server.name,
                     directory: server.directory,
                     serverType: configServer?.serverType.rawValue ?? "java",
+                    javaFlavor: configServer?.serverType == .java ? configServer?.javaFlavor.rawValue : nil,
                     gamePort: connectionInfo?.gamePort,
                     hostAddress: connectionInfo?.hostAddress
                 )
@@ -553,6 +560,14 @@ extension RemoteAPIServer {
 
         case ("POST", "/servers/delete"):
             handleDeleteServer(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/servers/create"):
+            handleCreateServer(body: request.body, clientFD: clientFD)
+            return false
+
+        case ("POST", "/servers/eula"):
+            handleAcceptServerEULA(body: request.body, clientFD: clientFD)
             return false
 
         case ("GET", "/templates"):
@@ -828,9 +843,21 @@ extension RemoteAPIServer {
             handleInstallAddon(body: request.body, clientFD: clientFD)
             return false  // async handler sends its own response
 
+        // Detected Java runtimes on this Mac
+        case ("GET", "/java-runtimes"):
+            handleGetJavaRuntimes(clientFD: clientFD)
+            return false  // async handler sends its own response
+
         // Available server JAR versions for the active server's flavor
         case ("GET", "/versions"):
             handleGetVersions(clientFD: clientFD)
+            return false  // async handler sends its own response
+
+        // Available versions for the create-server flow
+        case ("GET", "/versions/create"):
+            handleGetCreateVersions(serverType: request.query["serverType"],
+                                    javaFlavor: request.query["javaFlavor"],
+                                    clientFD: clientFD)
             return false  // async handler sends its own response
 
         // Download / install a chosen server JAR version
@@ -911,6 +938,15 @@ extension RemoteAPIServer {
         case ("POST", "/broadcast/credentials"):
             handleUpdateBroadcastCredentials(body: request.body, clientFD: clientFD)
             return true
+
+        // MCXboxBroadcast JAR management
+        case ("GET", "/broadcast/jar-status"):
+            handleGetBroadcastJarStatus(clientFD: clientFD)
+            return false
+
+        case ("POST", "/broadcast/download-jar"):
+            handleDownloadBroadcastJar(clientFD: clientFD)
+            return false
 
         // Token role info
         case ("GET", "/me"):
@@ -1017,6 +1053,24 @@ extension RemoteAPIServer {
 
         case ("POST", "/config/geyser"):
             handleUpdateGeyserConfig(body: request.body, clientFD: clientFD)
+            return false
+
+        // RAM allocation
+        case ("GET", "/config/ram"):
+            handleGetRAMConfig(clientFD: clientFD)
+            return false
+
+        case ("POST", "/config/ram"):
+            handleUpdateRAMConfig(body: request.body, clientFD: clientFD)
+            return false
+
+        // Global Java executable path
+        case ("GET", "/config/java-runtime"):
+            handleGetJavaConfig(clientFD: clientFD)
+            return false
+
+        case ("POST", "/config/java-runtime"):
+            handleSetJavaConfig(body: request.body, clientFD: clientFD)
             return false
 
         // Diagnostics (P10) — async handlers send their own response.

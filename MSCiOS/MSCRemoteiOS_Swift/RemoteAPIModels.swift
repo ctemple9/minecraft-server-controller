@@ -4,7 +4,7 @@ import Foundation
 
 /// Mirrors the ServerType enum on the macOS side.
 /// decodeIfPresent on the macOS API means older servers return nil here — default to .java.
-enum ServerType: String, Codable {
+enum ServerType: String, Codable, Hashable {
     case java
     case bedrock
 
@@ -21,6 +21,78 @@ enum ServerType: String, Codable {
         case .java:    return "cup.and.saucer.fill"
         case .bedrock: return "cube.fill"
         }
+    }
+}
+
+enum RemoteJavaServerCategory: String, Codable, CaseIterable, Hashable {
+    case standard
+    case modded
+
+    var displayName: String {
+        switch self {
+        case .standard: return "Standard"
+        case .modded: return "Modded"
+        }
+    }
+}
+
+enum RemoteJavaServerFlavor: String, Codable, CaseIterable, Hashable {
+    case paper
+    case purpur
+    case vanilla
+    case fabric
+    case neoforge
+    case forge
+
+    var displayName: String {
+        switch self {
+        case .paper: return "Paper"
+        case .purpur: return "Purpur"
+        case .vanilla: return "Vanilla"
+        case .fabric: return "Fabric"
+        case .neoforge: return "NeoForge"
+        case .forge: return "Forge"
+        }
+    }
+
+    var category: RemoteJavaServerCategory {
+        switch self {
+        case .paper, .purpur, .vanilla: return .standard
+        case .fabric, .neoforge, .forge: return .modded
+        }
+    }
+
+    var shortDescription: String {
+        switch self {
+        case .paper: return "Performance and plugin support."
+        case .purpur: return "Paper plus extra gameplay settings."
+        case .vanilla: return "Mojang's unmodified server."
+        case .fabric: return "Lightweight mod loader."
+        case .neoforge: return "Modern Forge-family mod loader."
+        case .forge: return "Classic mod loader for modpacks."
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .paper: return "cup.and.saucer.fill"
+        case .purpur: return "wand.and.stars"
+        case .vanilla: return "cube"
+        case .fabric: return "puzzlepiece.fill"
+        case .neoforge: return "hammer.fill"
+        case .forge: return "hammer.fill"
+        }
+    }
+
+    var supportsCrossPlay: Bool {
+        switch self {
+        case .paper, .purpur: return true
+        case .vanilla, .fabric, .neoforge, .forge: return false
+        }
+    }
+
+    static func choices(in category: RemoteJavaServerCategory) -> [RemoteJavaServerFlavor] {
+        allCases.filter { $0.category == category }
     }
 }
 
@@ -45,12 +117,21 @@ struct ServerDTO: Codable, Identifiable, Equatable {
     let directory: String
     /// Nil when connecting to an older macOS app that hasn't shipped E1 yet -- treated as .java.
     let serverType: ServerType?
+    /// Java-only flavor. Nil on older macOS builds or for Bedrock servers -- treated as Paper for legacy Java servers.
+    let javaFlavor: RemoteJavaServerFlavor?
     /// Game port (19132 for Bedrock, 25565 for Java). Nil on older macOS builds -- use type default.
     let gamePort: Int?
     /// Host address for the join card back (DuckDNS domain or public IP). Nil = not configured.
     let hostAddress: String?
 
     var resolvedServerType: ServerType { serverType ?? .java }
+    var resolvedJavaFlavor: RemoteJavaServerFlavor { javaFlavor ?? .paper }
+    var supportsJavaBedrockCrossPlay: Bool {
+        resolvedServerType == .java && resolvedJavaFlavor.supportsCrossPlay
+    }
+    var supportsXboxBroadcastSettings: Bool {
+        resolvedServerType == .bedrock || supportsJavaBedrockCrossPlay
+    }
 
     /// The port to display on the join card. Falls back to protocol default if nil.
     var resolvedGamePort: Int {
@@ -75,32 +156,19 @@ struct ServerDeleteResultDTO: Codable, Equatable {
     let serverId: String?
 }
 
-struct TemplateItemDTO: Codable, Identifiable, Equatable {
-    let id: String
-    let kind: String
-    let filename: String
-    let displayName: String
-    let sizeBytes: Int64?
-    let modifiedAt: String?
-    let version: String?
-    let build: Int?
-}
-
-struct TemplatesResponseDTO: Codable, Equatable {
-    let serverName: String?
-    let serverRunning: Bool
-    let paperTemplates: [TemplateItemDTO]
-    let pluginTemplates: [TemplateItemDTO]
-    let note: String?
-}
-
-struct TemplateMutationResultDTO: Codable, Equatable {
+struct ServerCreateResultDTO: Codable, Equatable {
     let success: Bool
     let message: String
-    let createdServerId: String?
-    let createdServerName: String?
-    let exportedCount: Int?
-    let templates: TemplatesResponseDTO?
+    let serverId: String?
+    let serverName: String?
+    let warnings: [String]?
+}
+
+struct ServerEULAResultDTO: Codable, Equatable {
+    let success: Bool
+    let message: String
+    let serverId: String?
+    let accepted: Bool?
 }
 
 struct ServerImportWorldDTO: Codable, Identifiable, Equatable {
@@ -291,8 +359,31 @@ struct ComponentStatusDTO: Codable, Identifiable, Equatable {
     let installedVersion: String?
     let latestVersion: String?
     let isUpToDate: Bool
+    /// Server-formatted "installed" label for flavors without a Paper-style build
+    /// number (Fabric, Vanilla, Forge, …). Nil from older servers or when not installed.
+    let installedLabel: String?
+    /// Whether this component uses the build-based Update flow. Nil (older servers) is
+    /// treated as updatable only when a build number is present, preserving old behavior.
+    let updatable: Bool?
 
     var id: String { name }
+
+    /// True when the component is present on the server, regardless of whether it
+    /// exposes a Paper-style build number.
+    var isInstalled: Bool { installedBuild != nil || installedLabel != nil }
+
+    /// Whether the in-app build-based Update button applies to this component.
+    var isUpdatable: Bool { updatable ?? (installedBuild != nil) }
+
+    /// Ready-to-display installed version line, e.g. "1.21.1 · build 130" or "1.21.1 · 0.16.5".
+    var installedDisplay: String? {
+        if let installedLabel { return installedLabel }
+        if let installedBuild {
+            let versionStr = installedVersion.map { "\($0) · " } ?? ""
+            return "\(versionStr)build \(installedBuild)"
+        }
+        return nil
+    }
 }
 
 struct ComponentsStatusDTO: Codable, Equatable {
@@ -884,6 +975,29 @@ struct GeyserConfigUpdateResultDTO: Codable {
     let port: Int?
 }
 
+// MARK: - RAM allocation (/config/ram)
+
+struct RAMConfigResponseDTO: Codable, Equatable {
+    let serverName: String
+    let serverType: String
+    let minRamGB: Double
+    let maxRamGB: Double
+    let physicalRAMGB: Int
+    let recommendedMaxGB: Int
+    let serverRunning: Bool
+    let hasActiveServer: Bool
+
+    var isBedrock: Bool { serverType == "bedrock" }
+}
+
+struct RAMConfigUpdateResultDTO: Codable {
+    let success: Bool
+    let minRamGB: Double?
+    let maxRamGB: Double?
+    let restartRequired: Bool
+    let message: String?
+}
+
 // MARK: - User management (P17)
 
 struct MeResponseDTO: Codable {
@@ -924,4 +1038,39 @@ struct UserUpdateResultDTO: Codable {
     let success: Bool
     let message: String
     let user: UserSummaryDTO?
+}
+
+// MARK: - Java Runtimes
+
+struct JavaRuntimeDTO: Codable, Identifiable, Equatable {
+    let name: String
+    let executablePath: String
+    let majorVersion: Int?
+
+    var id: String { executablePath }
+    var versionLabel: String { majorVersion.map { "Java \($0)" } ?? "Java" }
+}
+
+struct JavaRuntimesResponseDTO: Codable, Equatable {
+    let runtimes: [JavaRuntimeDTO]
+}
+
+struct BroadcastJarStatusDTO: Codable, Equatable {
+    let installed: Bool
+    let downloading: Bool
+    let filename: String?
+}
+
+struct BroadcastJarDownloadResultDTO: Codable, Equatable {
+    let success: Bool
+    let message: String
+    let filename: String?
+}
+
+struct JavaConfigResponseDTO: Codable, Equatable {
+    let executablePath: String?
+}
+
+struct JavaConfigSetRequest: Codable {
+    let executablePath: String?
 }

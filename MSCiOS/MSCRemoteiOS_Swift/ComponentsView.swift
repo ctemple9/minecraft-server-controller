@@ -4,7 +4,7 @@
 //
 //  U2 (flowstate): split out of HealthView.swift. Hosts server-component
 //  management — the components status strip, version/JAR swap, resource
-//  packs, and add-ons + the catalog browser — so Health can stay focused
+//  packs, and mods + the catalog browser — so Health can stay focused
 //  on diagnostics and startup repairs. Reached from Health's "Manage
 //  Components" card on iPhone, or its own sidebar entry on iPad.
 //
@@ -24,58 +24,46 @@ struct ComponentsView: View {
     @State private var showCatalog: Bool = false
     @State private var showVersionPicker: Bool = false
     @State private var showResourcePacks: Bool = false
+    @State private var showClientExport: Bool = false
+    @State private var showAllMods: Bool = false
 
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
     private var resolvedToken: String? { settings.resolvedToken() }
     private var isPaired: Bool { resolvedBaseURL != nil && resolvedToken != nil }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                MSCRemoteStyle.bgBase.ignoresSafeArea()
+        ZStack {
+            MSCRemoteStyle.bgBase.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: MSCRemoteStyle.spaceLG) {
-                            componentsCard
-                            versionCard
-                            resourcePackCard
-                            addonsCard
-                        }
-                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                        .padding(.top, MSCRemoteStyle.spaceMD)
-                        .padding(.bottom, MSCRemoteStyle.spaceLG)
+            VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: MSCRemoteStyle.spaceLG) {
+                        componentsCard
+                        addonsCard
+                        clientExportCard
+                        resourcePackCard
+                        versionCard
                     }
-                    .refreshable { await refresh() }
-                    footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
+                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                    .padding(.top, MSCRemoteStyle.spaceMD)
+                    .padding(.bottom, MSCRemoteStyle.spaceLG)
                 }
-            }
-            .navigationTitle("Components")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .task(id: isPaired) {
-                guard isPaired else { return }
-                // Initial fetch on appear
-                await refresh()
-                // Keep polling while this view is visible
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 5_000_000_000)
-                    guard !Task.isCancelled else { break }
-                    await refresh()
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { Task { await refresh() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .rotationEffect(.degrees(isRefreshing ? 360 : 0))
-                            .animation(isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default, value: isRefreshing)
-                    }
-                    .disabled(isRefreshing)
-                }
+                .refreshable { await refresh() }
+                footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
             }
         }
+        .task(id: isPaired) {
+            guard isPaired else { return }
+            // Initial fetch on appear
+            await refresh()
+            // Keep polling while this view is visible
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { break }
+                await refresh()
+            }
+        }
+        .background(clientExportSheetAnchor)
     }
 
     // MARK: - Components Card
@@ -109,6 +97,17 @@ struct ComponentsView: View {
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.orange)
                         }
+                        .padding(.top, MSCRemoteStyle.spaceMD)
+                    }
+
+                    if !settings.allowServerUpdates, status.components.contains(where: { $0.isUpdatable && !$0.isUpToDate }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11))
+                            Text("Component updates are disabled in Settings.")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
                         .padding(.top, MSCRemoteStyle.spaceMD)
                     }
                 }
@@ -149,9 +148,8 @@ struct ComponentsView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.textPrimary)
 
-                if let installedBuild = component.installedBuild {
-                    let versionStr = component.installedVersion.map { "\($0) · " } ?? ""
-                    Text("\(versionStr)build \(installedBuild)")
+                if let installedDisplay = component.installedDisplay {
+                    Text(installedDisplay)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
                 } else {
@@ -171,10 +169,20 @@ struct ComponentsView: View {
             Spacer()
 
             // Status badge or update button
-            if component.installedBuild == nil {
+            if !component.isInstalled {
                 Text("Not installed")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(MSCRemoteStyle.textTertiary)
+            } else if !component.isUpdatable {
+                // Flavor server jars (Fabric, Vanilla, Forge, …) are managed via
+                // Change Version / JAR, so they show a neutral "Installed" badge.
+                Text("Installed")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MSCRemoteStyle.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(MSCRemoteStyle.textSecondary.opacity(0.10)))
+                    .overlay(Capsule().stroke(MSCRemoteStyle.textSecondary.opacity(0.25), lineWidth: 0.75))
             } else if component.isUpToDate {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
@@ -187,7 +195,7 @@ struct ComponentsView: View {
                 .padding(.vertical, 4)
                 .background(Capsule().fill(MSCRemoteStyle.accent.opacity(0.12)))
                 .overlay(Capsule().stroke(MSCRemoteStyle.accent.opacity(0.3), lineWidth: 0.75))
-            } else if vm.connectedRole != "guest" {
+            } else if vm.connectedRole != "guest" && settings.allowServerUpdates {
                 Button {
                     Task { await updateComponent(component) }
                 } label: {
@@ -206,13 +214,21 @@ struct ComponentsView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(updatingComponent != nil || !isPaired)
+            } else if vm.connectedRole != "guest" {
+                Text("Locked")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(MSCRemoteStyle.bgElevated))
+                    .overlay(Capsule().stroke(MSCRemoteStyle.borderSubtle, lineWidth: 0.75))
             }
         }
         .padding(.vertical, MSCRemoteStyle.spaceSM)
     }
 
     private func rowDotColor(_ component: ComponentStatusDTO) -> Color {
-        guard component.installedBuild != nil else { return MSCRemoteStyle.textTertiary }
+        guard component.isInstalled else { return MSCRemoteStyle.textTertiary }
         return component.isUpToDate ? MSCRemoteStyle.accent : Color.orange
     }
 
@@ -266,7 +282,7 @@ struct ComponentsView: View {
     private var resourcePackCard: some View {
         if isPaired {
             VStack(alignment: .leading, spacing: 0) {
-                MSCSectionHeader(title: "Resource Packs")
+                MSCSectionHeader(title: "Manage Resource Packs")
                     .padding(.bottom, MSCRemoteStyle.spaceMD)
 
                 Button {
@@ -304,16 +320,18 @@ struct ComponentsView: View {
         }
     }
 
-    // MARK: - Add-ons Card
+    // MARK: - Mods Card
 
     @ViewBuilder
     private var addonsCard: some View {
         if let response = vm.addonsResponse, response.serverSupportsAddons {
             let updateCount = response.updateCount
+            let previewLimit = 15
+            let visibleAddons = showAllMods ? response.addons : Array(response.addons.prefix(previewLimit))
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
                     MSCSectionHeader(
-                        title: "Add-ons",
+                        title: "Mods",
                         trailing: updateCount > 0 ? "\(updateCount) update\(updateCount == 1 ? "" : "s")" : nil
                     )
                     if vm.connectedRole != "guest" {
@@ -325,7 +343,7 @@ struct ComponentsView: View {
                                 .foregroundStyle(MSCRemoteStyle.accent)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Browse add-ons")
+                        .accessibilityLabel("Browse mods")
                     }
                 }
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
@@ -352,7 +370,7 @@ struct ComponentsView: View {
                     .padding(.bottom, MSCRemoteStyle.spaceSM)
                 }
 
-                if vm.connectedRole != "guest" && updateCount > 0 {
+                if vm.connectedRole != "guest" && updateCount > 0 && settings.allowServerUpdates {
                     Button {
                         Task { await doUpdateAllAddons() }
                     } label: {
@@ -363,7 +381,7 @@ struct ComponentsView: View {
                                 Image(systemName: "arrow.down.circle.fill")
                                     .font(.system(size: 13, weight: .semibold))
                             }
-                            Text(isUpdatingAll ? "Starting updates…" : "Update All (\(updateCount))")
+                            Text(isUpdatingAll ? "Starting updates…" : "Update All Mods (\(updateCount))")
                                 .font(.system(size: 13, weight: .semibold))
                         }
                         .frame(maxWidth: .infinity)
@@ -375,26 +393,56 @@ struct ComponentsView: View {
                     .buttonStyle(.plain)
                     .disabled(isUpdatingAll || !isPaired)
                     .padding(.bottom, MSCRemoteStyle.spaceMD)
+                } else if vm.connectedRole != "guest" && updateCount > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 11))
+                        Text("Mod and component updates are disabled in Settings.")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .padding(.bottom, MSCRemoteStyle.spaceMD)
                 }
 
                 if response.addons.isEmpty {
-                    Text(response.isResolving ? "Scanning for add-ons…" : "No tracked add-ons found.")
+                    Text(response.isResolving ? "Scanning for mods…" : "No tracked mods found.")
                         .font(.system(size: 13))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
                 } else {
                     VStack(spacing: 0) {
-                        ForEach(Array(response.addons.enumerated()), id: \.element.id) { idx, addon in
+                        ForEach(Array(visibleAddons.enumerated()), id: \.element.id) { idx, addon in
                             addonRow(addon)
-                            if idx < response.addons.count - 1 {
+                            if idx < visibleAddons.count - 1 {
                                 Divider().background(MSCRemoteStyle.borderSubtle)
                             }
                         }
+                    }
+
+                    if response.addons.count > previewLimit {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showAllMods.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(showAllMods ? "Show Fewer" : "Show All Mods")
+                                    .font(.system(size: 12, weight: .semibold))
+                                if !showAllMods {
+                                    Text("(\(response.addons.count))")
+                                        .font(.system(size: 11, design: .monospaced))
+                                }
+                            }
+                            .foregroundStyle(MSCRemoteStyle.accent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, MSCRemoteStyle.spaceMD)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
             .mscCard()
             .alert(
-                "Remove \"\(addonToRemove?.displayName ?? "this add-on")\"?",
+                "Remove \"\(addonToRemove?.displayName ?? "this mod")\"?",
                 isPresented: Binding(get: { addonToRemove != nil }, set: { if !$0 { addonToRemove = nil } })
             ) {
                 Button("Cancel", role: .cancel) { addonToRemove = nil }
@@ -413,6 +461,54 @@ struct ComponentsView: View {
                     .environmentObject(vm)
             }
         }
+    }
+
+    // MARK: - Client Export Card
+
+    @ViewBuilder
+    private var clientExportCard: some View {
+        if isPaired {
+            VStack(alignment: .leading, spacing: 0) {
+                MSCSectionHeader(title: "Client Export")
+                    .padding(.bottom, MSCRemoteStyle.spaceMD)
+
+                Button {
+                    hapticLight()
+                    showClientExport = true
+                } label: {
+                    HStack(spacing: MSCRemoteStyle.spaceMD) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 22))
+                            .foregroundStyle(MSCRemoteStyle.accent.opacity(0.8))
+                            .frame(width: 32)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Client Export")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(MSCRemoteStyle.textPrimary)
+                            Text("Share required client mods or Modrinth links with players.")
+                                .font(.system(size: 12))
+                                .foregroundStyle(MSCRemoteStyle.textSecondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .mscCard()
+        }
+    }
+
+    private var clientExportSheetAnchor: some View {
+        Color.clear
+            .sheet(isPresented: $showClientExport) {
+                ClientExportRemoteSheet()
+                    .environmentObject(settings)
+                    .environmentObject(vm)
+            }
     }
 
     @ViewBuilder
@@ -443,7 +539,7 @@ struct ComponentsView: View {
             Spacer()
 
             HStack(spacing: MSCRemoteStyle.spaceSM) {
-                if addon.hasUpdate && vm.connectedRole != "guest" {
+                if addon.hasUpdate && vm.connectedRole != "guest" && settings.allowServerUpdates {
                     Button {
                         Task { await doUpdateAddon(addon) }
                     } label: {
@@ -460,6 +556,14 @@ struct ComponentsView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(updatingAddon != nil || !isPaired)
+                } else if addon.hasUpdate && vm.connectedRole != "guest" {
+                    Text("Locked")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(MSCRemoteStyle.bgElevated))
+                        .overlay(Capsule().stroke(MSCRemoteStyle.borderSubtle, lineWidth: 0.75))
                 } else {
                     addonStatusBadge(addon)
                 }
@@ -533,6 +637,10 @@ struct ComponentsView: View {
 
     private func updateComponent(_ component: ComponentStatusDTO) async {
         guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        guard settings.allowServerUpdates else {
+            showUpdateToast("Updates are disabled in Settings")
+            return
+        }
         updatingComponent = component.name
         vm.updateCredentials(baseURL: baseURL, token: token)
         do {
@@ -550,6 +658,10 @@ struct ComponentsView: View {
 
     private func doUpdateAddon(_ addon: AddonItemDTO) async {
         guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        guard settings.allowServerUpdates else {
+            showUpdateToast("Updates are disabled in Settings")
+            return
+        }
         updatingAddon = addon.jarStem
         let result = await vm.updateAddon(baseURL: baseURL, token: token, jarStem: addon.jarStem)
         switch result {
@@ -563,11 +675,15 @@ struct ComponentsView: View {
 
     private func doUpdateAllAddons() async {
         guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        guard settings.allowServerUpdates else {
+            showUpdateToast("Updates are disabled in Settings")
+            return
+        }
         isUpdatingAll = true
         let result = await vm.updateAllAddons(baseURL: baseURL, token: token)
         switch result {
-        case "update_started": showUpdateToast("All updates started")
-        case "no_updates_available": showUpdateToast("All add-ons are already up to date")
+        case "update_started": showUpdateToast("All mod updates started")
+        case "no_updates_available": showUpdateToast("All mods are already up to date")
         case let r?: showUpdateToast(r)
         default: showUpdateToast("Updates started")
         }

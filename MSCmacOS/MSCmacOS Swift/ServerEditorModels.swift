@@ -68,8 +68,8 @@ struct ServerEditorData {
         self.displayName = server.displayName
         self.serverDir = server.serverDir
         self.paperJarPath = server.paperJarPath
-        self.minRamGB = "\(server.minRam)"
-        self.maxRamGB = "\(server.maxRam)"
+        self.minRamGB = server.minRam.ramGBLabel
+        self.maxRamGB = server.maxRam.ramGBLabel
         self.notes = server.notes
         self.serverType = server.serverType
         self.autoRestartOnCrash = server.autoRestartOnCrash
@@ -77,8 +77,8 @@ struct ServerEditorData {
 
     /// Convert form data back into a ConfigServer for saving.
     func toConfigServer() -> ConfigServer {
-        let min = Int(minRamGB) ?? 2
-        let max = Int(maxRamGB) ?? Swift.max(min, 4)
+        let min = Double(minRamGB) ?? 2
+        let max = Double(maxRamGB) ?? Swift.max(min, 4)
 
         var result = ConfigServer(
             id: id,

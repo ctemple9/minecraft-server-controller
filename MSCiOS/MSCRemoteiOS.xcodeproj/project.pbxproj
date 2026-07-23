@@ -45,12 +45,14 @@
 		9A2FC23B2F67D1C900D79E50 /* DashboardViewModel+Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC22D2F67D1C900D79E50 /* DashboardViewModel+Notifications.swift */; };
 		9A2FC23C2F67D1C900D79E50 /* DashboardPlayersCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2292F67D1C900D79E50 /* DashboardPlayersCard.swift */; };
 		9A2FC23D2F67D1C900D79E50 /* DashboardViewModel+ConsoleStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC22C2F67D1C900D79E50 /* DashboardViewModel+ConsoleStream.swift */; };
-		9A2FC23E2F67D1C900D79E50 /* SettingsNotesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2312F67D1C900D79E50 /* SettingsNotesSection.swift */; };
 		9A2FC23F2F67D1C900D79E50 /* SettingsJoinCardSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC2302F67D1C900D79E50 /* SettingsJoinCardSection.swift */; };
 		9A2FC2402F67D1C900D79E50 /* DashboardStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A2FC22B2F67D1C900D79E50 /* DashboardStatusCard.swift */; };
 		9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0002F9A00000000AA01 /* HealthView.swift */; };
 		9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */; };
 		9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */; };
+		9AFE02000000000000000002 /* ConnectivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000001 /* ConnectivityView.swift */; };
+		9AFE02000000000000000004 /* MaintenanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000003 /* MaintenanceView.swift */; };
+		9AFE02000000000000000006 /* PerformanceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFE02000000000000000005 /* PerformanceDetailView.swift */; };
 		9AE2C24F2EF7B9EA003B8C5D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */; };
 		A11041E5020C4A20BA98F002 /* AllowlistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11041E5020C4A20BA98F001 /* AllowlistView.swift */; };
 		B21042F6131D5B31CB99A002 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */; };
@@ -60,6 +62,7 @@
 		F61056DA575H9F75GFD7E002 /* PlayitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61056DA575H9F75GFD7E001 /* PlayitView.swift */; };
 		G71067EB687J1I08JHB0E002 /* UsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = G71067EB687J1I08JHB0E001 /* UsersView.swift */; };
 		H81068FC798K2J19KIC1F002 /* ComponentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = H81068FC798K2J19KIC1F001 /* ComponentsView.swift */; };
+		9ATAB0010000000000000A02 /* ServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ATAB0010000000000000A01 /* ServerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,13 +105,15 @@
 		9A2FC22E2F67D1C900D79E50 /* DashboardViewModel+Performance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardViewModel+Performance.swift"; sourceTree = "<group>"; };
 		9A2FC22F2F67D1C900D79E50 /* SettingsConnectionTestSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsConnectionTestSection.swift; sourceTree = "<group>"; };
 		9A2FC2302F67D1C900D79E50 /* SettingsJoinCardSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsJoinCardSection.swift; sourceTree = "<group>"; };
-		9A2FC2312F67D1C900D79E50 /* SettingsNotesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsNotesSection.swift; sourceTree = "<group>"; };
 		9A2FC2322F67D1C900D79E50 /* SettingsPairingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPairingCard.swift; sourceTree = "<group>"; };
 		9A2FC2332F67D1C900D79E50 /* TailscaleHelpSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleHelpSheet.swift; sourceTree = "<group>"; };
 		9A8F436A2EF4B5D6001A9355 /* MSCRemoteiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MSCRemoteiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9AB1C0002F9A00000000AA01 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsStatusStripView.swift; sourceTree = "<group>"; };
 		9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XboxAuthBanner.swift; sourceTree = "<group>"; };
+		9AFE02000000000000000001 /* ConnectivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityView.swift; sourceTree = "<group>"; };
+		9AFE02000000000000000003 /* MaintenanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceView.swift; sourceTree = "<group>"; };
+		9AFE02000000000000000005 /* PerformanceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceDetailView.swift; sourceTree = "<group>"; };
 		9AE2C24E2EF7B9EA003B8C5D /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A11041E5020C4A20BA98F001 /* AllowlistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllowlistView.swift; sourceTree = "<group>"; };
 		B21042F6131D5B31CB99A001 /* ServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsView.swift; sourceTree = "<group>"; };
@@ -118,6 +123,7 @@
 		F61056DA575H9F75GFD7E001 /* PlayitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayitView.swift; sourceTree = "<group>"; };
 		G71067EB687J1I08JHB0E001 /* UsersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsersView.swift; sourceTree = "<group>"; };
 		H81068FC798K2J19KIC1F001 /* ComponentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsView.swift; sourceTree = "<group>"; };
+		9ATAB0010000000000000A01 /* ServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,7 +150,6 @@
 				9A2FC22E2F67D1C900D79E50 /* DashboardViewModel+Performance.swift */,
 				9A2FC22F2F67D1C900D79E50 /* SettingsConnectionTestSection.swift */,
 				9A2FC2302F67D1C900D79E50 /* SettingsJoinCardSection.swift */,
-				9A2FC2312F67D1C900D79E50 /* SettingsNotesSection.swift */,
 				9A2FC2322F67D1C900D79E50 /* SettingsPairingCard.swift */,
 				9A2FC2332F67D1C900D79E50 /* TailscaleHelpSheet.swift */,
 				9A1695B72F6627D6002BB92F /* AppIconMark.swift */,
@@ -175,6 +180,9 @@
 				9A1695D12F6627D6002BB92F /* SettingsView.swift */,
 				9A1695D22F6627D6002BB92F /* splash_intro.mp4 */,
 				9A1695D32F6627D6002BB92F /* SplashGateView.swift */,
+				9AFE02000000000000000001 /* ConnectivityView.swift */,
+				9AFE02000000000000000003 /* MaintenanceView.swift */,
+				9AFE02000000000000000005 /* PerformanceDetailView.swift */,
 				9AB1C0002F9A00000000AA01 /* HealthView.swift */,
 				9AB1C0022F9A00000000AA02 /* ComponentsStatusStripView.swift */,
 				9AB1C0052F9A00000000AA05 /* XboxAuthBanner.swift */,
@@ -187,6 +195,7 @@
 				H81068FC798K2J19KIC1F001 /* ComponentsView.swift */,
 				G71067EB687J1I08JHB0E001 /* UsersView.swift */,
 				037EF9722FFE4A20BA98F8BE /* WorldsView.swift */,
+				9ATAB0010000000000000A01 /* ServerView.swift */,
 			);
 			path = MSCRemoteiOS_Swift;
 			sourceTree = "<group>";
@@ -304,7 +313,6 @@
 				9A2FC23B2F67D1C900D79E50 /* DashboardViewModel+Notifications.swift in Sources */,
 				9A2FC23C2F67D1C900D79E50 /* DashboardPlayersCard.swift in Sources */,
 				9A2FC23D2F67D1C900D79E50 /* DashboardViewModel+ConsoleStream.swift in Sources */,
-				9A2FC23E2F67D1C900D79E50 /* SettingsNotesSection.swift in Sources */,
 				9A2FC23F2F67D1C900D79E50 /* SettingsJoinCardSection.swift in Sources */,
 				9A2FC2402F67D1C900D79E50 /* DashboardStatusCard.swift in Sources */,
 				9A1695E12F6627D6002BB92F /* AppIconMark.swift in Sources */,
@@ -323,6 +331,9 @@
 				9AB1C0012F9A00000000AA01 /* HealthView.swift in Sources */,
 				9AB1C0032F9A00000000AA03 /* ComponentsStatusStripView.swift in Sources */,
 				9AB1C0042F9A00000000AA04 /* XboxAuthBanner.swift in Sources */,
+				9AFE02000000000000000002 /* ConnectivityView.swift in Sources */,
+				9AFE02000000000000000004 /* MaintenanceView.swift in Sources */,
+				9AFE02000000000000000006 /* PerformanceDetailView.swift in Sources */,
 				A11041E5020C4A20BA98F002 /* AllowlistView.swift in Sources */,
 				B21042F6131D5B31CB99A002 /* ServerSettingsView.swift in Sources */,
 				C31043A7242E6C42DCAAB002 /* CatalogBrowserView.swift in Sources */,
@@ -332,6 +343,7 @@
 				H81068FC798K2J19KIC1F002 /* ComponentsView.swift in Sources */,
 				G71067EB687J1I08JHB0E002 /* UsersView.swift in Sources */,
 				0CE786C8E7F04DC5B2C38F3C /* WorldsView.swift in Sources */,
+				9ATAB0010000000000000A02 /* ServerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

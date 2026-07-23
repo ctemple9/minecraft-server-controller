@@ -123,7 +123,7 @@ final class VMBedrockServerBackend: NSObject, ServerBackend {
 
         let savedProps = BedrockPropertiesManager.readModel(serverDir: serverDir.path)
         bedrockPort = UInt16(savedProps.serverPort)
-        let memoryGB = config.maxRamGB
+        let memoryGB: Double = config.maxRamGB
         let version = config.bedrockVersion
 
         // We've committed to starting. The heavy work — installing BDS if needed,
@@ -169,7 +169,7 @@ final class VMBedrockServerBackend: NSObject, ServerBackend {
     private func buildVMConfiguration(kernel: URL,
                                       initramfs: URL,
                                       worldDir: URL,
-                                      memoryGB: Int) throws -> VZVirtualMachineConfiguration {
+                                      memoryGB: Double) throws -> VZVirtualMachineConfiguration {
         let cfg = VZVirtualMachineConfiguration()
 
         // Boot: explicit kernel + our initramfs-as-rootfs, console on hvc0 (diskless).
@@ -185,7 +185,7 @@ final class VMBedrockServerBackend: NSObject, ServerBackend {
         cfg.cpuCount = cpu
 
         // BDS needs ~1–1.5 GB; honor the user's RAM cap when set, else 2 GB.
-        let requested = UInt64(memoryGB > 0 ? memoryGB : 2) * 1024 * 1024 * 1024
+        let requested = UInt64((memoryGB > 0 ? memoryGB : 2) * 1024 * 1024 * 1024)
         cfg.memorySize = max(VZVirtualMachineConfiguration.minimumAllowedMemorySize,
                              min(requested, VZVirtualMachineConfiguration.maximumAllowedMemorySize))
 

@@ -140,7 +140,8 @@ extension AppViewModel {
         difficulty: String,
         gamemode: String,
         worldSeed: String?,
-        worldSource: WorldSource
+        worldSource: WorldSource,
+        javaPath: String? = nil
     ) async -> Bool {
         let safeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !safeName.isEmpty else { return false }
@@ -200,13 +201,13 @@ extension AppViewModel {
                         info = try await NeoForgeInstaller.install(
                             specificVersion: nfv,
                             into: newDir,
-                            javaPath: configManager.config.javaPath,
+                            javaPath: javaPath ?? configManager.config.javaPath,
                             onLog: { line in DispatchQueue.main.async { self.noteCreation("[NeoForge] \(line)") } }
                         )
                     } else {
                         info = try await NeoForgeInstaller.install(
                             into: newDir,
-                            javaPath: configManager.config.javaPath,
+                            javaPath: javaPath ?? configManager.config.javaPath,
                             onLog: { line in DispatchQueue.main.async { self.noteCreation("[NeoForge] \(line)") } }
                         )
                     }
@@ -221,13 +222,13 @@ extension AppViewModel {
                             mcVersion: sv.mcVersion,
                             forgeVersion: fv,
                             into: newDir,
-                            javaPath: configManager.config.javaPath,
+                            javaPath: javaPath ?? configManager.config.javaPath,
                             onLog: { line in DispatchQueue.main.async { self.noteCreation("[Forge] \(line)") } }
                         )
                     } else {
                         info = try await ForgeInstaller.install(
                             into: newDir,
-                            javaPath: configManager.config.javaPath,
+                            javaPath: javaPath ?? configManager.config.javaPath,
                             onLog: { line in DispatchQueue.main.async { self.noteCreation("[Forge] \(line)") } }
                         )
                     }

@@ -172,11 +172,7 @@ struct ConsoleView: View {
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: MSCRemoteStyle.spaceLG) {
-                            timeWeatherCard
-                            gamemodeCard
-                            if !quickSendChips.isEmpty { quickSendCard }
-                            streamControlCard
-                            tailControlCard
+                            quickActionsCard
                             consoleOutputCard
                         }
                         .padding(.horizontal, MSCRemoteStyle.spaceLG)
@@ -216,9 +212,22 @@ struct ConsoleView: View {
         }
     }
 
-    // MARK: - Time & Weather Card
+    // MARK: - Quick Actions Card
 
-    private var timeWeatherCard: some View {
+    private var quickActionsCard: some View {
+        VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceLG) {
+            timeWeatherSection
+            Divider().background(MSCRemoteStyle.borderSubtle)
+            gamemodeSection
+            if !quickSendChips.isEmpty {
+                Divider().background(MSCRemoteStyle.borderSubtle)
+                quickSendSection
+            }
+        }
+        .mscCard()
+    }
+
+    private var timeWeatherSection: some View {
         VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceMD) {
             MSCSectionHeader(title: "Time of Day")
             HStack(spacing: MSCRemoteStyle.spaceSM) {
@@ -233,12 +242,9 @@ struct ConsoleView: View {
                 quickIconButton(title: "Storm", icon: "cloud.bolt.rain.fill",  tint: MSCRemoteStyle.cmdServer,     bgTint: MSCRemoteStyle.cmdServer.opacity(0.12),     command: "/weather thunder")
             }
         }
-        .mscCard()
     }
 
-    // MARK: - Gamemode Card
-
-    private var gamemodeCard: some View {
+    private var gamemodeSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             MSCSectionHeader(title: "Settings")
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
@@ -287,7 +293,6 @@ struct ConsoleView: View {
                 }
             }
         }
-        .mscCard()
     }
 
     private func quickIconButton(title: String, icon: String, tint: Color, bgTint: Color, command: String) -> some View {
@@ -327,9 +332,9 @@ struct ConsoleView: View {
             .padding(.vertical, MSCRemoteStyle.spaceSM)
     }
 
-    // MARK: - Quick Send Card
+    // MARK: - Quick Send
 
-    private var quickSendCard: some View {
+    private var quickSendSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 MSCSectionHeader(title: "Quick Send")
@@ -350,7 +355,6 @@ struct ConsoleView: View {
                 .padding(.vertical, 2)
             }
         }
-        .mscCard()
     }
 
     private func quickSendChip(_ chip: CommandTemplate) -> some View {
@@ -492,71 +496,6 @@ struct ConsoleView: View {
         }
     }
 
-    // MARK: - Stream Control Card
-
-    private var streamControlCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            MSCSectionHeader(title: "Live Stream")
-                .padding(.bottom, MSCRemoteStyle.spaceMD)
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(vm.isStreamingConsole ? "Connected" : "Disconnected")
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(vm.isStreamingConsole ? MSCRemoteStyle.success : MSCRemoteStyle.textSecondary)
-                    Text("Continuous output when enabled")
-                        .font(.system(size: 11))
-                        .foregroundStyle(MSCRemoteStyle.textTertiary)
-                }
-                Spacer()
-                Toggle("", isOn: $showLive)
-                    .labelsHidden()
-                    .tint(MSCRemoteStyle.accent)
-                    .onChange(of: showLive) { _, newValue in
-                        if newValue { Task { await connectStream() } }
-                        else { vm.disconnectConsoleStream() }
-                    }
-                    .disabled(!isPaired)
-            }
-        }
-        .mscCard()
-    }
-
-    // MARK: - Tail / Buffer Card
-
-    private var tailControlCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            MSCSectionHeader(
-                title: showLive ? "Buffer" : "Snapshot",
-                trailing: showLive ? "Rolling \(tailN) lines" : nil
-            )
-            .padding(.bottom, MSCRemoteStyle.spaceMD)
-            HStack(spacing: MSCRemoteStyle.spaceMD) {
-                Stepper(value: $tailN, in: 20...500, step: 20) {
-                    Text("Lines: \(tailN)")
-                        .font(.system(size: 14, design: .rounded))
-                        .foregroundStyle(MSCRemoteStyle.textPrimary)
-                }
-                .tint(MSCRemoteStyle.accent)
-
-                Button {
-                    hapticLight()
-                    if showLive { vm.trimConsoleStream(to: tailN) }
-                    else { Task { await fetchTail() } }
-                } label: {
-                    Text(showLive ? "Trim" : "Fetch")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(isPaired ? MSCRemoteStyle.bgBase : MSCRemoteStyle.textTertiary)
-                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
-                        .frame(height: 36)
-                        .background(isPaired ? MSCRemoteStyle.accent : MSCRemoteStyle.bgElevated)
-                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
-                }
-                .disabled(!isPaired)
-            }
-        }
-        .mscCard()
-    }
-
     // MARK: - Console Output Card
 
     private var consoleOutputCard: some View {
@@ -568,7 +507,7 @@ struct ConsoleView: View {
             HStack(alignment: .center) {
                 Text(showLive ? "LIVE" : "TAIL")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    .foregroundStyle(showLive && vm.isStreamingConsole ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
                     .kerning(1.2)
                 Spacer()
                 if total > 0 {
@@ -611,7 +550,10 @@ struct ConsoleView: View {
                 }
             }
             .padding(.horizontal, 2)
-            .padding(.bottom, MSCRemoteStyle.spaceMD)
+            .padding(.bottom, MSCRemoteStyle.spaceSM)
+
+            terminalControlRow
+                .padding(.bottom, MSCRemoteStyle.spaceMD)
 
             // ── Search bar ─────────────────────────────────────────────────
             if showSearch {
@@ -677,6 +619,69 @@ struct ConsoleView: View {
             )
         }
         .mscCard()
+    }
+
+    private var terminalControlRow: some View {
+        VStack(spacing: MSCRemoteStyle.spaceSM) {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                HStack(spacing: MSCRemoteStyle.spaceSM) {
+                    Circle()
+                        .fill(vm.isStreamingConsole ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                        .frame(width: 7, height: 7)
+                    Text(vm.isStreamingConsole ? "Connected" : "Disconnected")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(vm.isStreamingConsole ? MSCRemoteStyle.success : MSCRemoteStyle.textTertiary)
+                }
+
+                Spacer()
+
+                Text("Live")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(MSCRemoteStyle.textSecondary)
+                Toggle("", isOn: $showLive)
+                    .labelsHidden()
+                    .tint(MSCRemoteStyle.accent)
+                    .onChange(of: showLive) { _, newValue in
+                        if newValue { Task { await connectStream() } }
+                        else { vm.disconnectConsoleStream() }
+                    }
+                    .disabled(!isPaired)
+            }
+
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                Stepper(value: $tailN, in: 20...500, step: 20) {
+                    Text("Lines: \(tailN)")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                }
+                .tint(MSCRemoteStyle.accent)
+
+                Spacer(minLength: MSCRemoteStyle.spaceSM)
+
+                Button {
+                    hapticLight()
+                    if showLive { vm.trimConsoleStream(to: tailN) }
+                    else { Task { await fetchTail() } }
+                } label: {
+                    Text(showLive ? "Trim" : "Fetch")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(isPaired ? MSCRemoteStyle.bgBase : MSCRemoteStyle.textTertiary)
+                        .padding(.horizontal, MSCRemoteStyle.spaceMD)
+                        .frame(height: 30)
+                        .background(isPaired ? MSCRemoteStyle.accent : MSCRemoteStyle.bgElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isPaired)
+            }
+        }
+        .padding(MSCRemoteStyle.spaceSM)
+        .background(MSCRemoteStyle.bgElevated.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                .strokeBorder(MSCRemoteStyle.borderSubtle, lineWidth: 1)
+        )
     }
 
     // MARK: - Filter chip strip
@@ -902,4 +907,3 @@ struct ConsoleView: View {
         await vm.connectConsoleStream(baseURL: baseURL, token: token)
     }
 }
-

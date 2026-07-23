@@ -357,8 +357,8 @@ final class BedrockServerBackend: ServerBackend {
                 ]
 
                 // Apply Docker memory limit when the user has configured one (> 0 GB).
-                if config.maxRamGB > 0 {
-                    runArgs.append(contentsOf: ["--memory", "\(config.maxRamGB)g"])
+                if config.maxRamMB > 0 {
+                    runArgs.append(contentsOf: ["--memory", "\(config.maxRamMB)m"])
                 }
 
                 // Pin to a specific BDS version if configured.

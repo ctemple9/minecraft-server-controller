@@ -26,8 +26,8 @@ final class HeadlessScriptGeneratorTests: XCTestCase {
     private func makeConfig(
         flavor: JavaServerFlavor,
         paperJarPath: String = "server.jar",
-        minRamGB: Int = 1,
-        maxRamGB: Int = 2,
+        minRamGB: Double = 1,
+        maxRamGB: Double = 2,
         mcVersion: String? = nil,
         loaderVersion: String? = nil
     ) -> ConfigServer {
@@ -71,8 +71,8 @@ final class HeadlessScriptGeneratorTests: XCTestCase {
         XCTAssertNil(launch.neoForgeArgsFile)
         XCTAssertEqual(launch.jarName, "paper-1.20.1-196.jar")
         XCTAssertEqual(launch.javaPath, "java")
-        XCTAssertTrue(launch.jvmFlags.contains("-Xms1G"))
-        XCTAssertTrue(launch.jvmFlags.contains("-Xmx2G"))
+        XCTAssertTrue(launch.jvmFlags.contains("-Xms1024M"))
+        XCTAssertTrue(launch.jvmFlags.contains("-Xmx2048M"))
     }
 
     func testPaperScriptContainsJarInvocation() {
@@ -278,9 +278,9 @@ final class HeadlessScriptGeneratorTests: XCTestCase {
             minRamGB: 6,
             maxRamGB: 12
         )
-        XCTAssertTrue(launch.jvmFlags.contains("-Xms6G"))
-        XCTAssertTrue(launch.jvmFlags.contains("-Xmx12G"))
-        XCTAssertFalse(launch.jvmFlags.contains("-Xms4G"), "Config RAM must not override sheet RAM")
+        XCTAssertTrue(launch.jvmFlags.contains("-Xms6144M"))
+        XCTAssertTrue(launch.jvmFlags.contains("-Xmx12288M"))
+        XCTAssertFalse(launch.jvmFlags.contains("-Xms4096M"), "Config RAM must not override sheet RAM")
     }
 
     // MARK: - Sandbox flags

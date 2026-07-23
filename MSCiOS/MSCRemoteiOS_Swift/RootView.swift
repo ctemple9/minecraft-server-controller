@@ -11,32 +11,26 @@ enum NavDestination: String, CaseIterable, Hashable {
     case dashboard
     case console
     case players
-    case health
-    case components
-    case worlds
+    case server
     case settings
 
     var title: String {
         switch self {
-        case .dashboard:   return "Dashboard"
-        case .console:     return "Console"
-        case .players:     return "Players"
-        case .health:      return "Health"
-        case .components:  return "Components"
-        case .worlds:      return "Worlds"
-        case .settings:    return "Settings"
+        case .dashboard: return "Home"
+        case .console:   return "Console"
+        case .players:   return "Players"
+        case .server:    return "Server"
+        case .settings:  return "Settings"
         }
     }
 
     var icon: String {
         switch self {
-        case .dashboard:   return "gauge.with.dots.needle.50percent"
-        case .console:     return "terminal"
-        case .players:     return "person.2"
-        case .health:      return "cross.case"
-        case .components:  return "puzzlepiece.extension"
-        case .worlds:      return "globe"
-        case .settings:    return "gearshape"
+        case .dashboard: return "gauge.with.dots.needle.50percent"
+        case .console:   return "terminal"
+        case .players:   return "person.2"
+        case .server:    return "square.stack.3d.up"
+        case .settings:  return "gearshape"
         }
     }
 }
@@ -273,7 +267,7 @@ struct RootView: View {
     private var ipadDetailView: some View {
         switch selectedDestination {
         case .dashboard:
-            DashboardView(navigateToHealth: { selectedDestination = .health })
+            DashboardView(navigateToConnectivity: { selectedDestination = .server })
                 .environmentObject(dashboardVM)
         case .console:
             ConsoleView()
@@ -281,14 +275,8 @@ struct RootView: View {
         case .players:
             PlayersView()
                 .environmentObject(dashboardVM)
-        case .health:
-            HealthView()
-                .environmentObject(dashboardVM)
-        case .components:
-            ComponentsView()
-                .environmentObject(dashboardVM)
-        case .worlds:
-            WorldsView()
+        case .server:
+            ServerView()
                 .environmentObject(dashboardVM)
         case .settings:
             SettingsView()
@@ -303,9 +291,9 @@ struct RootView: View {
 
     private var iphoneLayout: some View {
         TabView(selection: $selectedDestination) {
-            DashboardView(navigateToHealth: { selectedDestination = .health })
+            DashboardView(navigateToConnectivity: { selectedDestination = .server })
                 .environmentObject(dashboardVM)
-                .tabItem { Label("Dashboard", systemImage: "gauge.with.dots.needle.50percent") }
+                .tabItem { Label("Home", systemImage: "gauge.with.dots.needle.50percent") }
                 .tag(NavDestination.dashboard)
 
             ConsoleView()
@@ -318,15 +306,11 @@ struct RootView: View {
                 .tabItem { Label("Players", systemImage: "person.2") }
                 .tag(NavDestination.players)
 
-            HealthView()
+            ServerView()
                 .environmentObject(dashboardVM)
-                .tabItem { Label("Health", systemImage: "cross.case") }
-                .tag(NavDestination.health)
-
-            WorldsView()
-                .environmentObject(dashboardVM)
-                .tabItem { Label("Worlds", systemImage: "globe") }
-                .tag(NavDestination.worlds)
+                .tabItem { Label("Server", systemImage: "square.stack.3d.up") }
+                .tag(NavDestination.server)
+                .badge(dashboardVM.addonsResponse?.updateCount ?? 0)
 
             SettingsView()
                 .environmentObject(dashboardVM)

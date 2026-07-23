@@ -35,6 +35,7 @@ final class ServerProcessManager {
 
     /// Buffer to accumulate partial lines until we see a newline.
     private var pendingOutput = Data()
+    private let outputLock = NSLock()
 
     // MARK: - Validation
 
@@ -188,14 +189,14 @@ final class ServerProcessManager {
     ///   - extraFlags: Extra JVM flags as a single string (same as Python config.extra_flags)
     ///   - serverDirectory: The server's working directory (cwd)
     ///   - paperJarPath: Full path to the Paper jar (or we’ll derive name & use cwd)
-    ///   - minRamGB / maxRamGB: Values like 1, 3 → "-Xms1G" "-Xmx3G"
+    ///   - minRamGB / maxRamGB: GB (may be fractional, e.g. 4.5) → "-Xms4608M" "-Xmx4608M"
     func startServer(
         javaPath: String,
         extraFlags: String?,
         serverDirectory: URL,
         paperJarPath: String,
-        minRamGB: Int,
-        maxRamGB: Int,
+        minRamGB: Double,
+        maxRamGB: Double,
         neoForgeArgsFile: String? = nil
     ) throws {
         // Mirror Python behavior: only one process at a time.
@@ -203,7 +204,9 @@ final class ServerProcessManager {
             throw ServerProcessError.alreadyRunning
         }
 
+        outputLock.lock()
         pendingOutput.removeAll(keepingCapacity: false)
+        outputLock.unlock()
 
         // Validate Java path before launching (clear user-facing error via thrown NSError)
         let java = try validatedJavaLaunchInfo(javaPath: javaPath)
@@ -228,9 +231,10 @@ final class ServerProcessManager {
         var executableURL: URL = java.executableURL
         var arguments: [String] = java.prefixArguments
 
+        // Must stay byte-identical to JavaServerLaunchHelper.resolve's heap flags.
         arguments.append(contentsOf: [
-            "-Xms\(minRamGB)G",
-            "-Xmx\(maxRamGB)G",
+            "-Xms\(JavaServerLaunchHelper.megabytes(fromGB: minRamGB))M",
+            "-Xmx\(JavaServerLaunchHelper.megabytes(fromGB: maxRamGB))M",
         ])
 
         arguments.append(contentsOf: sandboxSuppressFlags)
@@ -359,6 +363,9 @@ final class ServerProcessManager {
     // MARK: - Output handling
 
     private func handleIncoming(data: Data) {
+        var lines: [String] = []
+
+        outputLock.lock()
         pendingOutput.append(data)
 
         // Split by newline (0x0A) and emit full lines.
@@ -371,14 +378,24 @@ final class ServerProcessManager {
             let line = String(data: lineData, encoding: .utf8)
                 ?? String(decoding: lineData, as: UTF8.self)
 
+            lines.append(line)
+        }
+        outputLock.unlock()
+
+        for line in lines {
             onOutputLine?(line)
         }
     }
 
     private func flushPendingOutput() {
-        guard !pendingOutput.isEmpty else { return }
+        outputLock.lock()
+        guard !pendingOutput.isEmpty else {
+            outputLock.unlock()
+            return
+        }
         let data = pendingOutput
         pendingOutput.removeAll(keepingCapacity: false)
+        outputLock.unlock()
 
         let line = String(data: data, encoding: .utf8)
             ?? String(decoding: data, as: UTF8.self)
@@ -395,4 +412,3 @@ final class ServerProcessManager {
         process = nil
     }
 }
-

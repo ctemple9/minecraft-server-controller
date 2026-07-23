@@ -304,6 +304,55 @@ extension AppViewModel {
             }
         }
 
+        // GET /versions/create — available versions before a server exists.
+        let createVersionsProvider: (String?, String?) async -> RemoteAPIServer.VersionsResponseDTO = { serverTypeRaw, javaFlavorRaw in
+            let typeRaw = serverTypeRaw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let serverType = typeRaw.flatMap(ServerType.init(rawValue:)) ?? .java
+            if serverType == .bedrock {
+                let versions = await BedrockVersionFetcher.fetchVersions()
+                let entries = versions.map { v in
+                    RemoteAPIServer.VersionEntryDTO(id: v.version, displayLabel: v.displayName,
+                                                    mcVersion: v.version, loaderVersion: nil,
+                                                    buildLabel: nil, isStable: true, isLatest: v.isLatest)
+                }
+                return RemoteAPIServer.VersionsResponseDTO(supportsVersions: true, flavorName: "Bedrock",
+                                                           currentVersion: "LATEST", isBedrock: true,
+                                                           versions: entries)
+            }
+
+            let supportedJavaFlavors: Set<JavaServerFlavor> = [.paper, .purpur, .vanilla, .fabric, .neoforge, .forge]
+            let flavorRaw = javaFlavorRaw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let flavor = flavorRaw.flatMap(JavaServerFlavor.init(rawValue:)) ?? .paper
+            guard supportedJavaFlavors.contains(flavor) else {
+                return RemoteAPIServer.VersionsResponseDTO(supportsVersions: false, flavorName: flavor.displayName,
+                                                           isBedrock: false, note: "invalid_java_flavor")
+            }
+
+            do {
+                let rawEntries = try await ServerJarProvider.listVersions(for: flavor)
+                if rawEntries.isEmpty {
+                    let latestEntry = RemoteAPIServer.VersionEntryDTO(
+                        id: "__latest__", displayLabel: "Latest (recommended)",
+                        mcVersion: "", loaderVersion: nil, buildLabel: nil, isStable: true, isLatest: true)
+                    return RemoteAPIServer.VersionsResponseDTO(supportsVersions: true, flavorName: flavor.displayName,
+                                                               isBedrock: false, versions: [latestEntry],
+                                                               note: "latest_only")
+                }
+                let entries = rawEntries.map { e in
+                    RemoteAPIServer.VersionEntryDTO(id: e.id, displayLabel: e.displayLabel,
+                                                    mcVersion: e.mcVersion, loaderVersion: e.loaderVersion,
+                                                    buildLabel: e.buildLabel, isStable: e.isStable,
+                                                    isLatest: e.isLatest)
+                }
+                return RemoteAPIServer.VersionsResponseDTO(supportsVersions: true, flavorName: flavor.displayName,
+                                                           isBedrock: false, versions: entries)
+            } catch {
+                return RemoteAPIServer.VersionsResponseDTO(supportsVersions: true, flavorName: flavor.displayName,
+                                                           isBedrock: false, versions: [],
+                                                           note: "fetch_failed: \(error.localizedDescription)")
+            }
+        }
+
         // POST /components/version — download / install the chosen JAR version.
         // Java: authoritative-async (awaits the real result). Bedrock: fire-and-forget pin + download.
         let changeVersionProvider: (String, String?) async -> RemoteAPIServer.VersionChangeResultDTO = { [weak self] versionId, loaderVersion in
@@ -529,6 +578,46 @@ extension AppViewModel {
         server.catalogSearchProvider = catalogSearchProvider
         server.installAddonProvider = installAddonProvider
         server.versionsProvider = versionsProvider
+        server.createVersionsProvider = createVersionsProvider
         server.changeVersionProvider = changeVersionProvider
+
+        server.javaRuntimesProvider = {
+            let detected = JavaRuntimeManager.detectInstalledJavaRuntimes()
+            let dtos = detected.map { r in
+                RemoteAPIServer.JavaRuntimeDTO(name: r.name, executablePath: r.executablePath, majorVersion: r.majorVersion)
+            }
+            return RemoteAPIServer.JavaRuntimesResponseDTO(runtimes: dtos)
+        }
+
+        server.getJavaConfigProvider = { [weak self] in
+            guard let self else { return RemoteAPIServer.JavaConfigResponseDTO(executablePath: nil) }
+            let path = await MainActor.run { self.configManager.config.javaPath }
+            return RemoteAPIServer.JavaConfigResponseDTO(executablePath: path.isEmpty ? nil : path)
+        }
+
+        server.setJavaConfigProvider = { [weak self] executablePath in
+            guard let self else { return false }
+            await MainActor.run {
+                self.configManager.config.javaPath = executablePath ?? ""
+                self.configManager.save()
+            }
+            return true
+        }
+
+        server.broadcastJarStatusProvider = { [weak self] in
+            guard let self else { return RemoteAPIServer.BroadcastJarStatusDTO(installed: false, downloading: false, filename: nil) }
+            return await MainActor.run {
+                let installed = self.isXboxBroadcastHelperInstalled
+                let downloading = self.isXboxBroadcastJarDownloading
+                let path = self.configManager.config.xboxBroadcastJarPath
+                let filename = path.map { URL(fileURLWithPath: $0).lastPathComponent }
+                return RemoteAPIServer.BroadcastJarStatusDTO(installed: installed, downloading: downloading, filename: filename)
+            }
+        }
+
+        server.downloadBroadcastJarProvider = { [weak self] in
+            guard let self else { return RemoteAPIServer.BroadcastJarDownloadResultDTO(success: false, message: "not_available", filename: nil) }
+            return await self.downloadXboxBroadcastJarCore()
+        }
     }
 }

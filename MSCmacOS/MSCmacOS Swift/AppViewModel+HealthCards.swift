@@ -435,23 +435,23 @@ extension AppViewModel {
         let physicalBytes = ProcessInfo.processInfo.physicalMemory
         let physicalGB = Int(physicalBytes / (1024 * 1024 * 1024))
 
-        if allocatedGB <= 0 || (physicalGB > 0 && allocatedGB > physicalGB) {
+        if allocatedGB <= 0 || (physicalGB > 0 && allocatedGB > Double(physicalGB)) {
             return HealthCardResult(
                 id: "ram",
                 status: .red,
-                detectedValue: "Configured: \(allocatedGB) GB — Physical RAM: \(physicalGB) GB\nAllocation exceeds physical memory.",
+                detectedValue: "Configured: \(allocatedGB.ramGBLabel) GB — Physical RAM: \(physicalGB) GB\nAllocation exceeds physical memory.",
                 actionLabel: nil,
                 actionType: nil
             )
         }
 
-        let fraction = physicalGB > 0 ? Double(allocatedGB) / Double(physicalGB) : 0
+        let fraction = physicalGB > 0 ? allocatedGB / Double(physicalGB) : 0
 
         if fraction > 0.8 {
             return HealthCardResult(
                 id: "ram",
                 status: .yellow,
-                detectedValue: "Configured: \(allocatedGB) GB — Physical RAM: \(physicalGB) GB\n\(Int(fraction * 100))% of system RAM — may cause instability.",
+                detectedValue: "Configured: \(allocatedGB.ramGBLabel) GB — Physical RAM: \(physicalGB) GB\n\(Int(fraction * 100))% of system RAM — may cause instability.",
                 actionLabel: nil,
                 actionType: nil
             )
@@ -460,7 +460,7 @@ extension AppViewModel {
         return HealthCardResult(
             id: "ram",
             status: .green,
-            detectedValue: "Configured: \(allocatedGB) GB — Physical RAM: \(physicalGB) GB",
+            detectedValue: "Configured: \(allocatedGB.ramGBLabel) GB — Physical RAM: \(physicalGB) GB",
             actionLabel: nil,
             actionType: nil
         )

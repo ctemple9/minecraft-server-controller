@@ -7,6 +7,7 @@ struct PreferencesJavaSection: View {
     @State private var detectedJavaRuntimes: [DetectedJavaRuntime] = []
     @State private var isDetectingJavaRuntimes: Bool = false
     @State private var isShowingJavaRuntimePicker: Bool = false
+    @State private var isShowingJavaInstaller: Bool = false
     let anchorID: String
 
     var body: some View {
@@ -25,22 +26,33 @@ struct PreferencesJavaSection: View {
                     .textFieldStyle(.roundedBorder)
                     .font(MSC.Typography.mono)
 
-                Button {
-                    detectJavaRuntimes()
-                } label: {
-                    if isDetectingJavaRuntimes {
-                        HStack(spacing: MSC.Spacing.xs) {
-                            ProgressView().controlSize(.mini)
-                            Text("Detecting")
+                HStack(spacing: MSC.Spacing.sm) {
+                    Button {
+                        detectJavaRuntimes()
+                    } label: {
+                        if isDetectingJavaRuntimes {
+                            HStack(spacing: MSC.Spacing.xs) {
+                                ProgressView().controlSize(.mini)
+                                Text("Detecting")
+                            }
+                        } else {
+                            Label("Detect", systemImage: "magnifyingglass")
                         }
-                    } else {
-                        Label("Detect", systemImage: "magnifyingglass")
                     }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+                    .disabled(isDetectingJavaRuntimes)
+                    .help("Scan common Java install locations and choose an executable.")
+
+                    Button {
+                        isShowingJavaInstaller = true
+                    } label: {
+                        Label("Install Java\u{2026}", systemImage: "arrow.down.circle")
+                    }
+                    .buttonStyle(MSCSecondaryButtonStyle())
+                    .controlSize(.small)
+                    .help("Download and open an Adoptium Temurin Java installer.")
                 }
-                .buttonStyle(MSCSecondaryButtonStyle())
-                .controlSize(.small)
-                .disabled(isDetectingJavaRuntimes)
-                .help("Scan common Java install locations and choose an executable.")
             }
 
             VStack(alignment: .leading, spacing: MSC.Spacing.sm) {
@@ -71,6 +83,11 @@ struct PreferencesJavaSection: View {
                     isShowingJavaRuntimePicker = false
                 }
             )
+        }
+        .sheet(isPresented: $isShowingJavaInstaller) {
+            JavaInstallerSheet {
+                isShowingJavaInstaller = false
+            }
         }
     }
 

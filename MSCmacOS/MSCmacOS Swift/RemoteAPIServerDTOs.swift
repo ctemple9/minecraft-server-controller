@@ -74,6 +74,8 @@ extension RemoteAPIServer {
         let directory: String
         // Allows iOS to display Java vs. Bedrock badges without a separate request.
         let serverType: String
+        // Java-only flavor, used by iOS to hide cross-play/Geyser controls for incompatible servers.
+        let javaFlavor: String?
         // Explicit join-card data so iOS does not have to infer from defaults.
         let gamePort: Int?
         let hostAddress: String?
@@ -116,6 +118,66 @@ extension RemoteAPIServer {
             self.success = success
             self.message = message
             self.serverId = serverId
+        }
+    }
+
+    struct ServerCreateRequestDTO: Codable {
+        let name: String
+        /// "java" | "bedrock"; nil defaults to "java" for older clients.
+        let serverType: String?
+        /// Java only: paper | purpur | vanilla | fabric | neoforge | forge. Nil defaults to paper.
+        let javaFlavor: String?
+        let port: Int?
+        let maxPlayers: Int?
+        let enableCrossPlay: Bool?
+        let crossPlayBedrockPort: Int?
+        let enablePlayit: Bool?
+        let enableXboxBroadcast: Bool?
+        let difficulty: String?
+        let gamemode: String?
+        let worldName: String?
+        let worldSeed: String?
+        let versionId: String?
+        let minecraftVersion: String?
+        let loaderVersion: String?
+        let acceptEula: Bool?
+        let bedrockVersion: String?
+        let dockerImage: String?
+        /// Absolute path to the java binary to use (Java servers only). Nil uses the global config default.
+        let javaPath: String?
+    }
+
+    struct ServerCreateResultDTO: Codable {
+        let success: Bool
+        let message: String
+        let serverId: String?
+        let serverName: String?
+        let warnings: [String]?
+
+        init(success: Bool, message: String, serverId: String? = nil, serverName: String? = nil, warnings: [String]? = nil) {
+            self.success = success
+            self.message = message
+            self.serverId = serverId
+            self.serverName = serverName
+            self.warnings = warnings
+        }
+    }
+
+    struct ServerEULARequestDTO: Codable {
+        let serverId: String?
+    }
+
+    struct ServerEULAResultDTO: Codable {
+        let success: Bool
+        let message: String
+        let serverId: String?
+        let accepted: Bool?
+
+        init(success: Bool, message: String, serverId: String? = nil, accepted: Bool? = nil) {
+            self.success = success
+            self.message = message
+            self.serverId = serverId
+            self.accepted = accepted
         }
     }
 
@@ -371,6 +433,27 @@ extension RemoteAPIServer {
         let installedVersion: String?
         let latestVersion: String?
         let isUpToDate: Bool
+        /// Ready-to-display "installed" string for flavors that have no Paper-style
+        /// build number (Fabric, Vanilla, Forge, …), e.g. "1.21.1 · 0.16.5". Nil when
+        /// the component is not installed. Paper also fills this for a consistent label.
+        let installedLabel: String?
+        /// Whether this component participates in the build-based Update flow
+        /// (Paper / Geyser / Floodgate). Flavor server jars are updated via
+        /// "Change Version / JAR", so they report false and never show an Update button.
+        let updatable: Bool
+
+        init(name: String, installedBuild: Int?, latestBuild: Int?,
+             installedVersion: String?, latestVersion: String?, isUpToDate: Bool,
+             installedLabel: String? = nil, updatable: Bool = true) {
+            self.name = name
+            self.installedBuild = installedBuild
+            self.latestBuild = latestBuild
+            self.installedVersion = installedVersion
+            self.latestVersion = latestVersion
+            self.isUpToDate = isUpToDate
+            self.installedLabel = installedLabel
+            self.updatable = updatable
+        }
     }
 
     struct ComponentsStatusDTO: Codable {
@@ -1272,6 +1355,45 @@ extension RemoteAPIServer {
         }
     }
 
+    // MARK: - RAM allocation (/config/ram)
+
+    /// Returned by GET /config/ram — the active server's JVM/VM memory allocation
+    /// plus the host's physical RAM so the client can bound its editor.
+    struct RAMConfigResponseDTO: Codable {
+        let serverName: String
+        let serverType: String      // "java" | "bedrock"
+        let minRamGB: Double        // -Xms (Java); unused for Bedrock
+        let maxRamGB: Double        // -Xmx (Java) / fixed VM memory (Bedrock; 0 = default)
+        let physicalRAMGB: Int      // host total RAM in whole GB
+        let recommendedMaxGB: Int   // ~60% of physical, floored at 1
+        let serverRunning: Bool     // if true, changes apply only after a restart
+        let hasActiveServer: Bool
+
+        init(serverName: String = "", serverType: String = "java",
+             minRamGB: Double = 0, maxRamGB: Double = 0,
+             physicalRAMGB: Int = 0, recommendedMaxGB: Int = 0,
+             serverRunning: Bool = false, hasActiveServer: Bool = false) {
+            self.serverName = serverName; self.serverType = serverType
+            self.minRamGB = minRamGB; self.maxRamGB = maxRamGB
+            self.physicalRAMGB = physicalRAMGB; self.recommendedMaxGB = recommendedMaxGB
+            self.serverRunning = serverRunning; self.hasActiveServer = hasActiveServer
+        }
+    }
+
+    struct RAMConfigUpdateResultDTO: Codable {
+        let success: Bool
+        let minRamGB: Double?       // clamped values actually stored
+        let maxRamGB: Double?
+        let restartRequired: Bool   // true when the server is running
+        let message: String?        // "saved" | "no_active_server" | "not_available"
+
+        init(success: Bool, minRamGB: Double? = nil, maxRamGB: Double? = nil,
+             restartRequired: Bool = false, message: String? = nil) {
+            self.success = success; self.minRamGB = minRamGB; self.maxRamGB = maxRamGB
+            self.restartRequired = restartRequired; self.message = message
+        }
+    }
+
     // MARK: - /me (P17 — extended)
 
     /// Returned by GET /me. Additive: old iOS builds only read `role`.
@@ -1341,5 +1463,41 @@ extension RemoteAPIServer {
         init(success: Bool, message: String, user: UserSummaryDTO? = nil) {
             self.success = success; self.message = message; self.user = user
         }
+    }
+
+    // MARK: - Java Runtimes (GET /java-runtimes)
+
+    struct JavaRuntimeDTO: Codable {
+        let name: String
+        let executablePath: String
+        let majorVersion: Int?
+    }
+
+    struct JavaRuntimesResponseDTO: Codable {
+        let runtimes: [JavaRuntimeDTO]
+    }
+
+    // MARK: - Broadcast JAR (GET /broadcast/jar-status, POST /broadcast/download-jar)
+
+    struct BroadcastJarStatusDTO: Codable {
+        let installed: Bool
+        let downloading: Bool
+        let filename: String?
+    }
+
+    struct BroadcastJarDownloadResultDTO: Codable {
+        let success: Bool
+        let message: String
+        let filename: String?
+    }
+
+    // MARK: - Global Java Config (GET|POST /config/java-runtime)
+
+    struct JavaConfigResponseDTO: Codable {
+        let executablePath: String?
+    }
+
+    struct JavaConfigSetRequestDTO: Codable {
+        let executablePath: String?
     }
 }

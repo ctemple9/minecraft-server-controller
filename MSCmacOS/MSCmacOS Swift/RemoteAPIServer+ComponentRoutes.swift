@@ -16,9 +16,10 @@ extension RemoteAPIServer {
     private func serverMutationStatus(success: Bool, message: String) -> Int {
         if success { return 200 }
         switch message {
-        case "name_required", "missing_server_id": return 400
+        case "name_required", "missing_server_id", "invalid_server_type", "invalid_java_flavor", "unsupported_server_type": return 400
         case "server_not_found": return 404
-        case "server_running": return 409
+        case "server_running", "create_failed": return 409
+        case "delete_failed", "eula_write_failed": return 500
         default: return 500
         }
     }
@@ -73,6 +74,60 @@ extension RemoteAPIServer {
             Task { [weak self] in
                 guard let self else { return }
                 let result = await deleteServerProvider(serverId)
+                sendJSON(statusCode: serverMutationStatus(success: result.success, message: result.message),
+                         reason: result.success ? "OK" : "Error",
+                         encodable: result, clientFD: clientFD)
+            }
+        } catch {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+        }
+    }
+
+    func handleCreateServer(body: Data, clientFD: Int32) {
+        guard !body.isEmpty else {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "missing_body"], clientFD: clientFD)
+            return
+        }
+        do {
+            let req = try JSONDecoder().decode(ServerCreateRequestDTO.self, from: body)
+            let name = req.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "name_required"], clientFD: clientFD)
+                return
+            }
+            Task { [weak self] in
+                guard let self else { return }
+                let result = await createServerProvider(req)
+                sendJSON(statusCode: serverMutationStatus(success: result.success, message: result.message),
+                         reason: result.success ? "OK" : "Error",
+                         encodable: result, clientFD: clientFD)
+            }
+        } catch {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+        }
+    }
+
+    func handleAcceptServerEULA(body: Data, clientFD: Int32) {
+        guard !body.isEmpty else {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "missing_body"], clientFD: clientFD)
+            return
+        }
+        do {
+            let req = try JSONDecoder().decode(ServerEULARequestDTO.self, from: body)
+            let serverId = req.serverId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !serverId.isEmpty else {
+                sendJSON(statusCode: 400, reason: "Bad Request",
+                         jsonObject: ["error": "missing_server_id"], clientFD: clientFD)
+                return
+            }
+            Task { [weak self] in
+                guard let self else { return }
+                let result = await acceptEULAProvider(req)
                 sendJSON(statusCode: serverMutationStatus(success: result.success, message: result.message),
                          reason: result.success ? "OK" : "Error",
                          encodable: result, clientFD: clientFD)
@@ -475,6 +530,84 @@ extension RemoteAPIServer {
         }
     }
 
+    // MARK: - GET /broadcast/jar-status
+
+    func handleGetBroadcastJarStatus(clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await broadcastJarStatusProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+        }
+    }
+
+    // MARK: - POST /broadcast/download-jar
+
+    func handleDownloadBroadcastJar(clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await downloadBroadcastJarProvider()
+            sendJSON(statusCode: dto.success ? 200 : 409, reason: dto.success ? "OK" : "Conflict",
+                     encodable: dto, clientFD: clientFD)
+        }
+    }
+
+    // MARK: - GET /java-runtimes
+
+    func handleGetJavaRuntimes(clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await javaRuntimesProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+        }
+    }
+
+    // MARK: - GET /config/java-runtime
+
+    func handleGetJavaConfig(clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await getJavaConfigProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+        }
+    }
+
+    // MARK: - POST /config/java-runtime
+
+    func handleSetJavaConfig(body: Data, clientFD: Int32) {
+        guard !body.isEmpty else {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "missing_body"], clientFD: clientFD)
+            return
+        }
+        do {
+            let req = try JSONDecoder().decode(JavaConfigSetRequestDTO.self, from: body)
+            Task { [weak self] in
+                guard let self else { return }
+                let ok = await setJavaConfigProvider(req.executablePath)
+                if ok {
+                    let dto = await getJavaConfigProvider()
+                    sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+                } else {
+                    sendJSON(statusCode: 500, reason: "Internal Server Error",
+                             jsonObject: ["error": "set_failed"], clientFD: clientFD)
+                }
+            }
+        } catch {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+        }
+    }
+
+    // MARK: - GET /versions/create
+
+    func handleGetCreateVersions(serverType: String?, javaFlavor: String?, clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await createVersionsProvider(serverType, javaFlavor)
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+        }
+    }
+
     // MARK: - POST /components/version
 
     func handleChangeVersion(body: Data, clientFD: Int32) {
@@ -847,6 +980,40 @@ extension RemoteAPIServer {
             let result = await updateDuckDNSProvider(req.hostname)
             sendJSON(statusCode: result.success ? 200 : 500,
                      reason: result.success ? "OK" : "Error",
+                     encodable: result, clientFD: clientFD)
+        }
+    }
+
+    // MARK: - GET/POST /config/ram
+
+    func handleGetRAMConfig(clientFD: Int32) {
+        Task { [weak self] in
+            guard let self else { return }
+            let dto = await ramConfigProvider()
+            sendJSON(statusCode: 200, reason: "OK", encodable: dto, clientFD: clientFD)
+        }
+    }
+
+    func handleUpdateRAMConfig(body: Data, clientFD: Int32) {
+        struct Body: Decodable { let minRamGB: Double?; let maxRamGB: Double? }
+        guard let req = try? JSONDecoder().decode(Body.self, from: body) else {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "invalid_json"], clientFD: clientFD)
+            return
+        }
+        guard req.minRamGB != nil || req.maxRamGB != nil else {
+            sendJSON(statusCode: 400, reason: "Bad Request",
+                     jsonObject: ["error": "no_changes"], clientFD: clientFD)
+            return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await updateRAMConfigProvider(req.minRamGB, req.maxRamGB)
+            let status: Int
+            if result.success { status = 200 }
+            else if result.message == "no_active_server" { status = 409 }
+            else { status = 500 }
+            sendJSON(statusCode: status, reason: result.success ? "OK" : "Error",
                      encodable: result, clientFD: clientFD)
         }
     }

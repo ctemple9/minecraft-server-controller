@@ -105,9 +105,9 @@ extension DetailsPerformanceTabView {
         }
     }
 
-    func ramHealthStatus(_ ramMB: Double?, maxGB: Int?) -> MetricStatus {
+    func ramHealthStatus(_ ramMB: Double?, maxGB: Double?) -> MetricStatus {
         guard let ramMB = ramMB, let maxGB = maxGB else { return .neutral }
-        let maxMB = Double(maxGB) * 1024.0
+        let maxMB = maxGB * 1024.0
         let usagePercent = (ramMB / maxMB) * 100.0
 
         switch usagePercent {
@@ -117,7 +117,7 @@ extension DetailsPerformanceTabView {
         }
     }
 
-    func formatRamCompact(_ mb: Double?, maxGB: Int?) -> String {
+    func formatRamCompact(_ mb: Double?, maxGB: Double?) -> String {
         guard let mb = mb else { return "—" }
         let usedGB = mb / 1024.0
         return String(format: "%.1f GB", usedGB)

@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 struct DashboardView: View {
-    var navigateToHealth: (() -> Void)? = nil
+    var navigateToConnectivity: (() -> Void)? = nil
 
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
@@ -19,7 +19,6 @@ struct DashboardView: View {
     @State private var showQuickGuide: Bool = false
     @State private var showManageServers: Bool = false
 
-    @State private var showRAMLine: Bool = false
     @State private var now: Date = Date()
     @State private var serverStartedAt: Date? = nil
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -82,7 +81,7 @@ struct DashboardView: View {
                     footerText.padding(.vertical, MSCRemoteStyle.spaceMD)
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -170,7 +169,8 @@ struct DashboardView: View {
                         serverStartedAt: serverStartedAt,
                         now: now,
                         refreshAction: { Task { await refreshAll() } },
-                        connectivity: vm.connectivityResponse
+                        connectivity: vm.connectivityResponse,
+                        connectivityAction: navigateToConnectivity
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     DashboardServerCard(
@@ -196,7 +196,8 @@ struct DashboardView: View {
                     serverStartedAt: serverStartedAt,
                     now: now,
                     refreshAction: { Task { await refreshAll() } },
-                    connectivity: vm.connectivityResponse
+                    connectivity: vm.connectivityResponse,
+                    connectivityAction: navigateToConnectivity
                 )
                 DashboardServerCard(
                     servers: vm.servers,
@@ -213,10 +214,21 @@ struct DashboardView: View {
             }
 
             if isPaired { serverSettingsLinkCard }
-            if isPaired && vm.connectedRole == "admin" { usersLinkCard }
 
             DashboardPlayersCard(players: vm.players?.players ?? [], isRunning: isRunning)
 
+            performanceLinkCard
+
+            if settings.showJoinCard { JoinCardView() }
+            if let err = vm.errorMessage, !err.isEmpty { errorBanner(err) }
+        }
+    }
+
+    private var performanceLinkCard: some View {
+        NavigationLink {
+            PerformanceDetailView(isIPad: isIPad)
+                .environmentObject(vm)
+        } label: {
             DashboardPerformanceCard(
                 activeServerType: activeServerType,
                 performanceLatest: vm.performanceLatest,
@@ -228,22 +240,9 @@ struct DashboardView: View {
                 metricColumnCount: metricColumnCount,
                 perfAgeLabel: perfAgeLabel
             )
-
-            DashboardChartsCard(
-                performanceHistory: vm.performanceHistory,
-                showRAMLine: $showRAMLine,
-                isIPad: isIPad
-            )
-
-            ComponentsStatusStripView(
-                componentsStatus: vm.componentsStatus,
-                broadcastStatus: vm.broadcastStatus,
-                onTap: { navigateToHealth?() }
-            )
-
-            if settings.showJoinCard { JoinCardView() }
-            if let err = vm.errorMessage, !err.isEmpty { errorBanner(err) }
         }
+        .buttonStyle(.plain)
+        .accessibilityHint("Shows performance history")
     }
 
     private var serverSettingsLinkCard: some View {
@@ -263,38 +262,6 @@ struct DashboardView: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(MSCRemoteStyle.textPrimary)
                     Text("Edit difficulty, players, MOTD, ports & more")
-                        .font(.system(size: 12))
-                        .foregroundStyle(MSCRemoteStyle.textTertiary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(MSCRemoteStyle.textTertiary)
-                    .accessibilityHidden(true)
-            }
-            .mscCard()
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var usersLinkCard: some View {
-        NavigationLink {
-            UsersView()
-                .environmentObject(settings)
-                .environmentObject(vm)
-        } label: {
-            HStack(spacing: MSCRemoteStyle.spaceMD) {
-                Image(systemName: "person.2.badge.key.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(MSCRemoteStyle.accent)
-                    .frame(width: 28)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Users & Access")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(MSCRemoteStyle.textPrimary)
-                    Text("Manage shared access tokens and permissions")
                         .font(.system(size: 12))
                         .foregroundStyle(MSCRemoteStyle.textTertiary)
                 }
@@ -439,7 +406,7 @@ private struct ManageServersSheet: View {
     @State private var serverToDelete: ServerDTO? = nil
     @State private var mutatingServerId: String? = nil
     @State private var toastMessage: String? = nil
-    @State private var showTemplates: Bool = false
+    @State private var showCreateServer: Bool = false
     @State private var showImport: Bool = false
 
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
@@ -502,7 +469,7 @@ private struct ManageServersSheet: View {
             .task { await refreshServers() }
             .background(renameAlertAnchor)
             .background(deleteAlertAnchor)
-            .background(templatesSheetAnchor)
+            .background(createServerSheetAnchor)
             .background(importSheetAnchor)
         }
     }
@@ -535,10 +502,10 @@ private struct ManageServersSheet: View {
             MSCSectionHeader(title: "LIFECYCLE")
                 .padding(.bottom, MSCRemoteStyle.spaceMD)
 
-            openSheetRow(icon: "shippingbox", title: "Templates",
-                         detail: "Export reusable JARs and create servers from templates.") {
+            openSheetRow(icon: "plus.square.on.square", title: "Create Server",
+                         detail: "Create a fresh Java or Bedrock server on the Mac.") {
                 hapticLight()
-                showTemplates = true
+                showCreateServer = true
             }
 
             Divider().background(MSCRemoteStyle.borderSubtle)
@@ -623,6 +590,22 @@ private struct ManageServersSheet: View {
                 ProgressView().scaleEffect(0.8)
             } else if isAdmin {
                 HStack(spacing: MSCRemoteStyle.spaceSM) {
+                    if server.resolvedServerType == .java {
+                        Button {
+                            hapticLight()
+                            Task { await performAcceptEULA(server: server) }
+                        } label: {
+                            Image(systemName: "checkmark.seal")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(MSCRemoteStyle.success)
+                                .frame(width: 32, height: 32)
+                                .background(MSCRemoteStyle.bgElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Accept EULA for \(server.name)")
+                    }
+
                     Button {
                         hapticLight()
                         renameText = server.name
@@ -683,22 +666,22 @@ private struct ManageServersSheet: View {
                 set: { if !$0 { serverToDelete = nil } }
             )) {
                 Button("Cancel", role: .cancel) { serverToDelete = nil }
-                Button("Delete", role: .destructive) {
+                Button("Delete from Disk", role: .destructive) {
                     guard let server = serverToDelete else { return }
                     serverToDelete = nil
                     Task { await performDelete(server: server) }
                 }
             } message: {
                 if let server = serverToDelete {
-                    Text("Delete \(server.name)? This will remove it from the server list.")
+                    Text("Delete \(server.name)? This removes it from MSC and deletes its server folder from the Mac.")
                 }
             }
     }
 
-    private var templatesSheetAnchor: some View {
+    private var createServerSheetAnchor: some View {
         Color.clear
-            .sheet(isPresented: $showTemplates) {
-                ServerTemplatesSheet()
+            .sheet(isPresented: $showCreateServer) {
+                ServerCreateSheet()
                     .environmentObject(settings)
                     .environmentObject(vm)
             }
@@ -715,9 +698,7 @@ private struct ManageServersSheet: View {
 
     private func refreshServers() async {
         guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
-        async let r: () = vm.refreshAll(baseURL: baseURL, token: token, tailN: 200)
-        async let t: () = vm.fetchTemplates(baseURL: baseURL, token: token)
-        _ = await (r, t)
+        await vm.refreshAll(baseURL: baseURL, token: token, tailN: 200)
     }
 
     private func performRename(server: ServerDTO, name: String) async {
@@ -755,6 +736,20 @@ private struct ManageServersSheet: View {
         }
     }
 
+    private func performAcceptEULA(server: ServerDTO) async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        mutatingServerId = server.id
+        let error = await vm.acceptServerEULA(baseURL: baseURL, token: token, serverId: server.id)
+        mutatingServerId = nil
+        if let error {
+            hapticError()
+            showToast(error)
+        } else {
+            hapticSuccess()
+            showToast("Accepted EULA for \"\(server.name)\".")
+        }
+    }
+
     private func showToast(_ message: String) {
         withAnimation { toastMessage = message }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
@@ -763,32 +758,52 @@ private struct ManageServersSheet: View {
     }
 }
 
-private struct ServerTemplatesSheet: View {
+private struct ServerCreateSheet: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: DashboardViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedTemplateId: String? = nil
-    @State private var newServerName: String = ""
-    @State private var javaPort: String = "25565"
+    @State private var serverType: ServerType = .java
+    @State private var javaFlavor: RemoteJavaServerFlavor = .paper
+    @State private var serverName: String = ""
+    @State private var port: String = "25565"
+    @State private var maxPlayers: String = "20"
     @State private var enableCrossPlay: Bool = false
     @State private var crossPlayPort: String = "19132"
     @State private var enablePlayit: Bool = false
+    @State private var enableXboxBroadcast: Bool = false
     @State private var acceptEula: Bool = false
     @State private var difficulty: String = "normal"
     @State private var gamemode: String = "survival"
     @State private var worldName: String = ""
     @State private var worldSeed: String = ""
-    @State private var includePlugins: Bool = true
+    @State private var selectedVersion: VersionEntryDTO? = nil
+    @State private var createVersionsResponse: VersionsResponseDTO? = nil
+    @State private var isLoadingVersions: Bool = false
+    @State private var showVersionPicker: Bool = false
+    @State private var selectedJavaRuntime: JavaRuntimeDTO? = nil
+    @State private var javaRuntimesResponse: JavaRuntimesResponseDTO? = nil
+    @State private var isLoadingRuntimes: Bool = false
+    @State private var showRuntimePicker: Bool = false
     @State private var isWorking: Bool = false
     @State private var toastMessage: String? = nil
+    @State private var createWarningMessage: String? = nil
 
     private var resolvedBaseURL: URL? { settings.resolvedBaseURL() }
     private var resolvedToken: String? { settings.resolvedToken() }
     private var isAdmin: Bool { vm.connectedRole == "admin" }
-    private var paperTemplates: [TemplateItemDTO] { vm.templatesResponse?.paperTemplates ?? [] }
-    private var pluginTemplates: [TemplateItemDTO] { vm.templatesResponse?.pluginTemplates ?? [] }
-    private var selectedTemplate: TemplateItemDTO? { paperTemplates.first { $0.id == selectedTemplateId } }
+    private var effectivePort: Int {
+        Int(port) ?? (serverType == .bedrock ? 19132 : 25565)
+    }
+    private var effectiveMaxPlayers: Int {
+        Int(maxPlayers) ?? (serverType == .bedrock ? 10 : 20)
+    }
+    private var supportsJavaCrossPlay: Bool {
+        serverType == .java && javaFlavor.supportsCrossPlay
+    }
+    private var supportsXboxBroadcast: Bool {
+        serverType == .bedrock || (supportsJavaCrossPlay && enableCrossPlay)
+    }
 
     var body: some View {
         NavigationStack {
@@ -796,8 +811,6 @@ private struct ServerTemplatesSheet: View {
                 MSCRemoteStyle.bgBase.ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: MSCRemoteStyle.spaceLG) {
-                        exportCard
-                        libraryCard
                         createCard
                     }
                     .padding(.horizontal, MSCRemoteStyle.spaceLG)
@@ -806,10 +819,9 @@ private struct ServerTemplatesSheet: View {
                     .frame(maxWidth: MSCRemoteStyle.contentMaxWidth)
                     .frame(maxWidth: .infinity)
                 }
-                .refreshable { await refresh() }
                 toastOverlay
             }
-            .navigationTitle("Templates")
+            .navigationTitle("Create Server")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -818,88 +830,50 @@ private struct ServerTemplatesSheet: View {
                     Button("Done") { dismiss() }
                         .foregroundStyle(MSCRemoteStyle.accent)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { Task { await refresh() } } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundStyle(MSCRemoteStyle.accent)
-                    }
-                }
             }
-            .task { await refresh() }
-        }
-    }
-
-    private var exportCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            MSCSectionHeader(title: "EXPORT ACTIVE SERVER")
-                .padding(.bottom, MSCRemoteStyle.spaceMD)
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(vm.templatesResponse?.serverName ?? "Active server")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(MSCRemoteStyle.textPrimary)
-                    Text("Save its server JAR and plugin JARs into the Mac template library.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(MSCRemoteStyle.textSecondary)
-                }
-                Spacer()
-                Toggle("", isOn: $includePlugins)
-                    .labelsHidden()
-                    .tint(MSCRemoteStyle.accent)
-                    .disabled(!isAdmin || isWorking)
-                    .accessibilityLabel("Include plugin JARs")
-            }
-            .padding(.bottom, MSCRemoteStyle.spaceMD)
-
-            actionButton(title: isWorking ? "Working…" : "Export Templates",
-                         icon: "square.and.arrow.up",
-                         enabled: isAdmin && !isWorking) {
-                Task { await performExport() }
+            .background(versionPickerSheetAnchor)
+            .background(javaRuntimePickerSheetAnchor)
+            .alert("Xbox Broadcast", isPresented: Binding(
+                get: { createWarningMessage != nil },
+                set: { if !$0 { createWarningMessage = nil } }
+            )) {
+                Button("OK") { createWarningMessage = nil }
+            } message: {
+                Text(createWarningMessage ?? "")
             }
         }
-        .mscCard()
-    }
-
-    private var libraryCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            MSCSectionHeader(title: "SERVER JAR TEMPLATES", trailing: "\(paperTemplates.count)")
-                .padding(.bottom, MSCRemoteStyle.spaceMD)
-            if paperTemplates.isEmpty {
-                emptyText("No server JAR templates found.")
-            } else {
-                ForEach(paperTemplates) { item in
-                    templateRow(item)
-                    if item.id != paperTemplates.last?.id { Divider().background(MSCRemoteStyle.borderSubtle) }
-                }
-            }
-            if !pluginTemplates.isEmpty {
-                Divider().background(MSCRemoteStyle.borderSubtle).padding(.vertical, MSCRemoteStyle.spaceMD)
-                MSCSectionHeader(title: "PLUGIN TEMPLATES", trailing: "\(pluginTemplates.count)")
-                    .padding(.bottom, MSCRemoteStyle.spaceSM)
-                ForEach(pluginTemplates.prefix(6)) { item in
-                    HStack {
-                        Text(item.displayName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(MSCRemoteStyle.textSecondary)
-                            .lineLimit(1)
-                        Spacer()
-                        Text(item.filename)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(MSCRemoteStyle.textTertiary)
-                            .lineLimit(1)
-                    }
-                    .padding(.vertical, MSCRemoteStyle.spaceXS)
-                }
-            }
-        }
-        .mscCard()
     }
 
     private var createCard: some View {
         VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceMD) {
-            MSCSectionHeader(title: "CREATE FROM TEMPLATE")
-            labeledField("Server Name", text: $newServerName, placeholder: "New Paper Server")
-            labeledField("Java Port", text: $javaPort, placeholder: "25565", keyboard: .numberPad)
+            MSCSectionHeader(title: "NEW SERVER")
+
+            Picker("", selection: $serverType) {
+                Text("Java").tag(ServerType.java)
+                Text("Bedrock").tag(ServerType.bedrock)
+            }
+            .pickerStyle(.segmented)
+            .tint(MSCRemoteStyle.accent)
+            .onChange(of: serverType) { old, new in
+                if old == .java, port == "25565" { port = "19132" }
+                if old == .bedrock, port == "19132" { port = "25565" }
+                if old == .java, maxPlayers == "20" { maxPlayers = "10" }
+                if old == .bedrock, maxPlayers == "10" { maxPlayers = "20" }
+                if new == .bedrock { enableCrossPlay = false }
+                if new == .java { enableXboxBroadcast = false }
+                resetVersionSelection()
+            }
+
+            if serverType == .java {
+                javaSoftwareSection
+                javaRuntimeRow
+            }
+
+            versionPickerRow
+
+            labeledField("Server Name", text: $serverName, placeholder: serverType == .bedrock ? "New Bedrock Server" : "New \(javaFlavor.displayName) Server")
+            labeledField(serverType == .bedrock ? "Bedrock Port" : "Java Port", text: $port, placeholder: serverType == .bedrock ? "19132" : "25565", keyboard: .numberPad)
+            labeledField("Max Players", text: $maxPlayers, placeholder: serverType == .bedrock ? "10" : "20", keyboard: .numberPad)
             labeledField("World Name", text: $worldName, placeholder: "Optional")
             labeledField("World Seed", text: $worldSeed, placeholder: "Optional")
 
@@ -920,85 +894,283 @@ private struct ServerTemplatesSheet: View {
             .pickerStyle(.segmented)
             .tint(MSCRemoteStyle.accent)
 
-            toggleRow(title: "Bedrock Cross-play", detail: "Copy Geyser and Floodgate plugin templates into the new server.", isOn: $enableCrossPlay)
-            if enableCrossPlay {
-                labeledField("Bedrock Port", text: $crossPlayPort, placeholder: "19132", keyboard: .numberPad)
+            if serverType == .java {
+                if supportsJavaCrossPlay {
+                    toggleRow(title: "Bedrock Cross-play", detail: "Copy Geyser and Floodgate into the new \(javaFlavor.displayName) server.", isOn: $enableCrossPlay)
+                }
+                if supportsJavaCrossPlay && enableCrossPlay {
+                    labeledField("Cross-play Port", text: $crossPlayPort, placeholder: "19132", keyboard: .numberPad)
+                }
+                toggleRow(title: "Accept EULA", detail: "Write eula=true after creation.", isOn: $acceptEula)
             }
             toggleRow(title: "Enable playit", detail: "Start with playit enabled in the new server config.", isOn: $enablePlayit)
-            toggleRow(title: "Accept EULA", detail: "Write eula=true after creation.", isOn: $acceptEula)
+            if supportsXboxBroadcast {
+                toggleRow(title: "Xbox Broadcast", detail: "Let console players discover this server from Friends.", isOn: $enableXboxBroadcast)
+            }
 
             actionButton(title: isWorking ? "Creating…" : "Create Server",
                          icon: "plus",
-                         enabled: isAdmin && !isWorking && selectedTemplate != nil) {
+                         enabled: isAdmin && !isWorking) {
                 Task { await performCreate() }
             }
         }
         .mscCard()
     }
 
-    private func templateRow(_ item: TemplateItemDTO) -> some View {
-        let selected = item.id == selectedTemplateId
-        return Button {
-            hapticLight()
-            selectedTemplateId = item.id
+    private var javaSoftwareSection: some View {
+        VStack(alignment: .leading, spacing: MSCRemoteStyle.spaceSM) {
+            MSCSectionHeader(title: "STANDARD")
+            VStack(spacing: MSCRemoteStyle.spaceSM) {
+                ForEach(RemoteJavaServerFlavor.choices(in: .standard), id: \.self) { flavor in
+                    javaFlavorRow(flavor)
+                }
+            }
+            MSCSectionHeader(title: "MODDED")
+                .padding(.top, MSCRemoteStyle.spaceXS)
+            VStack(spacing: MSCRemoteStyle.spaceSM) {
+                ForEach(RemoteJavaServerFlavor.choices(in: .modded), id: \.self) { flavor in
+                    javaFlavorRow(flavor)
+                }
+            }
+        }
+    }
+
+    private func javaFlavorRow(_ flavor: RemoteJavaServerFlavor) -> some View {
+        Button {
+            javaFlavor = flavor
+            if !flavor.supportsCrossPlay {
+                enableCrossPlay = false
+                enableXboxBroadcast = false
+            } else if !enableCrossPlay {
+                enableXboxBroadcast = false
+            }
+            resetVersionSelection()
         } label: {
             HStack(spacing: MSCRemoteStyle.spaceMD) {
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                Image(systemName: flavor.iconName)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(selected ? MSCRemoteStyle.accent : MSCRemoteStyle.textTertiary)
-                    .frame(width: 22)
+                    .foregroundStyle(javaFlavor == flavor ? MSCRemoteStyle.accent : MSCRemoteStyle.textTertiary)
+                    .frame(width: 26)
+
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(item.displayName)
+                    Text(flavor.displayName)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(MSCRemoteStyle.textPrimary)
-                        .lineLimit(1)
-                    Text(item.filename)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(MSCRemoteStyle.textTertiary)
-                        .lineLimit(1)
+                    Text(flavor.shortDescription)
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSCRemoteStyle.textSecondary)
                 }
+
                 Spacer()
+
+                if javaFlavor == flavor {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
             }
-            .padding(.vertical, MSCRemoteStyle.spaceSM)
+            .padding(MSCRemoteStyle.spaceMD)
+            .background(javaFlavor == flavor ? MSCRemoteStyle.accentDim : MSCRemoteStyle.bgElevated)
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                    .stroke(javaFlavor == flavor ? MSCRemoteStyle.accent.opacity(0.45) : MSCRemoteStyle.borderSubtle, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
 
-    private func performExport() async {
-        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
-        hapticLight()
-        isWorking = true
-        let error = await vm.exportServerTemplate(baseURL: baseURL, token: token, serverId: vm.status?.activeServerId, includePlugins: includePlugins)
-        isWorking = false
-        if let error {
-            hapticError()
-            showToast(error)
-        } else {
-            hapticSuccess()
-            showToast("Templates exported.")
+    private var versionPickerRow: some View {
+        Button {
+            Task { await openVersionPicker() }
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                Image(systemName: "number.square")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(selectedVersion == nil ? MSCRemoteStyle.textTertiary : MSCRemoteStyle.accent)
+                    .frame(width: 26)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Version")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    Text(selectedVersion.map(versionSummary) ?? (serverType == .bedrock ? "Latest (auto)" : "Latest (recommended)"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(selectedVersion == nil ? MSCRemoteStyle.textSecondary : MSCRemoteStyle.accent)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                if isLoadingVersions {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+            }
+            .padding(MSCRemoteStyle.spaceMD)
+            .background(MSCRemoteStyle.bgElevated)
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                    .stroke(MSCRemoteStyle.borderSubtle, lineWidth: 1)
+            )
         }
+        .buttonStyle(.plain)
+        .disabled(isLoadingVersions || !isAdmin)
+    }
+
+    private var versionPickerSheetAnchor: some View {
+        Color.clear
+            .sheet(isPresented: $showVersionPicker) {
+                CreateVersionPickerSheet(
+                    response: createVersionsResponse,
+                    serverType: serverType,
+                    selectedVersion: $selectedVersion
+                )
+            }
+    }
+
+    private var javaRuntimeRow: some View {
+        Button {
+            Task { await openRuntimePicker() }
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                Image(systemName: "cpu")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(selectedJavaRuntime == nil ? MSCRemoteStyle.textTertiary : MSCRemoteStyle.accent)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Java Runtime")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textPrimary)
+                    if let runtime = selectedJavaRuntime {
+                        Text("\(runtime.name)  ·  \(runtime.versionLabel)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(MSCRemoteStyle.accent)
+                            .lineLimit(1)
+                    } else {
+                        Text("System default")
+                            .font(.system(size: 12))
+                            .foregroundStyle(MSCRemoteStyle.textSecondary)
+                    }
+                }
+                Spacer()
+                if isLoadingRuntimes {
+                    ProgressView().scaleEffect(0.8)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+            }
+            .padding(MSCRemoteStyle.spaceMD)
+            .background(MSCRemoteStyle.bgElevated)
+            .clipShape(RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: MSCRemoteStyle.radiusSM, style: .continuous)
+                    .stroke(MSCRemoteStyle.borderSubtle, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoadingRuntimes || !isAdmin)
+    }
+
+    private var javaRuntimePickerSheetAnchor: some View {
+        Color.clear
+            .sheet(isPresented: $showRuntimePicker) {
+                CreateJavaRuntimePickerSheet(
+                    response: javaRuntimesResponse,
+                    selectedRuntime: $selectedJavaRuntime
+                )
+            }
+    }
+
+    private func openRuntimePicker() async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else {
+            hapticError()
+            showToast("Pair with your Mac first.")
+            return
+        }
+        if javaRuntimesResponse == nil {
+            isLoadingRuntimes = true
+            javaRuntimesResponse = await vm.fetchJavaRuntimes(baseURL: baseURL, token: token)
+            isLoadingRuntimes = false
+        }
+        showRuntimePicker = true
+    }
+
+    private func openVersionPicker() async {
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else {
+            hapticError()
+            showToast("Pair with your Mac first.")
+            return
+        }
+        if createVersionsResponse == nil {
+            isLoadingVersions = true
+            let result = await vm.fetchCreateVersions(
+                baseURL: baseURL,
+                token: token,
+                serverType: serverType,
+                javaFlavor: serverType == .java ? javaFlavor : nil
+            )
+            isLoadingVersions = false
+            guard let result else {
+                hapticError()
+                showToast("Couldn't load versions.")
+                return
+            }
+            createVersionsResponse = result
+        }
+        showVersionPicker = true
+    }
+
+    private func resetVersionSelection() {
+        selectedVersion = nil
+        createVersionsResponse = nil
+        showVersionPicker = false
+    }
+
+    private func versionSummary(_ entry: VersionEntryDTO) -> String {
+        var text = entry.displayLabel
+        if let build = entry.buildLabel, !build.isEmpty {
+            text += " · \(build)"
+        } else if let loader = entry.loaderVersion, !loader.isEmpty {
+            text += " · loader \(loader)"
+        }
+        return text
     }
 
     private func performCreate() async {
-        guard let baseURL = resolvedBaseURL, let token = resolvedToken, let selectedTemplate else { return }
-        let name = newServerName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
+        let name = serverName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { hapticError(); showToast("Enter a server name."); return }
         hapticLight()
         isWorking = true
-        let error = await vm.createServerFromTemplate(
+        let (error, warnings) = await vm.createFreshServer(
             baseURL: baseURL,
             token: token,
             name: name,
-            templateId: selectedTemplate.id,
-            port: Int(javaPort) ?? 25565,
-            enableCrossPlay: enableCrossPlay,
+            serverType: serverType,
+            javaFlavor: serverType == .java ? javaFlavor : nil,
+            selectedVersion: selectedVersion,
+            port: effectivePort,
+            maxPlayers: effectiveMaxPlayers,
+            enableCrossPlay: supportsJavaCrossPlay && enableCrossPlay,
             crossPlayBedrockPort: Int(crossPlayPort) ?? 19132,
             enablePlayit: enablePlayit,
+            enableXboxBroadcast: supportsXboxBroadcast && enableXboxBroadcast,
             difficulty: difficulty,
             gamemode: gamemode,
             worldName: worldName.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             worldSeed: worldSeed.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-            acceptEula: acceptEula
+            acceptEula: serverType == .java && acceptEula,
+            bedrockVersion: nil,
+            dockerImage: nil,
+            javaPath: serverType == .java ? selectedJavaRuntime?.executablePath : nil
         )
         isWorking = false
         if let error {
@@ -1007,13 +1179,10 @@ private struct ServerTemplatesSheet: View {
         } else {
             hapticSuccess()
             showToast("Server created.")
+            if warnings?.contains("xbox_broadcast_jar_not_configured") == true {
+                createWarningMessage = "Xbox Broadcast was enabled but MSC hasn't downloaded the MCXboxBroadcast JAR yet. Open MSC on your Mac → Edit Server → Broadcast to download it."
+            }
         }
-    }
-
-    private func refresh() async {
-        guard let baseURL = resolvedBaseURL, let token = resolvedToken else { return }
-        await vm.fetchTemplates(baseURL: baseURL, token: token)
-        if selectedTemplateId == nil { selectedTemplateId = paperTemplates.first?.id }
     }
 
     private var toastOverlay: some View {
@@ -1040,6 +1209,264 @@ private struct ServerTemplatesSheet: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
             withAnimation { toastMessage = nil }
         }
+    }
+}
+
+private struct CreateVersionPickerSheet: View {
+    let response: VersionsResponseDTO?
+    let serverType: ServerType
+    @Binding var selectedVersion: VersionEntryDTO?
+    @Environment(\.dismiss) private var dismiss
+
+    private var concreteVersions: [VersionEntryDTO] {
+        response?.versions.filter { entry in
+            entry.id != "__latest__" && entry.id.uppercased() != "LATEST"
+        } ?? []
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                MSCRemoteStyle.bgBase.ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 0) {
+                        latestRow
+                        if !concreteVersions.isEmpty {
+                            Divider()
+                                .background(MSCRemoteStyle.borderSubtle)
+                                .padding(.leading, MSCRemoteStyle.spaceLG)
+                        }
+                        ForEach(Array(concreteVersions.enumerated()), id: \.element.id) { index, entry in
+                            versionRow(entry)
+                            if index < concreteVersions.count - 1 {
+                                Divider()
+                                    .background(MSCRemoteStyle.borderSubtle)
+                                    .padding(.leading, MSCRemoteStyle.spaceLG)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                    .padding(.vertical, MSCRemoteStyle.spaceMD)
+                    .frame(maxWidth: MSCRemoteStyle.contentMaxWidth)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .navigationTitle(response?.flavorName.isEmpty == false ? "\(response?.flavorName ?? "") Version" : "Choose Version")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+        }
+    }
+
+    private var latestRow: some View {
+        Button {
+            selectedVersion = nil
+            dismiss()
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(serverType == .bedrock ? "Latest (auto)" : "Latest (recommended)")
+                        .font(.system(size: 14, weight: selectedVersion == nil ? .semibold : .regular))
+                        .foregroundStyle(selectedVersion == nil ? MSCRemoteStyle.accent : MSCRemoteStyle.textPrimary)
+                    Text(serverType == .bedrock ? "Let the Bedrock image use the newest available release." : "MSC will fetch the newest stable version for this server type.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                if selectedVersion == nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+            .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func versionRow(_ entry: VersionEntryDTO) -> some View {
+        let isSelected = selectedVersion?.id == entry.id
+        return Button {
+            selectedVersion = entry
+            dismiss()
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(entry.displayLabel)
+                            .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? MSCRemoteStyle.accent : MSCRemoteStyle.textPrimary)
+                        if !entry.isStable {
+                            versionBadge("BETA", color: MSCRemoteStyle.warning)
+                        }
+                    }
+                    if let build = entry.buildLabel, !build.isEmpty {
+                        Text(build)
+                            .font(.system(size: 11))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    } else if let loader = entry.loaderVersion, !loader.isEmpty {
+                        Text("Loader: \(loader)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                    }
+                }
+                Spacer(minLength: 6)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+            .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func versionBadge(_ label: String, color: Color) -> some View {
+        Text(label)
+            .font(.system(size: 8, weight: .semibold))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(color.opacity(0.18)))
+            .foregroundStyle(color)
+    }
+}
+
+private struct CreateJavaRuntimePickerSheet: View {
+    let response: JavaRuntimesResponseDTO?
+    @Binding var selectedRuntime: JavaRuntimeDTO?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                MSCRemoteStyle.bgBase.ignoresSafeArea()
+
+                if let runtimes = response?.runtimes, !runtimes.isEmpty {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            systemDefaultRow
+                            Divider()
+                                .background(MSCRemoteStyle.borderSubtle)
+                                .padding(.leading, MSCRemoteStyle.spaceLG)
+                            ForEach(Array(runtimes.enumerated()), id: \.element.id) { index, runtime in
+                                runtimeRow(runtime)
+                                if index < runtimes.count - 1 {
+                                    Divider()
+                                        .background(MSCRemoteStyle.borderSubtle)
+                                        .padding(.leading, MSCRemoteStyle.spaceLG)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                        .padding(.vertical, MSCRemoteStyle.spaceMD)
+                        .frame(maxWidth: MSCRemoteStyle.contentMaxWidth)
+                        .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    VStack(spacing: MSCRemoteStyle.spaceMD) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 32, weight: .light))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        Text("No Java runtimes detected")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(MSCRemoteStyle.textPrimary)
+                        Text("MSC will use the system default. Install a JDK on your Mac to see options here.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(MSCRemoteStyle.textTertiary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, MSCRemoteStyle.spaceLG)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle("Java Runtime")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(MSCRemoteStyle.bgBase, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+        }
+    }
+
+    private var systemDefaultRow: some View {
+        let isSelected = selectedRuntime == nil
+        return Button {
+            selectedRuntime = nil
+            dismiss()
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("System default")
+                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(isSelected ? MSCRemoteStyle.accent : MSCRemoteStyle.textPrimary)
+                    Text("Uses the Java path from MSC settings")
+                        .font(.system(size: 12))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                }
+                Spacer(minLength: 6)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+            .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func runtimeRow(_ runtime: JavaRuntimeDTO) -> some View {
+        let isSelected = selectedRuntime?.id == runtime.id
+        return Button {
+            selectedRuntime = runtime
+            dismiss()
+        } label: {
+            HStack(spacing: MSCRemoteStyle.spaceMD) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(runtime.name)
+                            .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? MSCRemoteStyle.accent : MSCRemoteStyle.textPrimary)
+                        if let major = runtime.majorVersion {
+                            Text("Java \(major)")
+                                .font(.system(size: 9, weight: .semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(MSCRemoteStyle.accent.opacity(0.15)))
+                                .foregroundStyle(MSCRemoteStyle.accent)
+                        }
+                    }
+                    Text(runtime.executablePath)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(MSCRemoteStyle.textTertiary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 6)
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(MSCRemoteStyle.accent)
+                }
+            }
+            .padding(.vertical, MSCRemoteStyle.spaceSM + 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
